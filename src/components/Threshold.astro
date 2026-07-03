@@ -634,6 +634,7 @@
           await audio.play();
         }
         btn.setAttribute('aria-pressed', String(!isPlaying));
+        document.dispatchEvent(new CustomEvent('eduweb:sound', { detail: { on: !isPlaying } }));
       } catch {
         // Track missing or blocked — control stays inert, never throws.
       }

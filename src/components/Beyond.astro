@@ -1,18 +1,25 @@
 ---
 // The room beyond the threshold — an infinite white void. Where the
 // hero is dark bronze and metal, this room is bone-white and bare:
-// a single small pig, alone in the frame, who eventually speaks.
+// a single small pig, alone in the frame, speaking the real narration
+// (beyond-voice.mp3) over PigVoid-speech.mp4, itself re-timed to match
+// the audio's exact length rather than the other way around. Captions
+// mirror the narration's real pauses, measured from the recorded audio.
 const lines = [
-  { text: 'Everyone keeps asking:', start: 0.5, end: 2.8 },
-  { text: 'Will AI replace us?', start: 2.8, end: 5.2 },
-  { text: 'Wrong question.', start: 5.2, end: 7.0 },
-  { text: 'The real one is: who decides where it stops.', start: 7.0, end: 10.8 },
-  { text: 'Every powerful technology reaches an edge.', start: 10.8, end: 14.0 },
-  { text: 'Finding it was never the hard part.', start: 14.0, end: 16.8 },
-  { text: 'Pretending it isn’t there.', start: 16.8, end: 19.0 },
-  { text: 'That is the hard part.', start: 19.0, end: 21.3 },
-  { text: 'So I look for edges.', start: 21.3, end: 23.0 },
-  { text: 'Before they find us.', start: 23.0, end: 24.17 },
+  { text: 'People are afraid of edges.', start: 0, end: 2.62 },
+  { text: 'Of the place where the light ends...', start: 3.29, end: 5.44 },
+  { text: 'and something else begins.', start: 6.2, end: 7.87 },
+  { text: 'So they stay in the center,', start: 8.5, end: 9.96 },
+  { text: 'where everything is already known.', start: 10.39, end: 12.32 },
+  { text: 'But the edge is not a wall.', start: 12.94, end: 15.09 },
+  { text: 'The edge is a question.', start: 15.68, end: 17.2 },
+  { text: 'What you call a dark corner...', start: 17.75, end: 19.55 },
+  { text: 'is just a room you have not entered yet.', start: 20.02, end: 22.23 },
+  { text: 'Step back far enough,', start: 22.71, end: 24.03 },
+  { text: 'and you will see it.', start: 24.48, end: 25.41 },
+  { text: 'The void was never empty.', start: 26.0, end: 27.73 },
+  { text: 'It was space.', start: 28.36, end: 29.25 },
+  { text: 'Yours.', start: 29.77, end: 30.42 },
 ];
 ---
 
@@ -34,8 +41,14 @@ const lines = [
       {lines.map((line) => (
         <p class="void-line" data-start={line.start} data-end={line.end}>{line.text}</p>
       ))}
-      <p class="void-line void-line-closing" data-start="5" data-end="16">Are you? You should.</p>
     </div>
+
+    <audio id="beyond-voice" preload="auto">
+      <source src="/beyond-voice.mp3" type="audio/mpeg" />
+    </audio>
+    <audio id="beyond-ambient" preload="auto" loop>
+      <source src="/beyond-ambient.mp3" type="audio/mpeg" />
+    </audio>
   </div>
 </section>
 
@@ -91,11 +104,6 @@ const lines = [
     opacity: 1;
   }
 
-  .void-line-closing {
-    font-family: var(--font-display);
-    letter-spacing: 0.04em;
-  }
-
   @media (prefers-reduced-motion: reduce) {
     .void-line {
       transition: none;
@@ -107,78 +115,133 @@ const lines = [
   function initVoidRoom() {
     const section = document.getElementById('beyond');
     const video = document.getElementById('void-video') as HTMLVideoElement | null;
-    if (!section || !video) return;
+    const voice = document.getElementById('beyond-voice') as HTMLAudioElement | null;
+    const ambient = document.getElementById('beyond-ambient') as HTMLAudioElement | null;
+    const cabaret = document.getElementById('cabaret-audio') as HTMLAudioElement | null;
+    const soundToggle = document.getElementById('sound-toggle');
+    if (!section || !video || !voice || !ambient) return;
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const speechLines = Array.from(section.querySelectorAll<HTMLElement>('.void-line:not(.void-line-closing)'));
-    const closingLine = section.querySelector<HTMLElement>('.void-line-closing');
+    const captionLines = Array.from(section.querySelectorAll<HTMLElement>('.void-line'));
     const speechSrc = '/PigVoid-speech.mp4';
     const zoomoutSrc = '/PigVoid-zoomout.mp4';
+    const ambientVolume = 0.4;
 
-    let started = false;
     let currentClip: 'speech' | 'zoomout' = 'speech';
+    let started = false;
+    let roomActive = false;
+    let soundOn = soundToggle?.getAttribute('aria-pressed') === 'true';
 
-    function showLinesFor(time: number) {
-      for (const line of speechLines) {
-        const start = Number(line.dataset.start);
-        const end = Number(line.dataset.end);
-        line.classList.toggle('is-visible', time >= start && time < end);
+    const fadeTokens = new WeakMap<HTMLMediaElement, number>();
+
+    function fade(el: HTMLMediaElement, to: number, ms: number, done?: () => void) {
+      const token = (fadeTokens.get(el) ?? 0) + 1;
+      fadeTokens.set(el, token);
+      const from = el.volume;
+      const start = performance.now();
+      function step(now: number) {
+        if (fadeTokens.get(el) !== token) return; // superseded by a later fade
+        const t = Math.min(1, (now - start) / ms);
+        el.volume = Math.min(1, Math.max(0, from + (to - from) * t));
+        if (t < 1) requestAnimationFrame(step);
+        else done?.();
+      }
+      requestAnimationFrame(step);
+    }
+
+    function updateCaptions(time: number) {
+      for (const line of captionLines) {
+        const s = Number(line.dataset.start);
+        const e = Number(line.dataset.end);
+        line.classList.toggle('is-visible', time >= s && time < e);
       }
     }
 
-    function showClosingLine(time: number) {
-      if (!closingLine) return;
-      const start = Number(closingLine.dataset.start);
-      const end = Number(closingLine.dataset.end);
-      closingLine.classList.toggle('is-visible', time >= start && time < end);
-    }
-
-    function clearAllLines() {
-      for (const line of speechLines) line.classList.remove('is-visible');
-      closingLine?.classList.remove('is-visible');
+    function clearCaptions() {
+      for (const line of captionLines) line.classList.remove('is-visible');
     }
 
     video.addEventListener('timeupdate', () => {
-      if (currentClip === 'speech') {
-        showLinesFor(video.currentTime);
-      } else {
-        showClosingLine(video.currentTime);
-      }
+      if (currentClip === 'speech') updateCaptions(video.currentTime);
     });
 
     video.addEventListener('ended', () => {
-      clearAllLines();
       if (currentClip === 'speech') {
+        clearCaptions();
         currentClip = 'zoomout';
         video.src = zoomoutSrc;
+        video.load();
+        video.play().catch(() => {});
       } else {
         currentClip = 'speech';
         video.src = speechSrc;
+        video.load();
+        video.play().catch(() => {});
+        if (soundOn) {
+          voice.currentTime = 0;
+          voice.play().catch(() => {});
+        }
       }
-      video.load();
-      video.play().catch(() => {});
     });
 
-    function start() {
-      if (started) return;
-      started = true;
-      video.preload = 'auto';
-      video.load();
+    function enterRoom() {
+      roomActive = true;
+      if (cabaret && !cabaret.paused) {
+        fade(cabaret, 0, 1200, () => cabaret.pause());
+      }
+      if (soundOn) {
+        ambient.play().catch(() => {});
+        fade(ambient, ambientVolume, 1500);
+        if (currentClip === 'speech') {
+          voice.currentTime = video.currentTime;
+          voice.play().catch(() => {});
+        }
+      }
+      if (!started) {
+        started = true;
+        video.preload = 'auto';
+        video.load();
+      }
       video.play().catch(() => {});
     }
 
+    function leaveRoom() {
+      roomActive = false;
+      video.pause();
+      voice.pause();
+      fade(ambient, 0, 900, () => ambient.pause());
+      if (soundOn && cabaret && cabaret.paused) {
+        cabaret.play().catch(() => {});
+        fade(cabaret, 1, 1200);
+      }
+    }
+
+    document.addEventListener('eduweb:sound', ((e: CustomEvent<{ on: boolean }>) => {
+      soundOn = e.detail.on;
+      if (!roomActive) return;
+      if (soundOn) {
+        ambient.play().catch(() => {});
+        fade(ambient, ambientVolume, 1000);
+        if (currentClip === 'speech') {
+          voice.currentTime = video.currentTime;
+          voice.play().catch(() => {});
+        }
+      } else {
+        fade(ambient, 0, 800, () => ambient.pause());
+        voice.pause();
+      }
+    }) as EventListener);
+
     if (reducedMotion) {
-      // Content, not decoration — still play, but text swaps instantly
-      // (handled above via the reduced-motion media query disabling the
-      // fade transition) and there is no scroll-gated delay.
-      start();
+      enterRoom();
       return;
     }
 
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting) start();
+          if (entry.isIntersecting) enterRoom();
+          else leaveRoom();
         }
       },
       { threshold: 0.35 },
