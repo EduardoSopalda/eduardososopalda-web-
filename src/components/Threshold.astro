@@ -25,6 +25,14 @@
     <div class="film-grain" aria-hidden="true"></div>
   </div>
 
+  <div class="film-blocks" aria-hidden="true">
+    <span class="block block-1"></span>
+    <span class="block block-2"></span>
+    <span class="block block-3"></span>
+    <span class="block block-4"></span>
+    <span class="block block-5"></span>
+  </div>
+
   <div class="type-block">
     <div class="type-scrim" aria-hidden="true"></div>
     <h1 class="wordmark">
@@ -178,6 +186,105 @@
     opacity: 0.06;
     mix-blend-mode: overlay;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ---- Disruption: geometric planes drifting over the film, an extra
+     dimension between the viewer and the footage. Solid dark sepia,
+     bronze, burgundy — never bright, never sharp-edged confetti, just
+     slow-moving mass. Sits above the grade, below the type. ---- */
+  .film-blocks {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .block {
+    position: absolute;
+    opacity: 0;
+    animation-name: block-pass;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+
+  @keyframes block-pass {
+    0% { transform: translateX(var(--block-from)); opacity: 0; }
+    12% { opacity: var(--block-opacity, 0.85); }
+    45% { transform: translateX(var(--block-to)); opacity: var(--block-opacity, 0.85); }
+    58% { opacity: 0; }
+    100% { transform: translateX(var(--block-to)); opacity: 0; }
+  }
+
+  .block-1 {
+    top: 4%;
+    left: -30vw;
+    width: 16vw;
+    height: 42vh;
+    background: var(--telon);
+    --block-from: 0vw;
+    --block-to: 160vw;
+    --block-opacity: 0.92;
+    animation-duration: 38s;
+    animation-delay: 0s;
+  }
+
+  .block-2 {
+    top: 62%;
+    right: -26vw;
+    width: 22vw;
+    height: 18vh;
+    background: var(--bronze);
+    --block-from: 0vw;
+    --block-to: -150vw;
+    --block-opacity: 0.5;
+    animation-duration: 38s;
+    animation-delay: 9s;
+  }
+
+  .block-3 {
+    top: 30%;
+    left: -18vw;
+    width: 10vw;
+    height: 60vh;
+    background: var(--burgundy);
+    --block-from: 0vw;
+    --block-to: 145vw;
+    --block-opacity: 0.65;
+    animation-duration: 38s;
+    animation-delay: 18s;
+  }
+
+  .block-4 {
+    top: 0;
+    right: -14vw;
+    width: 12vw;
+    height: 30vh;
+    background: var(--telon);
+    --block-from: 0vw;
+    --block-to: -140vw;
+    --block-opacity: 0.85;
+    animation-duration: 38s;
+    animation-delay: 26s;
+  }
+
+  .block-5 {
+    bottom: 8%;
+    left: -34vw;
+    width: 28vw;
+    height: 10vh;
+    background: var(--bronze);
+    --block-from: 0vw;
+    --block-to: 155vw;
+    --block-opacity: 0.45;
+    animation-duration: 38s;
+    animation-delay: 31s;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .block {
+      display: none;
+    }
   }
 
   /* ---- Type: fused wordmark + one line, resolving out of the light.
