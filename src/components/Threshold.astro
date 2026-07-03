@@ -696,7 +696,7 @@
     const mainVideo = document.querySelector('.film-video:not(.film-video-reflection)') as HTMLVideoElement | null;
     const reflectionVideo = document.getElementById('reflection-video') as HTMLVideoElement | null;
     const glowWrap = document.getElementById('glow-wrap');
-    if (!mainVideo || !reflectionVideo) return;
+    if (!mainVideo || !reflectionVideo) return null;
 
     const cropScale = parseFloat(
       getComputedStyle(document.documentElement).getPropertyValue('--crop-scale')
@@ -733,13 +733,19 @@
     apply(shots[0], 0);
 
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      return;
+      return null;
     }
 
     let current = shots[0];
+    let frozen = false;
+
     function scheduleNext() {
       const holdMs = 6000 + Math.random() * 5000; // 6–11s, organic, not metronomic
       setTimeout(() => {
+        if (frozen) {
+          scheduleNext();
+          return;
+        }
         const candidates = shots.filter((s) => s.name !== current.name);
         const next = candidates[Math.floor(Math.random() * candidates.length)];
         apply(next, 3.5 + Math.random() * 3); // 3.5–6.5s eased push/pull
@@ -750,11 +756,85 @@
 
     // Hold the establishing frame until well past the intro choreography.
     setTimeout(scheduleNext, 11000);
+
+    return {
+      // Catches the crop exactly where it is — even mid-push — and holds
+      // it there with no transition, so a freeze can land at any instant.
+      freeze() {
+        frozen = true;
+        for (const el of [mainVideo, reflectionVideo]) {
+          const held = getComputedStyle(el).transform;
+          el.style.transition = 'none';
+          el.style.transform = held;
+        }
+      },
+      resume() {
+        frozen = false;
+        apply(current, 2.5); // ease back onto whatever shot was already in play
+      },
+    };
+  }
+
+  /* ---- Silence inside movement ----
+     Periodically, everything holds: the video freezes on whichever
+     frame it's on, the monoliths stop mid-crossing, the invisible
+     camera stops improvising — only the music (if playing) continues.
+     Kubrick's trick: the stillness is what you notice. */
+  function initSilence(camera: { freeze: () => void; resume: () => void } | null) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const mainVideo = document.querySelector('.film-video:not(.film-video-reflection)') as HTMLVideoElement | null;
+    const reflectionVideo = document.getElementById('reflection-video') as HTMLVideoElement | null;
+    const blocks = Array.from(document.querySelectorAll<HTMLElement>('.block'));
+    if (!mainVideo || !reflectionVideo) return;
+
+    function holdStill() {
+      mainVideo!.pause();
+      reflectionVideo!.pause();
+      blocks.forEach((el) => { el.style.animationPlayState = 'paused'; });
+      camera?.freeze();
+
+      const stillMs = 3200 + Math.random() * 2400; // 3.2–5.6s of genuine stillness
+      setTimeout(() => {
+        mainVideo!.play().catch(() => {});
+        reflectionVideo!.play().catch(() => {});
+        blocks.forEach((el) => { el.style.animationPlayState = 'running'; });
+        camera?.resume();
+        scheduleSilence();
+      }, stillMs);
+    }
+
+    function scheduleSilence() {
+      const untilNextMs = 38000 + Math.random() * 30000; // 38–68s between moments of stillness
+      setTimeout(holdStill, untilNextMs);
+    }
+
+    scheduleSilence();
+  }
+
+  /* ---- Never quite the same edit twice ----
+     Small random jitter on each monolith's timing, applied once at load,
+     so the pattern of crossings differs visit to visit — same footage,
+     same restraint, a different memory of it each time. */
+  function initMonolithVariation() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    document.querySelectorAll<HTMLElement>('.block').forEach((el) => {
+      const style = getComputedStyle(el);
+      const baseDuration = parseFloat(style.animationDuration) || 60;
+      const baseDelay = parseFloat(style.animationDelay) || 0;
+      const duration = baseDuration * (0.85 + Math.random() * 0.3); // ±15%
+      const delay = Math.max(0, baseDelay + (Math.random() - 0.5) * Math.max(baseDelay, 10) * 0.6);
+      el.style.animationDuration = `${duration}s`;
+      el.style.animationDelay = `${delay}s`;
+    });
   }
 
   initSoundToggle();
   initWalkIn();
   initScrollProgress();
-  initInvisibleCamera();
+  initMonolithVariation();
+  const cameraController = initInvisibleCamera();
   initReflectionSync();
+  initSilence(cameraController);
 </script>
