@@ -26,8 +26,12 @@
   --t-line: 6s;
   --t-cue: 8s;
 
-  /* Video treatment, tunable — grades the raw clip into the telon world */
-  --grade-filter: contrast(1.22) brightness(0.6) saturate(0.5) sepia(0.42) hue-rotate(-6deg);
-  --zoom-scale: 1.045;
-  --zoom-duration: 26s;
+  /* Video treatment, tunable — grades the raw clip into the telon world.
+     Darker and more metallic than a straight sepia pass: the filter
+     does the desaturate/contrast work, the .film-metallic overlay
+     (blend-mode) does the bronze/copper cast. */
+  --grade-filter: contrast(1.3) brightness(0.4) saturate(0.42) sepia(0.3) hue-rotate(-8deg);
+  --metallic-opacity: 0.5;
+  --zoom-scale: 1.09;
+  --zoom-duration: 20s;
 }
