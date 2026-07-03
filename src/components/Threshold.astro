@@ -20,6 +20,7 @@
       <source src="/PigFinale.mp4" type="video/mp4" />
     </video>
     <div class="film-metallic" aria-hidden="true"></div>
+    <div class="film-glow" aria-hidden="true"></div>
     <div class="film-vignette" aria-hidden="true"></div>
     <div class="film-grain" aria-hidden="true"></div>
   </div>
@@ -95,6 +96,14 @@
     transform: scale(1);
   }
 
+  /* Narrow/tall viewports crop the sides hard under cover; pull the
+     frame left so the pig (and its glow) stays in view. */
+  @media (max-width: 40rem) {
+    .film-video {
+      object-position: 4% 65%;
+    }
+  }
+
   @media (prefers-reduced-motion: no-preference) {
     .film-video {
       animation: slow-zoom calc(var(--zoom-duration) * 2) ease-in-out infinite alternate;
@@ -118,6 +127,37 @@
     background:
       radial-gradient(120% 90% at 30% 75%, var(--bronze) 0%, transparent 55%),
       linear-gradient(160deg, var(--burgundy) 0%, var(--telon) 65%);
+  }
+
+  /* A glimmer of hope, hidden in plain sight: a soft warm light seeming
+     to come from the pig itself. Quiet by design — the vignette and
+     grain sit on top of it and keep it half-hidden, not a spotlight. */
+  .film-glow {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.55;
+    mix-blend-mode: screen;
+    background: radial-gradient(18% 16% at 13% 84%, rgba(232, 179, 104, 0.9) 0%, rgba(200, 151, 63, 0.35) 45%, transparent 75%);
+    animation: glow-breathe 17s var(--ease) infinite;
+  }
+
+  @media (max-width: 40rem) {
+    .film-glow {
+      background: radial-gradient(30% 15% at 30% 80%, rgba(232, 179, 104, 0.9) 0%, rgba(200, 151, 63, 0.35) 45%, transparent 75%);
+    }
+  }
+
+  @keyframes glow-breathe {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 0.65; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .film-glow {
+      animation: none;
+      opacity: 0.45;
+    }
   }
 
   .film-vignette {
