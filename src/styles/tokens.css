@@ -50,4 +50,13 @@
   --metal-brass-hi: #5e4626;
   --metal-pewter-lo: #1d1e1a;
   --metal-pewter-hi: #4c4c42;
+
+  /* The void, beyond the threshold — a deliberate contrast to the
+     hero's dark telon/bronze: desaturated white, natural pig pink,
+     graphite ink for text. No metals, no walls, no seams here. */
+  --void-white: #F4F2ED;
+  --void-white-dim: #E7E3D9;
+  --void-pig: #D9A9A0;
+  --void-ink: #211D1B;
+  --void-fade: #B9B3A6;
 }

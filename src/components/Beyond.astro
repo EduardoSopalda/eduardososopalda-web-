@@ -1,0 +1,190 @@
+---
+// The room beyond the threshold — an infinite white void. Where the
+// hero is dark bronze and metal, this room is bone-white and bare:
+// a single small pig, alone in the frame, who eventually speaks.
+const lines = [
+  { text: 'Everyone keeps asking:', start: 0.5, end: 2.8 },
+  { text: 'Will AI replace us?', start: 2.8, end: 5.2 },
+  { text: 'Wrong question.', start: 5.2, end: 7.0 },
+  { text: 'The real one is: who decides where it stops.', start: 7.0, end: 10.8 },
+  { text: 'Every powerful technology reaches an edge.', start: 10.8, end: 14.0 },
+  { text: 'Finding it was never the hard part.', start: 14.0, end: 16.8 },
+  { text: 'Pretending it isn’t there.', start: 16.8, end: 19.0 },
+  { text: 'That is the hard part.', start: 19.0, end: 21.3 },
+  { text: 'So I look for edges.', start: 21.3, end: 23.0 },
+  { text: 'Before they find us.', start: 23.0, end: 24.17 },
+];
+---
+
+<section id="beyond" class="beyond">
+  <div class="void-stage">
+    <video
+      class="void-video"
+      id="void-video"
+      poster="/beyond-poster.jpg"
+      muted
+      playsinline
+      preload="none"
+      aria-hidden="true"
+    >
+      <source src="/PigVoid-speech.mp4" type="video/mp4" />
+    </video>
+
+    <div class="void-text" id="void-text" aria-live="polite">
+      {lines.map((line) => (
+        <p class="void-line" data-start={line.start} data-end={line.end}>{line.text}</p>
+      ))}
+      <p class="void-line void-line-closing" data-start="5" data-end="16">Are you? You should.</p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .beyond {
+    position: relative;
+    height: 100svh;
+    background: var(--void-white);
+    overflow: hidden;
+  }
+
+  .void-stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  .void-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: var(--void-white);
+  }
+
+  .void-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 14vh;
+    pointer-events: none;
+  }
+
+  .void-line {
+    position: absolute;
+    margin: 0;
+    max-width: 34rem;
+    padding: 0 1.5rem;
+    text-align: center;
+    font-family: var(--font-body);
+    font-weight: 300;
+    font-size: clamp(1.1rem, 2.6vw, 1.7rem);
+    color: var(--void-ink);
+    letter-spacing: 0.01em;
+    opacity: 0;
+    transition: opacity 0.5s var(--ease);
+  }
+
+  .void-line.is-visible {
+    opacity: 1;
+  }
+
+  .void-line-closing {
+    font-family: var(--font-display);
+    letter-spacing: 0.04em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .void-line {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  function initVoidRoom() {
+    const section = document.getElementById('beyond');
+    const video = document.getElementById('void-video') as HTMLVideoElement | null;
+    if (!section || !video) return;
+
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const speechLines = Array.from(section.querySelectorAll<HTMLElement>('.void-line:not(.void-line-closing)'));
+    const closingLine = section.querySelector<HTMLElement>('.void-line-closing');
+    const speechSrc = '/PigVoid-speech.mp4';
+    const zoomoutSrc = '/PigVoid-zoomout.mp4';
+
+    let started = false;
+    let currentClip: 'speech' | 'zoomout' = 'speech';
+
+    function showLinesFor(time: number) {
+      for (const line of speechLines) {
+        const start = Number(line.dataset.start);
+        const end = Number(line.dataset.end);
+        line.classList.toggle('is-visible', time >= start && time < end);
+      }
+    }
+
+    function showClosingLine(time: number) {
+      if (!closingLine) return;
+      const start = Number(closingLine.dataset.start);
+      const end = Number(closingLine.dataset.end);
+      closingLine.classList.toggle('is-visible', time >= start && time < end);
+    }
+
+    function clearAllLines() {
+      for (const line of speechLines) line.classList.remove('is-visible');
+      closingLine?.classList.remove('is-visible');
+    }
+
+    video.addEventListener('timeupdate', () => {
+      if (currentClip === 'speech') {
+        showLinesFor(video.currentTime);
+      } else {
+        showClosingLine(video.currentTime);
+      }
+    });
+
+    video.addEventListener('ended', () => {
+      clearAllLines();
+      if (currentClip === 'speech') {
+        currentClip = 'zoomout';
+        video.src = zoomoutSrc;
+      } else {
+        currentClip = 'speech';
+        video.src = speechSrc;
+      }
+      video.load();
+      video.play().catch(() => {});
+    });
+
+    function start() {
+      if (started) return;
+      started = true;
+      video.preload = 'auto';
+      video.load();
+      video.play().catch(() => {});
+    }
+
+    if (reducedMotion) {
+      // Content, not decoration — still play, but text swaps instantly
+      // (handled above via the reduced-motion media query disabling the
+      // fade transition) and there is no scroll-gated delay.
+      start();
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) start();
+        }
+      },
+      { threshold: 0.35 },
+    );
+    observer.observe(section);
+  }
+
+  initVoidRoom();
+</script>
