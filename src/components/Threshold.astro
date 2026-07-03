@@ -53,12 +53,10 @@
   </div>
 
   <div class="film-blocks" aria-hidden="true">
-    <span class="block block-1"></span>
-    <span class="block block-2"></span>
-    <span class="block block-3"></span>
-    <span class="block block-4"></span>
-    <span class="block block-5"></span>
-    <span class="block block-6"></span>
+    <span class="block block-h block-1"></span>
+    <span class="block block-v block-2"></span>
+    <span class="block block-h block-3"></span>
+    <span class="block block-v block-4"></span>
   </div>
 
   <div class="type-block">
@@ -260,11 +258,11 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  /* ---- Disruption: dark metal plates drifting over the film, an extra
-     dimension between the viewer and the footage — a Lament
-     Configuration feel. Brushed sheen + beveled edge, never flat paint,
-     never bright. Each plate moves at its own speed. Sits above the
-     grade, below the type. ---- */
+  /* ---- The monoliths: fewer, massive, mirror-polished bronze/iron
+     slabs — architecture, not confetti. "Hundreds of tons," moving in
+     total silence. Some slide horizontally, some vertically; none
+     collide, none touch. They open temporary corridors through the
+     frame, then close again. Sits above the grade, below the type. ---- */
   .film-blocks {
     position: absolute;
     inset: 0;
@@ -279,114 +277,104 @@
     background: linear-gradient(
       var(--metal-angle, 122deg),
       var(--metal-lo) 0%,
-      var(--metal-lo) 32%,
+      var(--metal-lo) 30%,
       var(--metal-hi) 48%,
-      var(--metal-lo) 64%,
+      var(--metal-lo) 66%,
       var(--metal-lo) 100%
     );
     box-shadow:
-      inset 1px 1px 0 rgba(255, 255, 255, 0.07),
-      inset -1px -1px 0 rgba(0, 0, 0, 0.55);
-    animation-name: block-pass;
-    animation-timing-function: ease-in-out;
+      inset 2px 2px 0 rgba(255, 255, 255, 0.06),
+      inset -2px -2px 0 rgba(0, 0, 0, 0.6);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
     animation-iteration-count: infinite;
   }
 
-  @keyframes block-pass {
+  .block-h {
+    animation-name: monolith-pass-h;
+  }
+
+  .block-v {
+    animation-name: monolith-pass-v;
+  }
+
+  @keyframes monolith-pass-h {
     0% { transform: translateX(var(--block-from)); opacity: 0; }
-    12% { opacity: var(--block-opacity, 0.85); }
-    45% { transform: translateX(var(--block-to)); opacity: var(--block-opacity, 0.85); }
-    58% { opacity: 0; }
+    12% { opacity: var(--block-opacity, 0.9); }
+    50% { transform: translateX(var(--block-to)); opacity: var(--block-opacity, 0.9); }
+    62% { opacity: 0; }
     100% { transform: translateX(var(--block-to)); opacity: 0; }
   }
 
+  @keyframes monolith-pass-v {
+    0% { transform: translateY(var(--block-from)); opacity: 0; }
+    12% { opacity: var(--block-opacity, 0.9); }
+    50% { transform: translateY(var(--block-to)); opacity: var(--block-opacity, 0.9); }
+    62% { opacity: 0; }
+    100% { transform: translateY(var(--block-to)); opacity: 0; }
+  }
+
+  /* Slides right, silently, a wall passing through the whole scene. */
   .block-1 {
-    top: 4%;
-    left: -30vw;
-    width: 16vw;
-    height: 42vh;
+    top: 2%;
+    left: -42vw;
+    width: 34vw;
+    height: 82vh;
     --metal-lo: var(--metal-gunmetal-lo);
     --metal-hi: var(--metal-gunmetal-hi);
+    --metal-angle: 118deg;
     --block-from: 0vw;
-    --block-to: 160vw;
-    --block-opacity: 0.92;
-    animation-duration: 27s;
+    --block-to: 168vw;
+    --block-opacity: 0.94;
+    animation-duration: 74s;
     animation-delay: 0s;
   }
 
+  /* Descends from above — the one that "slides down." */
   .block-2 {
-    top: 62%;
-    right: -26vw;
-    width: 9vw;
-    height: 18vh;
+    top: -95vh;
+    right: 12%;
+    width: 20vw;
+    height: 88vh;
+    --metal-lo: var(--metal-iron-lo);
+    --metal-hi: var(--metal-iron-hi);
+    --metal-angle: 100deg;
+    --block-from: 0vh;
+    --block-to: 190vh;
+    --block-opacity: 0.88;
+    animation-duration: 88s;
+    animation-delay: 18s;
+  }
+
+  /* Slides left, lower in frame, smaller — a nearer plane. */
+  .block-3 {
+    bottom: 6%;
+    right: -30vw;
+    width: 22vw;
+    height: 48vh;
     --metal-lo: var(--metal-brass-lo);
     --metal-hi: var(--metal-brass-hi);
-    --metal-angle: 100deg;
-    --block-from: 0vw;
-    --block-to: -150vw;
-    --block-opacity: 0.6;
-    animation-duration: 44s;
-    animation-delay: 5s;
-  }
-
-  .block-3 {
-    top: 30%;
-    left: -18vw;
-    width: 5vw;
-    height: 60vh;
-    --metal-lo: var(--metal-iron-lo);
-    --metal-hi: var(--metal-iron-hi);
-    --metal-angle: 140deg;
-    --block-from: 0vw;
-    --block-to: 145vw;
-    --block-opacity: 0.75;
-    animation-duration: 33s;
-    animation-delay: 14s;
-  }
-
-  .block-4 {
-    top: 0;
-    right: -14vw;
-    width: 24vw;
-    height: 14vh;
-    --metal-lo: var(--metal-pewter-lo);
-    --metal-hi: var(--metal-pewter-hi);
     --metal-angle: 105deg;
     --block-from: 0vw;
-    --block-to: -140vw;
-    --block-opacity: 0.8;
-    animation-duration: 51s;
-    animation-delay: 20s;
-  }
-
-  .block-5 {
-    bottom: 8%;
-    left: -34vw;
-    width: 28vw;
-    height: 7vh;
-    --metal-lo: var(--metal-gunmetal-lo);
-    --metal-hi: var(--metal-gunmetal-hi);
-    --metal-angle: 95deg;
-    --block-from: 0vw;
-    --block-to: 155vw;
-    --block-opacity: 0.5;
-    animation-duration: 24s;
-    animation-delay: 9s;
-  }
-
-  .block-6 {
-    top: 46%;
-    right: -8vw;
-    width: 7vw;
-    height: 36vh;
-    --metal-lo: var(--metal-iron-lo);
-    --metal-hi: var(--metal-iron-hi);
-    --metal-angle: 130deg;
-    --block-from: 0vw;
     --block-to: -155vw;
-    --block-opacity: 0.7;
-    animation-duration: 36s;
-    animation-delay: 16s;
+    --block-opacity: 0.72;
+    animation-duration: 63s;
+    animation-delay: 34s;
+  }
+
+  /* Rises slowly from below — the counter-motion to block-2. */
+  .block-4 {
+    bottom: -100vh;
+    left: 10%;
+    width: 17vw;
+    height: 74vh;
+    --metal-lo: var(--metal-pewter-lo);
+    --metal-hi: var(--metal-pewter-hi);
+    --metal-angle: 132deg;
+    --block-from: 0vh;
+    --block-to: -195vh;
+    --block-opacity: 0.8;
+    animation-duration: 96s;
+    animation-delay: 52s;
   }
 
   @media (prefers-reduced-motion: reduce) {
