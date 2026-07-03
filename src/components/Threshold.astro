@@ -93,7 +93,8 @@
     object-fit: cover;
     object-position: 38% 55%;
     filter: var(--grade-filter);
-    transform: scale(1);
+    transform: scale(var(--crop-scale));
+    transform-origin: 10% 90%;
   }
 
   /* Narrow/tall viewports crop the sides hard under cover; pull the
@@ -101,6 +102,7 @@
   @media (max-width: 40rem) {
     .film-video {
       object-position: 4% 65%;
+      transform-origin: 18% 88%;
     }
   }
 
@@ -111,9 +113,9 @@
   }
 
   @keyframes slow-zoom {
-    0% { transform: scale(1); }
-    50% { transform: scale(var(--zoom-scale)); }
-    100% { transform: scale(1); }
+    0% { transform: scale(var(--crop-scale)); }
+    50% { transform: scale(calc(var(--crop-scale) * var(--zoom-scale))); }
+    100% { transform: scale(var(--crop-scale)); }
   }
 
   /* Bronze/copper cast — a color layer, not just a filter, so mid-tones
@@ -138,13 +140,13 @@
     pointer-events: none;
     opacity: 0.55;
     mix-blend-mode: screen;
-    background: radial-gradient(18% 16% at 13% 84%, rgba(232, 179, 104, 0.9) 0%, rgba(200, 151, 63, 0.35) 45%, transparent 75%);
+    background: radial-gradient(16% 20% at 11% 58%, rgba(232, 179, 104, 0.9) 0%, rgba(200, 151, 63, 0.35) 45%, transparent 75%);
     animation: glow-breathe 17s var(--ease) infinite;
   }
 
   @media (max-width: 40rem) {
     .film-glow {
-      background: radial-gradient(30% 15% at 30% 80%, rgba(232, 179, 104, 0.9) 0%, rgba(200, 151, 63, 0.35) 45%, transparent 75%);
+      background: radial-gradient(30% 18% at 17% 46%, rgba(232, 179, 104, 0.9) 0%, rgba(200, 151, 63, 0.35) 45%, transparent 75%);
     }
   }
 

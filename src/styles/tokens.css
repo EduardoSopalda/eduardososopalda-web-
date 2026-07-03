@@ -32,6 +32,11 @@
      (blend-mode) does the bronze/copper cast. */
   --grade-filter: contrast(1.3) brightness(0.4) saturate(0.42) sepia(0.3) hue-rotate(-8deg);
   --metallic-opacity: 0.5;
-  --zoom-scale: 1.09;
+
+  /* Cropped in tight on purpose: a fragment (the pig, a hand, a leash),
+     not the recognizable full street-ad frame. --crop-scale is the
+     resting zoom; --zoom-scale is the small extra drift on top of it. */
+  --crop-scale: 2.6;
+  --zoom-scale: 1.04;
   --zoom-duration: 20s;
 }
