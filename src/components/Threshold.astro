@@ -21,7 +21,6 @@
     </video>
     <div class="film-metallic" aria-hidden="true"></div>
     <div class="film-glow" aria-hidden="true"></div>
-    <div class="film-rays" aria-hidden="true"></div>
     <div class="film-vignette" aria-hidden="true"></div>
     <div class="film-grain" aria-hidden="true"></div>
   </div>
@@ -152,56 +151,6 @@
   @keyframes glow-breathe {
     0%, 100% { opacity: 0.35; }
     50% { opacity: 0.65; }
-  }
-
-  /* Rays turning slowly, from the break of sky behind the umbrella —
-     not from the pig. Light from above/beyond, descending over the
-     scene: the literal "showing the way." */
-  .film-rays {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    mix-blend-mode: screen;
-    opacity: 0.5;
-    background: repeating-conic-gradient(
-      from 0deg at 76% 37%,
-      rgba(236, 210, 165, 0.5) 0deg 2.5deg,
-      transparent 2.5deg 22deg
-    );
-    -webkit-mask-image: radial-gradient(42% 48% at 76% 37%, black 0%, transparent 75%);
-    mask-image: radial-gradient(42% 48% at 76% 37%, black 0%, transparent 75%);
-    transform-origin: 76% 37%;
-    animation: rays-turn 70s linear infinite, rays-breathe 17s var(--ease) infinite;
-  }
-
-  @media (max-width: 40rem) {
-    .film-rays {
-      background: repeating-conic-gradient(
-        from 0deg at 78% 9%,
-        rgba(236, 210, 165, 0.5) 0deg 2.5deg,
-        transparent 2.5deg 22deg
-      );
-      -webkit-mask-image: radial-gradient(50% 26% at 78% 9%, black 0%, transparent 75%);
-      mask-image: radial-gradient(50% 26% at 78% 9%, black 0%, transparent 75%);
-      transform-origin: 78% 9%;
-    }
-  }
-
-  @keyframes rays-turn {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-
-  @keyframes rays-breathe {
-    0%, 100% { opacity: 0.25; }
-    50% { opacity: 0.55; }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .film-rays {
-      animation: none;
-      opacity: 0.3;
-    }
   }
 
   @media (prefers-reduced-motion: reduce) {
