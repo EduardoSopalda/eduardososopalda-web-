@@ -127,8 +127,10 @@
     100% { transform: scale(var(--crop-scale)); }
   }
 
-  /* Bronze/copper cast — a color layer, not just a filter, so mid-tones
-     read as burnished metal rather than a sepia photo. */
+  /* Oxidized bronze / museum patina — a color layer, not just a filter,
+     so mid-tones read as burnished, aged metal. Burgundy dropped
+     entirely: this is bronze-iron-gold, near-monochromatic, not warm
+     sepia. */
   .film-metallic {
     position: absolute;
     inset: 0;
@@ -136,8 +138,8 @@
     opacity: var(--metallic-opacity);
     mix-blend-mode: soft-light;
     background:
-      radial-gradient(120% 90% at 30% 75%, var(--bronze) 0%, transparent 55%),
-      linear-gradient(160deg, var(--burgundy) 0%, var(--telon) 65%);
+      radial-gradient(110% 85% at 28% 72%, var(--metal-brass-hi) 0%, transparent 58%),
+      linear-gradient(158deg, var(--metal-iron-hi) 0%, var(--telon) 68%);
   }
 
   /* A glimmer of hope, hidden in plain sight: a soft warm light seeming
@@ -352,31 +354,66 @@
     background: radial-gradient(60% 75% at 50% 45%, rgba(14, 10, 10, 0.55) 0%, transparent 75%);
   }
 
+  /* Not a fade-in: an emboss the light discovers. The letters are
+     always "there" (a static metal-gradient fill) — a soft-edged mask
+     sweeps across once, like light finding embossed bronze in fog. */
   .wordmark {
     display: inline-flex;
     align-items: baseline;
     line-height: 0.82;
     white-space: nowrap;
-    opacity: 0;
-    filter: blur(14px);
-    animation: resolve 1.8s var(--ease) forwards;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 14%, black 100%);
+    mask-image: linear-gradient(to right, transparent 0%, black 14%, black 100%);
+    -webkit-mask-size: 320% 100%;
+    mask-size: 320% 100%;
+    -webkit-mask-position: 130% 0;
+    mask-position: 130% 0;
+    animation: metal-reveal 2.6s var(--ease) forwards;
     animation-delay: var(--t-name);
+  }
+
+  @keyframes metal-reveal {
+    to {
+      -webkit-mask-position: -30% 0;
+      mask-position: -30% 0;
+    }
+  }
+
+  .wordmark-eduardo,
+  .wordmark-sopalda {
+    background-repeat: no-repeat;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
   }
 
   .wordmark-eduardo {
     font-family: var(--font-display);
     font-weight: 600;
-    color: var(--ink);
     letter-spacing: 2px;
     text-transform: uppercase;
     font-size: clamp(1.6rem, 3.4vw, 2.75rem);
+    background-image: linear-gradient(
+      100deg,
+      var(--metal-iron-hi) 0%,
+      var(--ink) 45%,
+      var(--ink) 55%,
+      var(--metal-iron-hi) 100%
+    );
   }
 
   .wordmark-sopalda {
     font-family: var(--font-body);
     font-weight: 300;
-    color: var(--bronze);
     font-size: clamp(2.1rem, 4.4vw, 3.5rem);
+    background-image: linear-gradient(
+      100deg,
+      var(--metal-brass-lo) 0%,
+      var(--bronze) 40%,
+      var(--metal-brass-hi) 50%,
+      var(--bronze) 60%,
+      var(--metal-brass-lo) 100%
+    );
   }
 
   .tagline-line {
@@ -505,7 +542,11 @@
   @media (prefers-reduced-motion: reduce) {
     .curtain { display: none; }
     .film-video { animation: none; }
-    .wordmark,
+    .wordmark {
+      animation: none;
+      -webkit-mask-position: -30% 0;
+      mask-position: -30% 0;
+    }
     .tagline-line,
     .walk-in {
       opacity: 1;
