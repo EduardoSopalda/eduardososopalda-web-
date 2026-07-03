@@ -31,6 +31,7 @@
     <span class="block block-3"></span>
     <span class="block block-4"></span>
     <span class="block block-5"></span>
+    <span class="block block-6"></span>
   </div>
 
   <div class="type-block">
@@ -188,10 +189,11 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  /* ---- Disruption: geometric planes drifting over the film, an extra
-     dimension between the viewer and the footage. Solid dark sepia,
-     bronze, burgundy — never bright, never sharp-edged confetti, just
-     slow-moving mass. Sits above the grade, below the type. ---- */
+  /* ---- Disruption: dark metal plates drifting over the film, an extra
+     dimension between the viewer and the footage — a Lament
+     Configuration feel. Brushed sheen + beveled edge, never flat paint,
+     never bright. Each plate moves at its own speed. Sits above the
+     grade, below the type. ---- */
   .film-blocks {
     position: absolute;
     inset: 0;
@@ -203,6 +205,17 @@
   .block {
     position: absolute;
     opacity: 0;
+    background: linear-gradient(
+      var(--metal-angle, 122deg),
+      var(--metal-lo) 0%,
+      var(--metal-lo) 32%,
+      var(--metal-hi) 48%,
+      var(--metal-lo) 64%,
+      var(--metal-lo) 100%
+    );
+    box-shadow:
+      inset 1px 1px 0 rgba(255, 255, 255, 0.07),
+      inset -1px -1px 0 rgba(0, 0, 0, 0.55);
     animation-name: block-pass;
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
@@ -221,64 +234,88 @@
     left: -30vw;
     width: 16vw;
     height: 42vh;
-    background: var(--telon);
+    --metal-lo: var(--metal-gunmetal-lo);
+    --metal-hi: var(--metal-gunmetal-hi);
     --block-from: 0vw;
     --block-to: 160vw;
     --block-opacity: 0.92;
-    animation-duration: 38s;
+    animation-duration: 27s;
     animation-delay: 0s;
   }
 
   .block-2 {
     top: 62%;
     right: -26vw;
-    width: 22vw;
+    width: 9vw;
     height: 18vh;
-    background: var(--bronze);
+    --metal-lo: var(--metal-brass-lo);
+    --metal-hi: var(--metal-brass-hi);
+    --metal-angle: 100deg;
     --block-from: 0vw;
     --block-to: -150vw;
-    --block-opacity: 0.5;
-    animation-duration: 38s;
-    animation-delay: 9s;
+    --block-opacity: 0.6;
+    animation-duration: 44s;
+    animation-delay: 5s;
   }
 
   .block-3 {
     top: 30%;
     left: -18vw;
-    width: 10vw;
+    width: 5vw;
     height: 60vh;
-    background: var(--burgundy);
+    --metal-lo: var(--metal-iron-lo);
+    --metal-hi: var(--metal-iron-hi);
+    --metal-angle: 140deg;
     --block-from: 0vw;
     --block-to: 145vw;
-    --block-opacity: 0.65;
-    animation-duration: 38s;
-    animation-delay: 18s;
+    --block-opacity: 0.75;
+    animation-duration: 33s;
+    animation-delay: 14s;
   }
 
   .block-4 {
     top: 0;
     right: -14vw;
-    width: 12vw;
-    height: 30vh;
-    background: var(--telon);
+    width: 24vw;
+    height: 14vh;
+    --metal-lo: var(--metal-pewter-lo);
+    --metal-hi: var(--metal-pewter-hi);
+    --metal-angle: 105deg;
     --block-from: 0vw;
     --block-to: -140vw;
-    --block-opacity: 0.85;
-    animation-duration: 38s;
-    animation-delay: 26s;
+    --block-opacity: 0.8;
+    animation-duration: 51s;
+    animation-delay: 20s;
   }
 
   .block-5 {
     bottom: 8%;
     left: -34vw;
     width: 28vw;
-    height: 10vh;
-    background: var(--bronze);
+    height: 7vh;
+    --metal-lo: var(--metal-gunmetal-lo);
+    --metal-hi: var(--metal-gunmetal-hi);
+    --metal-angle: 95deg;
     --block-from: 0vw;
     --block-to: 155vw;
-    --block-opacity: 0.45;
-    animation-duration: 38s;
-    animation-delay: 31s;
+    --block-opacity: 0.5;
+    animation-duration: 24s;
+    animation-delay: 9s;
+  }
+
+  .block-6 {
+    top: 46%;
+    right: -8vw;
+    width: 7vw;
+    height: 36vh;
+    --metal-lo: var(--metal-iron-lo);
+    --metal-hi: var(--metal-iron-hi);
+    --metal-angle: 130deg;
+    --block-from: 0vw;
+    --block-to: -155vw;
+    --block-opacity: 0.7;
+    animation-duration: 36s;
+    animation-delay: 16s;
   }
 
   @media (prefers-reduced-motion: reduce) {

@@ -39,4 +39,15 @@
   --crop-scale: 2.6;
   --zoom-scale: 1.04;
   --zoom-duration: 20s;
+
+  /* Dark metals only, for the drifting plates — a Lament Configuration
+     feel: cold, brushed, beveled, never a flat paint swatch. */
+  --metal-gunmetal-lo: #17181a;
+  --metal-gunmetal-hi: #4d5157;
+  --metal-iron-lo: #0c0c0c;
+  --metal-iron-hi: #33322f;
+  --metal-brass-lo: #241a10;
+  --metal-brass-hi: #5e4626;
+  --metal-pewter-lo: #1d1e1a;
+  --metal-pewter-hi: #4c4c42;
 }
