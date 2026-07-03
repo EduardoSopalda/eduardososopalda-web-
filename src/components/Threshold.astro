@@ -19,10 +19,35 @@
     >
       <source src="/PigFinale.mp4" type="video/mp4" />
     </video>
+
     <div class="film-metallic" aria-hidden="true"></div>
     <div class="film-glow" aria-hidden="true"></div>
     <div class="film-vignette" aria-hidden="true"></div>
     <div class="film-grain" aria-hidden="true"></div>
+
+    <!-- Wet ground, explaining the umbrella: a real mirrored reflection
+         of the footage itself, not a synthetic texture. Same clip,
+         flipped, blurred, darkened. Sits above the vignette on purpose —
+         otherwise the bottom-darkening crushes it to black. The flip
+         lives on its own wrapper div: the video itself shares the
+         slow-zoom animation with the main video (so the crop tracks in
+         sync), and CSS animations override any static transform on the
+         same element, so scaleY(-1) can't live on the video itself. -->
+    <div class="film-reflection" aria-hidden="true">
+      <div class="film-reflection-flip">
+        <video
+          class="film-video film-video-reflection"
+          id="reflection-video"
+          autoplay
+          muted
+          loop
+          playsinline
+          preload="metadata"
+        >
+          <source src="/PigFinale.mp4" type="video/mp4" />
+        </video>
+      </div>
+    </div>
   </div>
 
   <div class="film-blocks" aria-hidden="true">
@@ -113,6 +138,40 @@
       object-position: 4% 65%;
       transform-origin: 18% 88%;
     }
+  }
+
+  /* The reflection: a self-contained band pinned to the bottom of the
+     viewport. The video inside is sized as if it were the full-height
+     main video (625% = 100/16), anchored to the band's bottom edge, so
+     the band shows exactly the bottom slice of the same crop the main
+     video renders — then the wrapper flips that slice vertically. */
+  .film-reflection {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 16vh;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 55%, black 85%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 55%, black 85%, transparent 100%);
+  }
+
+  .film-reflection-flip {
+    position: absolute;
+    inset: 0;
+    transform: scaleY(-1);
+  }
+
+  .film-video-reflection {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 625%;
+    filter: var(--grade-filter) blur(3px) brightness(1.9) saturate(0.6);
+    opacity: 0.8;
   }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -614,7 +673,22 @@
     window.addEventListener('scroll', update, { passive: true });
   }
 
+  function initReflectionSync() {
+    const main = document.querySelector('.film-video:not(.film-video-reflection)') as HTMLVideoElement | null;
+    const reflection = document.getElementById('reflection-video') as HTMLVideoElement | null;
+    if (!main || !reflection) return;
+
+    // Independent <video> clocks drift apart over a long loop; nudge the
+    // reflection back in line periodically rather than every frame.
+    main.addEventListener('timeupdate', () => {
+      if (Math.abs(reflection.currentTime - main.currentTime) > 0.3) {
+        reflection.currentTime = main.currentTime;
+      }
+    });
+  }
+
   initSoundToggle();
   initWalkIn();
   initScrollProgress();
+  initReflectionSync();
 </script>
