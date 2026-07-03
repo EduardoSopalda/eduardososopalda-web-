@@ -154,8 +154,9 @@
     50% { opacity: 0.65; }
   }
 
-  /* Rays turning slowly through the glow — the same hidden light,
-     in motion, like it's catching and losing the eye. */
+  /* Rays turning slowly, from the break of sky behind the umbrella —
+     not from the pig. Light from above/beyond, descending over the
+     scene: the literal "showing the way." */
   .film-rays {
     position: absolute;
     inset: 0;
@@ -163,26 +164,26 @@
     mix-blend-mode: screen;
     opacity: 0.5;
     background: repeating-conic-gradient(
-      from 0deg at 13% 84%,
-      rgba(232, 179, 104, 0.55) 0deg 2.5deg,
+      from 0deg at 76% 37%,
+      rgba(236, 210, 165, 0.5) 0deg 2.5deg,
       transparent 2.5deg 22deg
     );
-    -webkit-mask-image: radial-gradient(30% 26% at 13% 84%, black 0%, transparent 72%);
-    mask-image: radial-gradient(30% 26% at 13% 84%, black 0%, transparent 72%);
-    transform-origin: 13% 84%;
+    -webkit-mask-image: radial-gradient(42% 48% at 76% 37%, black 0%, transparent 75%);
+    mask-image: radial-gradient(42% 48% at 76% 37%, black 0%, transparent 75%);
+    transform-origin: 76% 37%;
     animation: rays-turn 70s linear infinite, rays-breathe 17s var(--ease) infinite;
   }
 
   @media (max-width: 40rem) {
     .film-rays {
       background: repeating-conic-gradient(
-        from 0deg at 30% 80%,
-        rgba(232, 179, 104, 0.55) 0deg 2.5deg,
+        from 0deg at 78% 9%,
+        rgba(236, 210, 165, 0.5) 0deg 2.5deg,
         transparent 2.5deg 22deg
       );
-      -webkit-mask-image: radial-gradient(38% 22% at 30% 80%, black 0%, transparent 72%);
-      mask-image: radial-gradient(38% 22% at 30% 80%, black 0%, transparent 72%);
-      transform-origin: 30% 80%;
+      -webkit-mask-image: radial-gradient(50% 26% at 78% 9%, black 0%, transparent 75%);
+      mask-image: radial-gradient(50% 26% at 78% 9%, black 0%, transparent 75%);
+      transform-origin: 78% 9%;
     }
   }
 
