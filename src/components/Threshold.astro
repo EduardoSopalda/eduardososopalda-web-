@@ -1,0 +1,366 @@
+---
+// The hero: one continuous piece of video art, not a page with a video in it.
+// Timings live in tokens.css (--t-curtain, --t-name, --t-line, --t-cue) — tune there.
+---
+
+<section class="threshold" aria-label="EDUARDOsopalda">
+  <div class="curtain" aria-hidden="true"></div>
+
+  <div class="film">
+    <video
+      class="film-video"
+      autoplay
+      muted
+      loop
+      playsinline
+      preload="metadata"
+      poster="/pig-void-poster.svg"
+      aria-hidden="true"
+    >
+      <source src="/PigFinale.mp4" type="video/mp4" />
+    </video>
+    <div class="film-vignette" aria-hidden="true"></div>
+    <div class="film-grain" aria-hidden="true"></div>
+  </div>
+
+  <div class="type-block">
+    <h1 class="wordmark">
+      <span class="wordmark-eduardo">EDUARDO</span><span class="wordmark-sopalda">sopalda</span>
+    </h1>
+    <p class="tagline-line">Edges are kind.</p>
+  </div>
+
+  <button
+    type="button"
+    class="sound-toggle"
+    aria-label="Toggle sound"
+    aria-pressed="false"
+    id="sound-toggle"
+  >
+    <span class="sound-toggle-dot" aria-hidden="true"></span>
+  </button>
+
+  <a href="#beyond" class="walk-in" id="walk-in">
+    <span class="walk-in-mark" aria-hidden="true">walk in</span>
+    <span class="walk-in-line" aria-hidden="true"></span>
+  </a>
+
+  <audio id="cabaret-audio" preload="none" loop>
+    <source src="/cabaret.mp3" type="audio/mpeg" />
+  </audio>
+</section>
+
+<!-- STUB: next room. The box splits into three here, later. -->
+<section id="beyond" class="beyond" aria-hidden="true"></section>
+
+<style>
+  .threshold {
+    position: relative;
+    width: 100%;
+    height: 100svh;
+    overflow: hidden;
+    background: var(--canvas);
+  }
+
+  /* ---- Curtain: fade up from canvas, video already rolling beneath ---- */
+  .curtain {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: var(--canvas);
+    pointer-events: none;
+    animation: curtain-up var(--t-curtain) var(--ease) forwards;
+  }
+
+  @keyframes curtain-up {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+
+  /* ---- The film: video + edgeless vignette + grain, one surface ---- */
+  .film {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+
+  .film-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 38% 55%;
+    filter: var(--grade-filter);
+    transform: scale(1);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .film-video {
+      animation: slow-zoom calc(var(--zoom-duration) * 2) ease-in-out infinite alternate;
+    }
+  }
+
+  @keyframes slow-zoom {
+    0% { transform: scale(1); }
+    50% { transform: scale(var(--zoom-scale)); }
+    100% { transform: scale(1); }
+  }
+
+  .film-vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(130% 105% at 50% 46%, transparent 40%, var(--canvas) 86%);
+  }
+
+  .film-grain {
+    position: absolute;
+    inset: -2%;
+    pointer-events: none;
+    opacity: 0.06;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ---- Type: fused wordmark + one line, resolving out of the light.
+     Bottom-center, matching the composition already tuned against the
+     real footage in the prototype — pig low in frame, type sitting
+     clear of it near the bottom third. ---- */
+  .type-block {
+    position: absolute;
+    z-index: 2;
+    left: 50%;
+    bottom: clamp(4.5rem, 13vh, 9.5rem);
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    max-width: 90vw;
+    padding: 0 1.25rem;
+  }
+
+  .wordmark {
+    display: inline-flex;
+    align-items: baseline;
+    line-height: 0.82;
+    white-space: nowrap;
+    opacity: 0;
+    filter: blur(14px);
+    animation: resolve 1.8s var(--ease) forwards;
+    animation-delay: var(--t-name);
+  }
+
+  .wordmark-eduardo {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-size: clamp(1.6rem, 3.4vw, 2.75rem);
+  }
+
+  .wordmark-sopalda {
+    font-family: var(--font-body);
+    font-weight: 300;
+    color: var(--bronze);
+    font-size: clamp(2.1rem, 4.4vw, 3.5rem);
+  }
+
+  .tagline-line {
+    font-family: var(--font-body);
+    font-weight: 300;
+    color: var(--ink);
+    opacity: 0;
+    letter-spacing: 1.5px;
+    font-size: clamp(0.85rem, 1.4vw, 1.05rem);
+    margin-top: 0.75em;
+    filter: blur(10px);
+    animation: resolve-dim 1.6s var(--ease) forwards;
+    animation-delay: var(--t-line);
+  }
+
+  @keyframes resolve {
+    from { opacity: 0; filter: blur(14px); }
+    to { opacity: 1; filter: blur(0); }
+  }
+
+  @keyframes resolve-dim {
+    from { opacity: 0; filter: blur(10px); }
+    to { opacity: 0.8; filter: blur(0); }
+  }
+
+  /* ---- Sound control: one point of bronze light, unlabeled ---- */
+  .sound-toggle {
+    position: fixed;
+    z-index: 3;
+    left: clamp(1.1rem, 5vw, 3.4rem);
+    bottom: clamp(3rem, 10vh, 6.9rem);
+    width: 2.25rem;
+    height: 2.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    opacity: 0;
+    animation: sound-in 1.2s var(--ease) forwards, sound-recede 1.6s var(--ease) forwards;
+    animation-delay: var(--t-curtain), calc(var(--t-cue) + 2s);
+  }
+
+  @keyframes sound-in {
+    to { opacity: 0.7; }
+  }
+
+  @keyframes sound-recede {
+    to { opacity: 0.4; }
+  }
+
+  .sound-toggle:hover,
+  .sound-toggle:focus-visible {
+    opacity: 1 !important;
+  }
+
+  .sound-toggle:focus-visible {
+    outline: 1.5px solid var(--bronze);
+    outline-offset: 4px;
+    border-radius: 50%;
+  }
+
+  .sound-toggle-dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    background: var(--bronze);
+    box-shadow: 0 0 1rem 0.3rem rgba(166, 117, 60, 0.5);
+    animation: breathe 3.6s var(--ease) infinite;
+  }
+
+  .sound-toggle[aria-pressed='true'] .sound-toggle-dot {
+    animation-duration: 1.9s;
+    box-shadow: 0 0 1.4rem 0.45rem rgba(166, 117, 60, 0.7);
+  }
+
+  @keyframes breathe {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.25); }
+  }
+
+  /* ---- Walk-in cue: the quietest thing on screen ---- */
+  .walk-in {
+    position: absolute;
+    z-index: 2;
+    left: 50%;
+    bottom: 6%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    text-decoration: none;
+    opacity: 0;
+    animation: resolve-quiet 1.4s var(--ease) forwards;
+    animation-delay: var(--t-cue);
+  }
+
+  @keyframes resolve-quiet {
+    from { opacity: 0; filter: blur(8px); }
+    to { opacity: 0.5; filter: blur(0); }
+  }
+
+  .walk-in-mark {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 400;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+
+  .walk-in-line {
+    width: 1px;
+    height: 2.5rem;
+    background: linear-gradient(to bottom, var(--ink), transparent);
+  }
+
+  .walk-in:focus-visible {
+    outline: 1.5px solid var(--bronze);
+    outline-offset: 6px;
+  }
+
+  /* ---- Reduced motion: nothing moves, everything is already there ---- */
+  @media (prefers-reduced-motion: reduce) {
+    .curtain { display: none; }
+    .film-video { animation: none; }
+    .wordmark,
+    .tagline-line,
+    .walk-in {
+      opacity: 1;
+      filter: none;
+      animation: none;
+    }
+    .tagline-line { opacity: 0.8; }
+    .sound-toggle {
+      opacity: 0.5;
+      animation: none;
+    }
+    .sound-toggle-dot {
+      animation: none;
+    }
+  }
+
+  /* ---- Stub: the next room ---- */
+  .beyond {
+    height: 100svh;
+    background: var(--telon);
+  }
+</style>
+
+<script>
+  function initSoundToggle() {
+    const btn = document.getElementById('sound-toggle') as HTMLButtonElement | null;
+    const audio = document.getElementById('cabaret-audio') as HTMLAudioElement | null;
+    if (!btn || !audio) return;
+
+    btn.addEventListener('click', async () => {
+      const isPlaying = btn.getAttribute('aria-pressed') === 'true';
+      try {
+        if (isPlaying) {
+          audio.pause();
+        } else {
+          await audio.play();
+        }
+        btn.setAttribute('aria-pressed', String(!isPlaying));
+      } catch {
+        // Track missing or blocked — control stays inert, never throws.
+      }
+    });
+  }
+
+  function initWalkIn() {
+    const link = document.getElementById('walk-in');
+    const target = document.getElementById('beyond');
+    if (!link || !target) return;
+
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      target.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      });
+    });
+  }
+
+  function initScrollProgress() {
+    const root = document.documentElement;
+    const update = () => {
+      const progress = Math.min(1, Math.max(0, window.scrollY / window.innerHeight));
+      root.style.setProperty('--scroll-progress', String(progress));
+    };
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+  }
+
+  initSoundToggle();
+  initWalkIn();
+  initScrollProgress();
+</script>

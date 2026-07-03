@@ -1,0 +1,33 @@
+/* EDUARDOsopalda — The Threshold
+   Palette + type + timing tokens. Swap here only if the dark
+   variant is ever preferred (see brief section 4). */
+
+:root {
+  /* Palette — the dark treatment (telon/bone/bronze), per the working
+     prototype and Eduardo's direction. Canvas is the room; telon is
+     reserved deeper still, for rooms beyond this hero. */
+  --canvas: #161010;
+  --ink: #E3DAC9;
+  --bronze: #A6753C;
+  --burgundy: #5C1B26;
+  --ceniza: #9A8E76;
+  --telon: #0E0A0A;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  /* Type */
+  --font-display: 'Jost', sans-serif;
+  --font-body: 'Josefin Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  /* Choreography — all dials, tune freely */
+  --t-curtain: 1.6s;
+  --t-name: 4s;
+  --t-line: 6s;
+  --t-cue: 8s;
+
+  /* Video treatment, tunable — grades the raw clip into the telon world */
+  --grade-filter: contrast(1.22) brightness(0.6) saturate(0.5) sepia(0.42) hue-rotate(-6deg);
+  --zoom-scale: 1.045;
+  --zoom-duration: 26s;
+}

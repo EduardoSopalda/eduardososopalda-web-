@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <!-- PLACEHOLDER poster, stands in for the first frame of PigFinale.mp4 until the real graded clip is supplied. -->
+  <defs>
+    <radialGradient id="glow" cx="44%" cy="60%" r="55%">
+      <stop offset="0%" stop-color="#CE9C56" stop-opacity="0.22"/>
+      <stop offset="42%" stop-color="#785028" stop-opacity="0.06"/>
+      <stop offset="72%" stop-color="#161010" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="telon" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0E0A0A"/>
+      <stop offset="55%" stop-color="#161010"/>
+      <stop offset="100%" stop-color="#0E0A0A"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#telon)"/>
+  <rect width="1920" height="1080" fill="url(#glow)"/>
+</svg>
