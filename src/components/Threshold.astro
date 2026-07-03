@@ -21,7 +21,9 @@
     </video>
 
     <div class="film-metallic" aria-hidden="true"></div>
-    <div class="film-glow" aria-hidden="true"></div>
+    <div class="film-glow-wrap" id="glow-wrap" aria-hidden="true">
+      <div class="film-glow"></div>
+    </div>
     <div class="film-vignette" aria-hidden="true"></div>
     <div class="film-grain" aria-hidden="true"></div>
 
@@ -174,17 +176,10 @@
     opacity: 0.8;
   }
 
-  @media (prefers-reduced-motion: no-preference) {
-    .film-video {
-      animation: slow-zoom calc(var(--zoom-duration) * 2) ease-in-out infinite alternate;
-    }
-  }
-
-  @keyframes slow-zoom {
-    0% { transform: scale(var(--crop-scale)); }
-    50% { transform: scale(calc(var(--crop-scale) * var(--zoom-scale))); }
-    100% { transform: scale(var(--crop-scale)); }
-  }
+  /* The invisible camera (see script below) drives transform + transition
+     on .film-video and .film-video-reflection directly via inline style
+     once JS takes over, a few seconds after load. Until then, and if JS
+     never runs, the static CSS values above are the resting frame. */
 
   /* Oxidized bronze / museum patina — a color layer, not just a filter,
      so mid-tones read as burnished, aged metal. Burgundy dropped
@@ -203,7 +198,22 @@
 
   /* A glimmer of hope, hidden in plain sight: a soft warm light seeming
      to come from the pig itself. Quiet by design — the vignette and
-     grain sit on top of it and keep it half-hidden, not a spotlight. */
+     grain sit on top of it and keep it half-hidden, not a spotlight.
+     The wrapper's opacity is JS-controlled (fades out when the invisible
+     camera drifts away from the pig); the inner element keeps its own
+     independent breathing animation running underneath that. */
+  .film-glow-wrap {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 2.4s var(--ease);
+  }
+
+  .film-glow-wrap.is-away {
+    opacity: 0.1;
+  }
+
   .film-glow {
     position: absolute;
     inset: 0;
@@ -687,8 +697,76 @@
     });
   }
 
+  /* ---- The invisible camera ----
+     A second, unseen camera that improvises shots on the fixed clip:
+     push in on the pig, drift, pull back to reveal, glimpse the sky —
+     never a hard cut, always an eased push/pull. Organic timing (random
+     hold + random transition length), never the same shot twice in a
+     row. The reflection always gets the identical transform, so it
+     never stops matching what the main frame is actually showing. */
+  function initInvisibleCamera() {
+    const mainVideo = document.querySelector('.film-video:not(.film-video-reflection)') as HTMLVideoElement | null;
+    const reflectionVideo = document.getElementById('reflection-video') as HTMLVideoElement | null;
+    const glowWrap = document.getElementById('glow-wrap');
+    if (!mainVideo || !reflectionVideo) return;
+
+    const cropScale = parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--crop-scale')
+    ) || 2.6;
+    const isMobile = () => window.matchMedia('(max-width: 40rem)').matches;
+    const baseline = () => (isMobile() ? { x: 18, y: 88 } : { x: 10, y: 90 });
+    const clamp = (v: number) => Math.max(0, Math.min(100, v));
+
+    type Shot = { name: string; scaleMult: number; dx: number; dy: number; pigAdjacent: boolean };
+    const shots: Shot[] = [
+      { name: 'baseline', scaleMult: 1, dx: 0, dy: 0, pigAdjacent: true },
+      { name: 'macroPig', scaleMult: 1.18, dx: 0, dy: 0, pigAdjacent: true },
+      { name: 'handDetail', scaleMult: 1.05, dx: 18, dy: -15, pigAdjacent: false },
+      { name: 'wideReveal', scaleMult: 0.6, dx: 15, dy: -25, pigAdjacent: false },
+      { name: 'driftLeft', scaleMult: 1, dx: -12, dy: 2, pigAdjacent: true },
+      { name: 'skyGlimpse', scaleMult: 0.7, dx: 30, dy: -40, pigAdjacent: false },
+    ];
+
+    function apply(shot: Shot, durationS: number) {
+      const b = baseline();
+      const originValue = `${clamp(b.x + shot.dx)}% ${clamp(b.y + shot.dy)}%`;
+      const transformValue = `scale(${cropScale * shot.scaleMult})`;
+      const transition = durationS > 0 ? `transform ${durationS}s cubic-bezier(.22,.61,.36,1)` : 'none';
+
+      for (const el of [mainVideo, reflectionVideo]) {
+        el.style.transition = transition;
+        el.style.transformOrigin = originValue;
+        el.style.transform = transformValue;
+      }
+      glowWrap?.classList.toggle('is-away', !shot.pigAdjacent);
+    }
+
+    // Resting frame matches the static CSS default exactly.
+    apply(shots[0], 0);
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return;
+    }
+
+    let current = shots[0];
+    function scheduleNext() {
+      const holdMs = 6000 + Math.random() * 5000; // 6–11s, organic, not metronomic
+      setTimeout(() => {
+        const candidates = shots.filter((s) => s.name !== current.name);
+        const next = candidates[Math.floor(Math.random() * candidates.length)];
+        apply(next, 3.5 + Math.random() * 3); // 3.5–6.5s eased push/pull
+        current = next;
+        scheduleNext();
+      }, holdMs);
+    }
+
+    // Hold the establishing frame until well past the intro choreography.
+    setTimeout(scheduleNext, 11000);
+  }
+
   initSoundToggle();
   initWalkIn();
   initScrollProgress();
+  initInvisibleCamera();
   initReflectionSync();
 </script>
