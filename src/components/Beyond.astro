@@ -25,17 +25,20 @@ const lines = [
 
 <section id="beyond" class="beyond">
   <div class="void-stage">
-    <video
-      class="void-video"
-      id="void-video"
-      poster="/beyond-poster.jpg"
-      muted
-      playsinline
-      preload="none"
-      aria-hidden="true"
-    >
-      <source src="/PigVoid-speech.mp4" type="video/mp4" />
-    </video>
+    <div class="void-canvas" id="void-canvas">
+      <img class="void-plate" src="/beyond-void-plate.jpg" alt="" aria-hidden="true" />
+      <video
+        class="void-video"
+        id="void-video"
+        poster="/beyond-poster.jpg"
+        muted
+        playsinline
+        preload="none"
+        aria-hidden="true"
+      >
+        <source src="/PigVoid-speech.mp4" type="video/mp4" />
+      </video>
+    </div>
 
     <div class="void-text" id="void-text" aria-live="polite">
       {lines.map((line) => (
@@ -66,6 +69,20 @@ const lines = [
     height: 100%;
   }
 
+  /* Bigger than the stage on purpose — a wider void than the source
+     footage alone contains, so the camera can push, pull and settle
+     into a corner without ever showing an edge. The still plate's
+     horizon lines up with the video's own (measured: 58.6% vs 58.2%
+     down the frame), so the seam between them all but disappears. */
+  .void-canvas {
+    position: absolute;
+    inset: -25%;
+    width: 150%;
+    height: 150%;
+    will-change: transform;
+  }
+
+  .void-plate,
   .void-video {
     position: absolute;
     inset: 0;
@@ -73,6 +90,11 @@ const lines = [
     height: 100%;
     object-fit: cover;
     background: var(--void-white);
+  }
+
+  .void-video {
+    mask-image: radial-gradient(ellipse 60% 58% at 50% 46%, black 55%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 60% 58% at 50% 46%, black 55%, transparent 100%);
   }
 
   .void-text {
@@ -114,23 +136,72 @@ const lines = [
 <script>
   function initVoidRoom() {
     const section = document.getElementById('beyond');
+    const canvas = document.getElementById('void-canvas') as HTMLElement | null;
     const video = document.getElementById('void-video') as HTMLVideoElement | null;
     const voice = document.getElementById('beyond-voice') as HTMLAudioElement | null;
     const ambient = document.getElementById('beyond-ambient') as HTMLAudioElement | null;
     const cabaret = document.getElementById('cabaret-audio') as HTMLAudioElement | null;
     const soundToggle = document.getElementById('sound-toggle');
-    if (!section || !video || !voice || !ambient) return;
+    if (!section || !canvas || !video || !voice || !ambient) return;
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const captionLines = Array.from(section.querySelectorAll<HTMLElement>('.void-line'));
     const speechSrc = '/PigVoid-speech.mp4';
     const zoomoutSrc = '/PigVoid-zoomout.mp4';
     const ambientVolume = 0.4;
+    const speechFallbackDuration = 30.417;
+    const zoomoutFallbackDuration = 18.667;
 
     let currentClip: 'speech' | 'zoomout' = 'speech';
     let started = false;
     let roomActive = false;
     let soundOn = soundToggle?.getAttribute('aria-pressed') === 'true';
+    let cameraRunning = false;
+
+    function ease(t: number) {
+      return t * t * (3 - 2 * t);
+    }
+
+    // The camera: a gentle push-in while the pig speaks, then — as it
+    // zooms out on its own in the footage — the canvas pulls back
+    // further and settles off-center, leaving the pig small and alone
+    // in the corner rather than dead-center, before the loop restarts.
+    function applyCamera() {
+      const fallback = currentClip === 'speech' ? speechFallbackDuration : zoomoutFallbackDuration;
+      const duration = video.duration > 0 ? video.duration : fallback;
+      const t = Math.min(1, video.currentTime / duration);
+      let scale: number;
+      let tx: number;
+      let ty: number;
+      if (currentClip === 'speech') {
+        const e = ease(t);
+        scale = 1 + 0.06 * e;
+        tx = 0;
+        ty = 0;
+      } else {
+        const e = ease(t);
+        scale = 1.06 - 0.16 * e;
+        tx = -14 * e;
+        ty = 8 * e;
+      }
+      canvas.style.transform = `translate(${tx}%, ${ty}%) scale(${scale})`;
+    }
+
+    function cameraLoop() {
+      if (!cameraRunning) return;
+      applyCamera();
+      requestAnimationFrame(cameraLoop);
+    }
+
+    function startCamera() {
+      if (reducedMotion || cameraRunning) return;
+      cameraRunning = true;
+      requestAnimationFrame(cameraLoop);
+    }
+
+    function stopCamera() {
+      cameraRunning = false;
+    }
 
     const fadeTokens = new WeakMap<HTMLMediaElement, number>();
 
@@ -203,12 +274,14 @@ const lines = [
         video.load();
       }
       video.play().catch(() => {});
+      startCamera();
     }
 
     function leaveRoom() {
       roomActive = false;
       video.pause();
       voice.pause();
+      stopCamera();
       fade(ambient, 0, 900, () => ambient.pause());
       if (soundOn && cabaret && cabaret.paused) {
         cabaret.play().catch(() => {});
