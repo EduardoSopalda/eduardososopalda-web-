@@ -74,16 +74,31 @@
     will-change: transform;
   }
 
-  /* --awake and --flare are both set per-frame in JS (0 to 1 floats).
-     Awake is proximity/tap; flare is the unprompted cycle. Combined
-     additively into one filter so a specimen that happens to flare
-     while already awake gets both effects at once instead of one
-     silently overriding the other via CSS specificity. */
+  /* None of the source stills or videos are actually cut out — they're
+     opaque rectangles with a near-black (not pure 0,0,0) background:
+     compression noise, ~1-10 per channel, up to 40+ in spots. Brightening
+     that on wake lights up the rectangle itself, not just the creature —
+     a visible box, not a glow. So the reactive version (below, scoped to
+     [data-cutout]) is opt-in; everyone else gets one static look that
+     never moves, and wakes only through the tag, the lean, and the
+     canvas-drawn connector line, none of which touch these pixels. */
   .spec img,
   .spec video {
     display: block;
     width: 100%;
     height: auto;
+    filter: brightness(0.82) contrast(1.24) saturate(0.92);
+  }
+
+  /* --awake and --flare are both set per-frame in JS (0 to 1 floats).
+     Awake is proximity/tap; flare is the unprompted cycle. Combined
+     additively into one filter so a specimen that happens to flare
+     while already awake gets both effects at once instead of one
+     silently overriding the other via CSS specificity. Only specimens
+     with a real alpha-cut background (see Specimen.cutout) get this —
+     see the comment above. */
+  .spec[data-cutout='1'] img,
+  .spec[data-cutout='1'] video {
     filter:
       brightness(calc(0.6 + var(--awake, 0) * 0.4 + var(--flare, 0) * 0.55))
       contrast(1.24)
@@ -133,8 +148,13 @@
      triangular envelope over ~2.6s, randomized per specimen); driven as
      a halo here rather than a CSS animation, since its timing isn't a
      fixed loop. The brightness/saturation half of the effect lives in
-     the .spec img/video rule above, combined with --awake. */
-  .spec {
+     the .spec img/video rule above, combined with --awake.
+     drop-shadow follows the element's alpha, not its color — on an
+     opaque rectangle (everything without a real cutout) it draws a
+     glow around the whole box regardless of how dark the pixels are,
+     which is the same box problem as the brightness escalation above.
+     Scoped to [data-cutout] for the same reason. */
+  .spec[data-cutout='1'] {
     filter: drop-shadow(0 0 calc(var(--flare, 0) * 34px) rgba(247, 197, 106, calc(var(--flare, 0) * 0.55)));
   }
 
@@ -224,11 +244,12 @@
     d: number;
     tag?: string;
     vignette?: boolean; // true = source has a soft dark edge, not flat black — fade it via mask instead of showing a rectangle
+    cutout?: boolean; // true = source has a genuine alpha-cut background — safe to brighten/glow on wake without lighting up a visible rectangle
   };
 
   const SPECIMENS: Specimen[] = [
     { img: '/specimens/chimp.png', w: 460, y: 0.28, d: 1.0, tag: 'No.04 · PROXIMITY · CHIMP' },
-    { img: '/specimens/octopus.png', w: 380, y: 0.64, d: 0.86, tag: 'No.02 · GOVERNANCE · OCTOPUS', vignette: true },
+    { img: '/specimens/octopus.png', w: 380, y: 0.64, d: 0.86, tag: 'No.02 · GOVERNANCE · OCTOPUS', vignette: true, cutout: true },
     { vid: '/specimens/jellyfish.mp4', poster: '/specimens/jellyfish.png', w: 560, y: 0.2, d: 0.66, tag: 'No.03 · TRUST · JELLYFISH' },
     { vid: '/specimens/goldfish.mp4', poster: '/specimens/goldfish.png', w: 400, y: 0.7, d: 0.94, tag: 'No.01 · MEMORY · GOLDFISH' },
     { img: '/specimens/pig.png', w: 300, y: 0.42, d: 0.74, tag: 'No.05 · MEANING · PIGLET' },
@@ -443,6 +464,7 @@
       if (video) video.playbackRate = 0.45; // slowed for drama, per Eduardo's note
       el.style.zIndex = String(Math.round(s.d * 100));
       if (s.vignette) el.dataset.vignette = '1';
+      if (s.cutout) el.dataset.cutout = '1';
       const node = {
         el, s, video,
         xn: (i + 0.5) / SPECIMENS.length + (((i * 67) % 140) - 70) / 4200,
