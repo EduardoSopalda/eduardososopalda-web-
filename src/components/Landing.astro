@@ -104,7 +104,7 @@
     font-family: var(--font-wordmark-given);
     font-weight: 400;
     letter-spacing: 0.06em;
-    font-size: clamp(1.4rem, 3.8vw, 2.5rem);
+    font-size: clamp(1.8rem, 4.6vw, 3.4rem);
     background-image: linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 45%, var(--flesh) 55%, var(--bronze) 65%, var(--bronze-deep) 100%);
     animation-delay: 0.2s;
     transition: font-size 2.2s var(--ease);
@@ -113,18 +113,18 @@
   .wordmark-sopalda {
     font-family: var(--font-wordmark);
     font-weight: 700;
-    font-size: clamp(2.6rem, 8.4vw, 5.8rem);
+    font-size: clamp(2.8rem, 7vw, 5rem);
     background-image: linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 35%, var(--gold) 50%, var(--bronze) 65%, var(--bronze-deep) 100%);
     animation-delay: 0.9s;
     transition: font-size 2.2s var(--ease);
   }
 
   body[data-landing='field'] .wordmark-eduardo {
-    font-size: clamp(0.65rem, 1vw, 0.8rem);
+    font-size: clamp(0.7rem, 1.05vw, 0.85rem);
   }
 
   body[data-landing='field'] .wordmark-sopalda {
-    font-size: clamp(0.9rem, 1.7vw, 1.15rem);
+    font-size: clamp(1rem, 1.5vw, 1.25rem);
   }
 
   @keyframes resolve-focus {
@@ -134,23 +134,23 @@
     }
   }
 
-  /* Stretched to the exact width of the wordmark above it — from the
-     "E" of EDUARDO to the final "a" of sopalda — via text-align-last:
-     justify, rather than a guessed letter-spacing or font-size. .mark
-     has no explicit width, so it shrink-wraps to its widest child
-     (the wordmark); width:100% here inherits that same measure. */
+  /* A specimen tag, not a headline: IBM Plex Mono is already the
+     design system's face for labels and catalogue numbers, so setting
+     the tagline there — tracked-out caps — reads as one system with
+     the rest of the cabinet, instead of a third unrelated typeface
+     competing with the two the wordmark already uses. Width comes
+     from letter-spacing, not a stretched sentence. */
   .tagline {
     display: block;
     width: 100%;
-    margin: 0.75rem 0 0;
-    font-family: var(--font-display);
-    font-weight: 500;
-    font-size: clamp(1.15rem, 2.6vw, 1.9rem);
+    margin: 1rem 0 0;
+    font-family: var(--font-mono);
+    font-weight: 400;
+    font-size: clamp(0.8rem, 1.7vw, 1.2rem);
     color: var(--champagne);
-    letter-spacing: 0.02em;
-    text-align: justify;
-    text-align-last: justify;
-    text-justify: inter-word;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    text-align: center;
     opacity: 0;
     animation: resolve-quiet 1.6s var(--ease) forwards;
     animation-delay: 1.6s;
@@ -158,8 +158,10 @@
   }
 
   body[data-landing='field'] .tagline {
-    font-size: clamp(0.65rem, 0.9vw, 0.78rem);
-    margin-top: 0.2rem;
+    font-size: clamp(0.55rem, 0.75vw, 0.65rem);
+    letter-spacing: 0.24em;
+    margin-top: 0.3rem;
+    text-align: left;
   }
 
   .purpose {
@@ -365,6 +367,11 @@
     addEventListener('pointermove', (e) => { px = e.clientX; py = e.clientY; hasPointer = true; });
     addEventListener('pointerleave', () => { hasPointer = false; px = -9999; py = -9999; });
 
+    // A real thread doesn't move on two perfectly clean sine waves — it
+    // has small, irregular give in it. The third term here is smaller,
+    // faster, and at a frequency that shares no common period with the
+    // other two, so the curve never quite repeats itself and never
+    // reads as a clean mathematical vector.
     function nerveY(x: number, time: number) {
       const base = H * 0.55;
       let bend = 0;
@@ -375,24 +382,71 @@
           bend = (py - base) * f * f * 0.5;
         }
       }
-      return base + Math.sin(x * 0.0015 + time * 0.3) * H * 0.07 + Math.sin(x * 0.0039 - time * 0.19) * H * 0.028 + bend;
+      return (
+        base +
+        Math.sin(x * 0.0015 + time * 0.3) * H * 0.07 +
+        Math.sin(x * 0.0039 - time * 0.19) * H * 0.028 +
+        Math.sin(x * 0.0071 + time * 0.53) * H * 0.009 +
+        bend
+      );
     }
+
+    // Two or three points of light travel the thread's length, independent
+    // speeds and phases so they never line up — this is the actual "pulses
+    // of light travel along it" from the field spec, which the first pass
+    // skipped. It's most of what makes the line read as alive rather than
+    // a static drawn curve.
+    const pulses = [
+      { speed: 0.055, phase: 0.1 },
+      { speed: 0.08, phase: 0.62 },
+      { speed: 0.038, phase: 0.35 },
+    ];
 
     function draw() {
       if (!reduced) t += 1 / 60;
       ctx!.clearRect(0, 0, W, H);
-      ctx!.beginPath();
-      const step = 8;
-      for (let x = 0; x <= W; x += step) {
-        const y = nerveY(x, t);
-        if (x === 0) ctx!.moveTo(x, y);
-        else ctx!.lineTo(x, y);
+
+      const step = 6;
+      const points: { x: number; y: number }[] = [];
+      for (let x = 0; x <= W; x += step) points.push({ x, y: nerveY(x, t) });
+
+      function strokePath() {
+        ctx!.beginPath();
+        points.forEach((p, i) => (i === 0 ? ctx!.moveTo(p.x, p.y) : ctx!.lineTo(p.x, p.y)));
       }
-      ctx!.strokeStyle = 'rgba(247, 197, 106, 0.85)';
-      ctx!.lineWidth = 1.5;
-      ctx!.shadowColor = 'rgba(247, 197, 106, 0.55)';
-      ctx!.shadowBlur = 6;
+
+      // Soft glow body — wide, dim, diffuse. The thread's presence.
+      ctx!.shadowColor = 'rgba(247, 197, 106, 0.5)';
+      ctx!.shadowBlur = 10;
+      strokePath();
+      ctx!.strokeStyle = 'rgba(198, 145, 68, 0.4)';
+      ctx!.lineWidth = 3;
       ctx!.stroke();
+
+      // Bright core — thin, where the actual filament reads.
+      ctx!.shadowBlur = 4;
+      strokePath();
+      ctx!.strokeStyle = 'rgba(247, 197, 106, 0.9)';
+      ctx!.lineWidth = 1;
+      ctx!.stroke();
+
+      // Traveling pulses.
+      ctx!.shadowBlur = 8;
+      ctx!.shadowColor = 'rgba(255, 226, 160, 0.9)';
+      for (const p of pulses) {
+        const u = (t * p.speed + p.phase) % 1;
+        const x = u * W;
+        const y = nerveY(x, t);
+        // Ease opacity toward 0 at both ends of the sweep so each pulse
+        // fades in/out rather than popping at the wrap.
+        const edge = Math.min(u, 1 - u);
+        const o = Math.min(1, edge * 9);
+        ctx!.beginPath();
+        ctx!.arc(x, y, 2.4, 0, Math.PI * 2);
+        ctx!.fillStyle = `rgba(255, 232, 176, ${o})`;
+        ctx!.fill();
+      }
+      ctx!.shadowBlur = 0;
 
       if (!reduced) requestAnimationFrame(draw);
     }
