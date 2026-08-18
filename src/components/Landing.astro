@@ -1,0 +1,475 @@
+---
+// The landing — first moment of the cabinet of curiosities.
+// True black. The nerve is already crossing the screen and already
+// drifting: the site is mid thought and the visitor interrupted it.
+// Centred: the name + tagline as one block, and the purpose line below
+// it. After ~3s, or on first pointer move / scroll, the mark block
+// walks to the top left and the purpose line walks to the bottom left —
+// both stay, permanence by contrast of behaviour, not size. Nothing
+// fades to nothing; everything just gets quieter, per prototype/field.html
+// (#mark, #purpose, #meta), the working reference this ports faithfully.
+//
+// Meta is Eduardo's own copy, taken verbatim from that prototype. The
+// tagline and purpose line below were both revised directly by Eduardo
+// in this session, replacing the prototype's originals ("data · AI ·
+// the human experience" and "Understand it first. Then decide whether
+// to trust it.").
+---
+
+<section class="landing" id="landing" aria-label="Eduardo Sopalda">
+  <canvas class="nerve" id="nerve" aria-hidden="true"></canvas>
+
+  <div class="mark">
+    <h1 class="wordmark">
+      <span class="wordmark-eduardo">EDUARDO</span> <span class="wordmark-sopalda">sopalda</span>
+    </h1>
+    <p class="tagline">DATA | AI &amp; The human experience</p>
+  </div>
+
+  <p class="purpose">Understand it first&hellip; then you decide if you trust it.</p>
+
+  <p class="meta">Barcelona<br /><a href="#" id="li">LinkedIn</a></p>
+
+  <button type="button" class="cue" id="cue" aria-label="Continue">
+    <span class="cue-line" aria-hidden="true"></span>
+    <span class="cue-dot" aria-hidden="true"></span>
+  </button>
+</section>
+
+<style>
+  .landing {
+    position: relative;
+    width: 100%;
+    height: 100svh;
+    overflow: hidden;
+    background: var(--void);
+  }
+
+  .nerve {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Each of the three blocks (mark, purpose, meta) positions and
+     animates itself independently — anchored at its own left/top +
+     translate, never nested inside a container that ALSO transforms.
+     Compounding a parent transform with child transforms was an
+     earlier bug: the whole group shot off-screen because the math
+     assumed a center-pinned parent that didn't exist. */
+
+  /* The mark: name + tagline, travelling together as one unit — this
+     is what prototype/field.html's #mark does (one block, one
+     transform), not two independently-animated lines. */
+  .mark {
+    position: absolute;
+    left: 50%;
+    top: 38%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 1;
+    transition: left 2.2s var(--ease), top 2.2s var(--ease), transform 2.2s var(--ease);
+  }
+
+  body[data-landing='field'] .mark {
+    left: clamp(1.25rem, 5vw, 3rem);
+    top: clamp(1.25rem, 5vh, 3rem);
+    transform: translate(0, 0);
+    text-align: left;
+  }
+
+  /* Two names, two faces: Eduardo in Fraunces — the display system's
+     "who he is" — and Sopalda in Glacial Indifference, because the
+     surname is round-letter-heavy and reads easiest leaning into that
+     rather than fighting it. Both start out of focus and resolve in,
+     Sopalda a half-beat behind, so the eye lands on the given name
+     first and the round one gathers after. */
+  .wordmark {
+    margin: 0;
+    line-height: 1;
+  }
+
+  .wordmark-eduardo,
+  .wordmark-sopalda {
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    opacity: 0;
+    filter: blur(18px);
+    animation: resolve-focus 2.4s var(--ease) forwards;
+  }
+
+  .wordmark-eduardo {
+    font-family: var(--font-wordmark-given);
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    font-size: clamp(1.8rem, 4.6vw, 3.4rem);
+    background-image: linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 45%, var(--flesh) 55%, var(--bronze) 65%, var(--bronze-deep) 100%);
+    animation-delay: 0.2s;
+    transition: font-size 2.2s var(--ease);
+  }
+
+  .wordmark-sopalda {
+    font-family: var(--font-wordmark);
+    font-weight: 700;
+    font-size: clamp(2.8rem, 7vw, 5rem);
+    background-image: linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 35%, var(--gold) 50%, var(--bronze) 65%, var(--bronze-deep) 100%);
+    animation-delay: 0.9s;
+    transition: font-size 2.2s var(--ease);
+  }
+
+  body[data-landing='field'] .wordmark-eduardo {
+    font-size: clamp(0.7rem, 1.05vw, 0.85rem);
+  }
+
+  body[data-landing='field'] .wordmark-sopalda {
+    font-size: clamp(1rem, 1.5vw, 1.25rem);
+  }
+
+  @keyframes resolve-focus {
+    to {
+      opacity: 1;
+      filter: blur(0);
+    }
+  }
+
+  /* A specimen tag, not a headline: IBM Plex Mono is already the
+     design system's face for labels and catalogue numbers, so setting
+     the tagline there — tracked-out caps — reads as one system with
+     the rest of the cabinet, instead of a third unrelated typeface
+     competing with the two the wordmark already uses. Width comes
+     from letter-spacing, not a stretched sentence. */
+  .tagline {
+    display: block;
+    width: 100%;
+    margin: 1rem 0 0;
+    font-family: var(--font-mono);
+    font-weight: 400;
+    font-size: clamp(0.8rem, 1.7vw, 1.2rem);
+    color: var(--champagne);
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    text-align: center;
+    text-wrap: balance;
+    opacity: 0;
+    animation: resolve-quiet 1.6s var(--ease) forwards;
+    animation-delay: 1.6s;
+    transition: font-size 2.2s var(--ease), margin-top 2.2s var(--ease), letter-spacing 2.2s var(--ease);
+  }
+
+  body[data-landing='field'] .tagline {
+    font-size: clamp(0.55rem, 0.75vw, 0.65rem);
+    letter-spacing: 0.24em;
+    margin-top: 0.3rem;
+    text-align: left;
+  }
+
+  /* Full tracking only works with room to breathe. Under ~30rem the
+     wide letter-spacing that reads as a specimen tag on desktop pushes
+     this onto three ragged lines instead — found by actually
+     screenshotting a phone-width viewport, not by assumption. */
+  @media (max-width: 30rem) {
+    .tagline {
+      letter-spacing: 0.14em;
+    }
+  }
+
+  .purpose {
+    position: absolute;
+    left: 50%;
+    top: 56%;
+    transform: translateX(-50%);
+    margin: 0;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(0.9rem, 1.5vw, 1.25rem);
+    /* Same treatment as the wordmark — bronze/gold gradient text,
+       not a flat color, per Eduardo's note that this line should
+       read as one with "Eduardo Sopalda" above it. */
+    background-image: linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 40%, var(--gold) 50%, var(--bronze) 60%, var(--bronze-deep) 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    text-align: center;
+    white-space: nowrap;
+    opacity: 0;
+    z-index: 1;
+    animation: resolve-quiet 1.6s var(--ease) forwards;
+    animation-delay: 2s;
+    transition: left 2.2s var(--ease), top 2.2s var(--ease), transform 2.2s var(--ease), font-size 2.2s var(--ease), opacity 2.2s var(--ease);
+  }
+
+  body[data-landing='field'] .purpose {
+    left: clamp(1.25rem, 5vw, 3rem);
+    top: calc(100% - clamp(1.5rem, 4.5vh, 3rem));
+    transform: translateX(0);
+    font-size: clamp(0.7rem, 1vw, 0.85rem);
+    opacity: 0.7;
+  }
+
+  @keyframes resolve-quiet {
+    to { opacity: 1; }
+  }
+
+  .meta {
+    position: fixed;
+    right: clamp(1.25rem, 5vw, 3rem);
+    bottom: clamp(1.25rem, 5vh, 3rem);
+    z-index: 1;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(227, 175, 149, 0.35);
+    text-align: right;
+    line-height: 2;
+    opacity: 0;
+    transition: opacity 1.4s var(--ease);
+  }
+
+  .meta a {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(227, 175, 149, 0.25);
+  }
+
+  .meta a:hover {
+    color: var(--gold);
+  }
+
+  body[data-landing='field'] .meta {
+    opacity: 1;
+  }
+
+  /* ---- The cue: no word for "enter," just a quiet signal that there's
+     more here — same gold-pulse language as the nerve and its stops.
+     This is the thing that actually gets someone into the field now;
+     nothing times out on its own (see script below), so this has to
+     read as clickable without saying so. Pointer move / scroll / touch
+     still work too, as a low-friction fallback for anyone who starts
+     exploring before noticing it. */
+  .cue {
+    position: absolute;
+    left: 50%;
+    bottom: clamp(2.25rem, 8vh, 4rem);
+    transform: translateX(-50%);
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    background: none;
+    border: none;
+    padding: 0.9rem;
+    margin: -0.9rem;
+    cursor: pointer;
+    opacity: 0;
+    animation: resolve-quiet 1.6s var(--ease) forwards;
+    animation-delay: 2.6s;
+    transition: opacity 1.4s var(--ease);
+  }
+
+  .cue-line {
+    width: 1px;
+    height: 2.1rem;
+    background: linear-gradient(to bottom, transparent, var(--gold));
+  }
+
+  .cue-dot {
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 0.7rem 0.15rem rgba(247, 197, 106, 0.5);
+    animation: cue-breathe 2.6s var(--ease) infinite;
+  }
+
+  @keyframes cue-breathe {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.3); }
+  }
+
+  .cue:focus-visible {
+    outline: 1.5px solid var(--gold);
+    outline-offset: 4px;
+    border-radius: 2px;
+  }
+
+  body[data-landing='field'] .cue {
+    animation: none;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mark,
+    .wordmark-eduardo,
+    .wordmark-sopalda,
+    .tagline,
+    .purpose,
+    .meta,
+    .cue {
+      transition: none;
+    }
+    .wordmark-eduardo,
+    .wordmark-sopalda,
+    .tagline,
+    .purpose,
+    .cue {
+      animation: none;
+      opacity: 1;
+      filter: none;
+    }
+    .cue-dot {
+      animation: none;
+    }
+  }
+</style>
+
+<script>
+  function initLanding() {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // No real LinkedIn URL yet — stub the click rather than send anyone
+    // to a placeholder href.
+    document.getElementById('li')?.addEventListener('click', (e) => e.preventDefault());
+
+    function enterField() {
+      document.body.dataset.landing = 'field';
+    }
+
+    if (reduced) {
+      enterField();
+    } else {
+      // Deliberate only — nothing times out and forces this on its own,
+      // and plain pointer movement doesn't count: someone just moving
+      // the mouse to read isn't choosing to continue. The cue is the
+      // intended path; scroll and touch are the low-friction fallback,
+      // since both are already an act of trying to move past this screen.
+      document.getElementById('cue')?.addEventListener('click', enterField);
+      addEventListener('wheel', enterField, { once: true, passive: true });
+      addEventListener('touchstart', enterField, { once: true, passive: true });
+    }
+  }
+
+  function initNerve() {
+    const canvas = document.getElementById('nerve') as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let W = 0, H = 0, DPR = Math.min(devicePixelRatio || 1, 2);
+    let px = -9999, py = -9999, hasPointer = false, t = 0;
+
+    function resize() {
+      W = innerWidth; H = innerHeight;
+      canvas!.width = W * DPR;
+      canvas!.height = H * DPR;
+      canvas!.style.width = W + 'px';
+      canvas!.style.height = H + 'px';
+      ctx!.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+    resize();
+    addEventListener('resize', resize);
+
+    addEventListener('pointermove', (e) => { px = e.clientX; py = e.clientY; hasPointer = true; });
+    addEventListener('pointerleave', () => { hasPointer = false; px = -9999; py = -9999; });
+
+    // A real thread doesn't move on two perfectly clean sine waves — it
+    // has small, irregular give in it. The third term here is smaller,
+    // faster, and at a frequency that shares no common period with the
+    // other two, so the curve never quite repeats itself and never
+    // reads as a clean mathematical vector.
+    function nerveY(x: number, time: number) {
+      // Base sits at 0.72, not the geometric center: the purpose line
+      // lives at 56%, and the wave's own amplitude (~0.11H) means
+      // anything based much above ~0.66 swings back up through that
+      // text. Found by actually screenshotting it, not by eye — the
+      // line was cutting through "Understand it first..." at every
+      // viewport size tested.
+      const base = H * 0.72;
+      let bend = 0;
+      if (hasPointer) {
+        const d = Math.abs(x - px);
+        if (d < 360) {
+          const f = 1 - d / 360;
+          bend = (py - base) * f * f * 0.5;
+        }
+      }
+      return (
+        base +
+        Math.sin(x * 0.0015 + time * 0.3) * H * 0.07 +
+        Math.sin(x * 0.0039 - time * 0.19) * H * 0.028 +
+        Math.sin(x * 0.0071 + time * 0.53) * H * 0.009 +
+        bend
+      );
+    }
+
+    // Two or three points of light travel the thread's length, independent
+    // speeds and phases so they never line up — this is the actual "pulses
+    // of light travel along it" from the field spec, which the first pass
+    // skipped. It's most of what makes the line read as alive rather than
+    // a static drawn curve.
+    const pulses = [
+      { speed: 0.055, phase: 0.1 },
+      { speed: 0.08, phase: 0.62 },
+      { speed: 0.038, phase: 0.35 },
+    ];
+
+    function draw() {
+      if (!reduced) t += 1 / 60;
+      ctx!.clearRect(0, 0, W, H);
+
+      const step = 6;
+      const points: { x: number; y: number }[] = [];
+      for (let x = 0; x <= W; x += step) points.push({ x, y: nerveY(x, t) });
+
+      function strokePath() {
+        ctx!.beginPath();
+        points.forEach((p, i) => (i === 0 ? ctx!.moveTo(p.x, p.y) : ctx!.lineTo(p.x, p.y)));
+      }
+
+      // Soft glow body — wide, dim, diffuse. The thread's presence.
+      ctx!.shadowColor = 'rgba(247, 197, 106, 0.5)';
+      ctx!.shadowBlur = 10;
+      strokePath();
+      ctx!.strokeStyle = 'rgba(198, 145, 68, 0.4)';
+      ctx!.lineWidth = 3;
+      ctx!.stroke();
+
+      // Bright core — thin, where the actual filament reads.
+      ctx!.shadowBlur = 4;
+      strokePath();
+      ctx!.strokeStyle = 'rgba(247, 197, 106, 0.9)';
+      ctx!.lineWidth = 1;
+      ctx!.stroke();
+
+      // Traveling pulses.
+      ctx!.shadowBlur = 8;
+      ctx!.shadowColor = 'rgba(255, 226, 160, 0.9)';
+      for (const p of pulses) {
+        const u = (t * p.speed + p.phase) % 1;
+        const x = u * W;
+        const y = nerveY(x, t);
+        // Ease opacity toward 0 at both ends of the sweep so each pulse
+        // fades in/out rather than popping at the wrap.
+        const edge = Math.min(u, 1 - u);
+        const o = Math.min(1, edge * 9);
+        ctx!.beginPath();
+        ctx!.arc(x, y, 2.4, 0, Math.PI * 2);
+        ctx!.fillStyle = `rgba(255, 232, 176, ${o})`;
+        ctx!.fill();
+      }
+      ctx!.shadowBlur = 0;
+
+      if (!reduced) requestAnimationFrame(draw);
+    }
+    draw();
+  }
+
+  initLanding();
+  initNerve();
+</script>
