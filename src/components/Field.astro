@@ -157,6 +157,14 @@
     white-space: nowrap;
     transition: color 0.5s, letter-spacing 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
     cursor: pointer;
+    /* z-index alone decides paint ORDER, not whether something behind
+       it is still legible -- plain text with nothing opaque behind it
+       still visually tangles with whatever's underneath regardless of
+       stacking order. A soft black halo (not a hard-edged box, to stay
+       out of the way aesthetically) keeps navigation readable no
+       matter what a fragment happens to be drifting through at the
+       same spot. */
+    text-shadow: 0 0 4px var(--void), 0 0 8px var(--void), 0 0 14px var(--void);
   }
 
   .stop[data-near='1'] {
@@ -273,6 +281,16 @@
     if (!ctx) return;
 
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Almost everything in the field -- specimens waking, fragments
+    // holding their decay, the nerve bending -- is a hover mechanic.
+    // A touch device has no hover, only contact, so on its own terms
+    // the whole system would sit permanently in its dimmest, most
+    // passive state: specimens never wake, fragments never get
+    // "held." isTouch changes two things below: specimens wake on tap
+    // instead of proximity, and fragments get a longer base lifespan
+    // since touch users can't hover-protect one the way a mouse user
+    // can.
+    const isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
     let W = 0, H = 0, DPR = Math.min(devicePixelRatio || 1, 2);
     let WORLD_W = 4200;
     let px = -9999, py = -9999, hasPointer = false, t = 0;
@@ -379,11 +397,17 @@
       const video = el.querySelector('video') as HTMLVideoElement | null;
       if (video) video.playbackRate = 0.45; // slowed for drama, per Eduardo's note
       el.style.zIndex = String(Math.round(s.d * 100));
-      return {
+      const node = {
         el, s, video,
         xn: (i + 0.5) / SPECIMENS.length + (((i * 67) % 140) - 70) / 4200,
         awake: 0, playing: false,
+        tapAwakeUntil: 0,
       };
+      if (isTouch) {
+        el.style.pointerEvents = 'auto';
+        el.addEventListener('click', () => { node.tapAwakeUntil = t + 4; });
+      }
+      return node;
     });
 
     // ================= fragments =================
@@ -396,7 +420,12 @@
     // Depth is shared with specimens for z-index, so fragments genuinely
     // interleave in front of and behind them rather than always sitting
     // on top.
-    const SLOT_COUNT = 6;
+    // Fewer concurrent slots on narrow screens: 6 quote blocks (each up
+    // to several lines tall) simply don't fit in the compressed vertical
+    // range a short mobile viewport leaves once the bottom marks are
+    // excluded -- window.innerWidth here, not the closure W, since W
+    // isn't set until the first resize() call, which happens after this.
+    const SLOT_COUNT = window.innerWidth < 500 ? 3 : 6;
     type Dir = 'left' | 'right' | 'top' | 'bottom';
     const DIRS: Dir[] = ['left', 'right', 'top', 'bottom'];
 
@@ -426,7 +455,7 @@
       world!.appendChild(el);
 
       return {
-        el, quote, ref,
+        el, quote, ref, slotI,
         chars: [] as HTMLElement[],
         parts: [] as { vx: number; vy: number; baseX: number; baseY: number }[],
         fragIndex: -1,
@@ -475,7 +504,17 @@
       const targetScreenX = W * 0.06 + Math.random() * W * 0.5;
       const offset = Math.min(520, W * 0.4);
       slot.xn = wrap(targetScreenX + offset + worldX * depthFactor, WORLD_W) / WORLD_W;
-      slot.y = 0.1 + Math.random() * 0.72;
+      // Kept out of the bottom ~35% of the viewport on purpose -- the
+      // purpose line and the Barcelona/LinkedIn mark both live down
+      // there and are permanent fixtures, not other field objects a
+      // fragment is allowed to drift behind. Within that, each slot
+      // gets its own dedicated vertical band rather than a fully
+      // random y -- random placement let multiple 3-6-line quote
+      // blocks land on the same rows and pile up unreadably, most
+      // visible on short mobile viewports where the usable range is
+      // small to begin with. One slot, one shelf.
+      const bandH = 0.55 / SLOT_COUNT;
+      slot.y = 0.08 + slot.slotI * bandH + Math.random() * bandH * 0.5;
       slot.entryDir = DIRS[Math.floor(Math.random() * DIRS.length)];
       slot.entryAmt = 1;
       slot.aloneTime = 0;
@@ -501,7 +540,11 @@
       return { el, name: s[0], xn: (i + 0.5) / STOPS.length, near: 0 };
     });
 
-    const DECAY_AFTER = 40, DECAY_TIME = 10;
+    // Touch users can't rest a cursor near a fragment to hold it the
+    // way a mouse user can, so they'd otherwise lose every fragment to
+    // decay regardless of attention. Longer base life, not proximity,
+    // is the touch equivalent -- unconditional rather than earned.
+    const DECAY_AFTER = isTouch ? 70 : 40, DECAY_TIME = 10;
 
     function frame() {
       const dt = reduced ? 0 : 1 / 60;
@@ -556,7 +599,14 @@
 
       // ---- specimens: position by depth, wake near cursor, play video on approach ----
       for (const n of specNodes) {
-        const w = n.s.w * Math.min(1, Math.max(0.48, W / 1300));
+        // Scale floor was 0.48 with no cap, so on a 375px phone a
+        // 380-460px specimen (octopus, chimp) still rendered at
+        // ~180-220px -- roughly half the screen width for one
+        // creature. Lower floor plus an explicit viewport-relative cap
+        // (found by actually measuring a mobile screenshot, not by
+        // assumption) keeps any single specimen from dominating a
+        // narrow screen.
+        const w = Math.min(n.s.w * Math.min(1, Math.max(0.32, W / 1300)), W * 0.42);
         const X = wrap(n.xn * WORLD_W - worldX * n.s.d, WORLD_W) - Math.min(520, W * 0.4);
         const Y = n.s.y * H - w * 0.3 + worldYoff * n.s.d;
         const sx = X + w * 0.5, sy = Y + w * 0.28;
@@ -567,7 +617,9 @@
         n.el.style.width = w + 'px';
 
         let want = 0;
-        if (hasPointer) {
+        if (isTouch) {
+          want = t < n.tapAwakeUntil ? 1 : 0;
+        } else if (hasPointer) {
           const d = Math.hypot(px - sx, py - sy);
           want = d < w * 0.62 ? 1 : 0;
         }
@@ -607,7 +659,20 @@
         else oy = off;
 
         const X = baseX + ox, Y = baseY + oy;
-        const on = X > -700 && X < W + 700 && Y > -150 && Y < H + 150;
+        // Visibility is checked against the RESTING position (no entry
+        // offset), and requires the whole block to fit -- not a wide
+        // fixed-pixel margin around a partial overlap. The old margin
+        // (700px) was sized for a 1440px desktop; on a 375px phone
+        // that's nearly the entire screen of allowed overhang, so a
+        // fragment mid-drift off the edge stayed "visible" while
+        // showing only its right half, reading as clipped, broken
+        // text. A fragment flying in from off-screen (entryAmt > 0)
+        // still needs to render during that animation even though its
+        // CURRENT position is off-screen on purpose, so containment is
+        // judged on baseX/baseY, not the animated X/Y.
+        const bw = slot.el.offsetWidth || 260;
+        const bh = slot.el.offsetHeight || 80;
+        const on = baseX > -10 && baseX + bw < W + 10 && baseY > -10 && baseY + bh < H + 10;
         slot.el.style.visibility = on ? 'visible' : 'hidden';
         slot.el.style.transform = `translate3d(${X}px, ${Y}px, 0)`;
 

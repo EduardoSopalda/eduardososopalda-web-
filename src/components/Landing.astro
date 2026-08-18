@@ -213,6 +213,19 @@
     opacity: 0.7;
   }
 
+  /* The purpose line (bottom-left) and meta (bottom-right) are both
+     permanent, always-on marks — on a narrow phone, one line of nowrap
+     purpose-line text is wide enough to run under Barcelona/LinkedIn.
+     Wrapping it to two lines and pulling it in from the right edge
+     keeps the two from colliding instead of overlapping unreadably. */
+  @media (max-width: 30rem) {
+    body[data-landing='field'] .purpose {
+      white-space: normal;
+      max-width: 62vw;
+      text-align: left;
+    }
+  }
+
   @keyframes resolve-quiet {
     to { opacity: 1; }
   }
