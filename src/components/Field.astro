@@ -91,6 +91,25 @@
     transition: filter 1.1s cubic-bezier(0.2, 0.7, 0.2, 1);
   }
 
+  /* Opt-in, not universal — most specimens are already clean on flat
+     black and don't need this; masking them anyway risks clipping a
+     tentacle or ear that was never a problem. Compositing note in
+     DESIGN-SYSTEM.md assumes true black under void-family specimens
+     so the rectangle disappears with no cutting/alpha/mask; the newer
+     octopus render has a soft dark vignette instead, which would
+     otherwise show as a faint edge against the page. No image-editing
+     tool is available in this environment to re-background the source
+     file, so this fades that one image's own edges to transparent
+     instead, letting the page's true black show through underneath —
+     same visual result, without touching pixels. Mask-image, not
+     mix-blend-mode: the design system specifically rules out blend
+     modes on specimen images (stacking contexts trap the blend); a
+     mask has no such restriction. */
+  .spec[data-vignette='1'] img {
+    -webkit-mask-image: radial-gradient(ellipse 60% 60% at 50% 48%, black 58%, transparent 100%);
+    mask-image: radial-gradient(ellipse 60% 60% at 50% 48%, black 58%, transparent 100%);
+  }
+
   .spec-tag {
     position: absolute;
     left: 0;
@@ -204,11 +223,12 @@
     y: number;
     d: number;
     tag?: string;
+    vignette?: boolean; // true = source has a soft dark edge, not flat black — fade it via mask instead of showing a rectangle
   };
 
   const SPECIMENS: Specimen[] = [
     { img: '/specimens/chimp.png', w: 460, y: 0.28, d: 1.0, tag: 'No.04 · PROXIMITY · CHIMP' },
-    { img: '/specimens/octopus.png', w: 380, y: 0.64, d: 0.86, tag: 'No.02 · GOVERNANCE · OCTOPUS' },
+    { img: '/specimens/octopus.png', w: 380, y: 0.64, d: 0.86, tag: 'No.02 · GOVERNANCE · OCTOPUS', vignette: true },
     { vid: '/specimens/jellyfish.mp4', poster: '/specimens/jellyfish.png', w: 300, y: 0.2, d: 0.66, tag: 'No.03 · TRUST · JELLYFISH' },
     { vid: '/specimens/goldfish.mp4', poster: '/specimens/goldfish.png', w: 400, y: 0.7, d: 0.94, tag: 'No.01 · MEMORY · GOLDFISH' },
     { img: '/specimens/pig.png', w: 300, y: 0.42, d: 0.74, tag: 'No.05 · MEANING · PIGLET' },
@@ -410,6 +430,7 @@
       const video = el.querySelector('video') as HTMLVideoElement | null;
       if (video) video.playbackRate = 0.45; // slowed for drama, per Eduardo's note
       el.style.zIndex = String(Math.round(s.d * 100));
+      if (s.vignette) el.dataset.vignette = '1';
       const node = {
         el, s, video,
         xn: (i + 0.5) / SPECIMENS.length + (((i * 67) % 140) - 70) / 4200,
