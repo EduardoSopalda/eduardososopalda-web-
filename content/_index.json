@@ -1,0 +1,272 @@
+[
+ {
+  "file": "2026-08-13-ten-thousand-files-two-thousand-that-mattered.md",
+  "title": "Ten Thousand Files, Two Thousand That Mattered",
+  "date": "2026-08-13",
+  "kind": "article",
+  "threads": [
+   "MEMORY",
+   "MEANING"
+  ],
+  "words": 975
+ },
+ {
+  "file": "2026-05-02-the-data-is-my-shepherd-i-shall-not-want.md",
+  "title": "The Data Is My Shepherd, I Shall Not Want",
+  "date": "2026-05-02",
+  "kind": "article",
+  "threads": [
+   "MEANING",
+   "PROXIMITY"
+  ],
+  "words": 1339
+ },
+ {
+  "file": "2026-03-21-if-we-can-t-agree-on-customer-how-can-we-ever-govern-data.md",
+  "title": "If We Can't Agree on \"Customer,\" How Can We Ever Govern Data?",
+  "date": "2026-03-21",
+  "kind": "article",
+  "threads": [
+   "MEANING",
+   "GOVERNANCE"
+  ],
+  "words": 905
+ },
+ {
+  "file": "2026-02-21-when-governance-lives-in-memory-and-when-it-becomes-muscle.md",
+  "title": "When Governance Lives in Memory… and When It Becomes Muscle",
+  "date": "2026-02-21",
+  "kind": "article",
+  "threads": [
+   "GOVERNANCE",
+   "MEMORY"
+  ],
+  "words": 1473
+ },
+ {
+  "file": "2026-02-20-starting-the-ai-journey-from-first-wave-to-business-ready-ai.md",
+  "title": "Starting the AI Journey: From First Wave to Business-Ready AI",
+  "date": "2026-02-20",
+  "kind": "article",
+  "threads": [
+   "GOVERNANCE",
+   "MEANING"
+  ],
+  "words": 796
+ },
+ {
+  "file": "2026-02-13-atlan-s-great-data-debate-data-dashboards-ai-and-the-fragili.md",
+  "title": "ATLAN´S Great Data Debate: DATA, Dashboards, AI, and the Fragility of Meaning",
+  "date": "2026-02-13",
+  "kind": "article",
+  "threads": [
+   "MEANING",
+   "GOVERNANCE"
+  ],
+  "words": 728
+ },
+ {
+  "file": "2026-02-07-from-stewardship-to-partnership-why-genai-in-data-governance.md",
+  "title": "From Stewardship to Partnership: Why GenAI in Data Governance Is No Longer “The Future”",
+  "date": "2026-02-07",
+  "kind": "article",
+  "threads": [
+   "GOVERNANCE",
+   "TRUST"
+  ],
+  "words": 1051
+ },
+ {
+  "file": "2026-02-04-lessons-from-the-dama-espana-gaia-x-hub-espana-webinar-on-da.md",
+  "title": "Lessons from the DAMA ESPAÑA × Gaia-X Hub España webinar on data spaces",
+  "date": "2026-02-04",
+  "kind": "article",
+  "threads": [
+   "MEANING",
+   "GOVERNANCE"
+  ],
+  "words": 721
+ },
+ {
+  "file": "2026-01-19-responsible-ai-in-times-of-chaos-why-trust-is-not-a-feature.md",
+  "title": "Responsible AI in Times of Chaos: Why Trust Is Not a Feature",
+  "date": "2026-01-19",
+  "kind": "article",
+  "threads": [
+   "TRUST",
+   "GOVERNANCE"
+  ],
+  "words": 653
+ },
+ {
+  "file": "2025-12-30-data-are-not-universal.md",
+  "title": "Data Are Not Universal",
+  "date": "2025-12-30",
+  "kind": "article",
+  "threads": [
+   "MEANING",
+   "GOVERNANCE"
+  ],
+  "words": 1227
+ },
+ {
+  "file": "2025-12-20-ai-governance-the-silent-framework-that-is-already-changing-.md",
+  "title": "AI Governance: The Silent Framework That Is Already Changing the Rules of the Game",
+  "date": "2025-12-20",
+  "kind": "article",
+  "threads": [
+   "GOVERNANCE",
+   "TRUST"
+  ],
+  "words": 694
+ },
+ {
+  "file": "2025-10-29-speed-dating-with-ai-the-github-copilot.md",
+  "title": "Speed-Dating with AI: The GitHub Copilot",
+  "date": "2025-10-29",
+  "kind": "experiment",
+  "threads": [
+   "MEMORY",
+   "CURIOSITY"
+  ],
+  "words": 1490
+ },
+ {
+  "file": "2025-09-30-speed-dating-with-ai-perplexity-the-footnote-prince.md",
+  "title": "Speed Dating with AI: Perplexity – The Footnote Prince",
+  "date": "2025-09-30",
+  "kind": "experiment",
+  "threads": [
+   "CURIOSITY",
+   "TRUST"
+  ],
+  "words": 1247
+ },
+ {
+  "file": "2025-09-24-speed-dating-with-ai-chatgpt.md",
+  "title": "Speed Dating with AI: ChatGPT",
+  "date": "2025-09-24",
+  "kind": "experiment",
+  "threads": [
+   "CURIOSITY",
+   "MEMORY"
+  ],
+  "words": 1134
+ },
+ {
+  "file": "2025-09-18-speed-dating-with-ai-grok.md",
+  "title": "Speed Dating with AI: Grok",
+  "date": "2025-09-18",
+  "kind": "experiment",
+  "threads": [
+   "CURIOSITY",
+   "PROXIMITY"
+  ],
+  "words": 1061
+ },
+ {
+  "file": "2025-09-02-speed-dating-with-ai-vertex-ai.md",
+  "title": "Speed Dating with AI: Vertex AI",
+  "date": "2025-09-02",
+  "kind": "experiment",
+  "threads": [
+   "CURIOSITY",
+   "MEMORY"
+  ],
+  "words": 737
+ },
+ {
+  "file": "2025-08-24-speed-dating-with-ai-shopping-around.md",
+  "title": "Speed Dating with AI: Shopping Around",
+  "date": "2025-08-24",
+  "kind": "experiment",
+  "threads": [
+   "CURIOSITY",
+   "PROXIMITY"
+  ],
+  "words": 512
+ },
+ {
+  "file": "2025-06-19-why-the-smarter-ai-isn-t-the-one-that-predicts.md",
+  "title": "Why the Smarter AI Isn't the One That Predicts",
+  "date": "2025-06-19",
+  "kind": "article",
+  "threads": [
+   "PROXIMITY",
+   "GOVERNANCE"
+  ],
+  "words": 737
+ },
+ {
+  "file": "2025-06-11-strada-maestra-lessons-from-an-italian-curve.md",
+  "title": "Strada Maestra: Lessons from an Italian Curve",
+  "date": "2025-06-11",
+  "kind": "article",
+  "threads": [
+   "MEANING"
+  ],
+  "words": 738
+ },
+ {
+  "file": "2025-06-05-emotional-intelligence-in-the-age-of-artificial-intelligence.md",
+  "title": "Emotional Intelligence in the Age of Artificial Intelligence",
+  "date": "2025-06-05",
+  "kind": "article",
+  "threads": [
+   "PROXIMITY"
+  ],
+  "words": 531
+ },
+ {
+  "file": "2025-05-30-knowing-the-ingredients-isnt-enough-the-scientific-method-ac.md",
+  "title": "“Knowing the Ingredients Isn’t Enough” – The Scientific Method According to a Hibiscus Margarita",
+  "date": "2025-05-30",
+  "kind": "note",
+  "threads": [
+   "CURIOSITY",
+   "MEANING"
+  ],
+  "words": 431
+ },
+ {
+  "file": "2025-05-23-to-my-friends-in-tech-a-letter-of-admiration.md",
+  "title": "To My Friends in Tech: A Letter of Admiration",
+  "date": "2025-05-23",
+  "kind": "note",
+  "threads": [
+   "MEANING",
+   "PROXIMITY"
+  ],
+  "words": 440
+ },
+ {
+  "file": "2025-05-19-crisis-management-101-the-morning-everything-went-wrong-and-.md",
+  "title": "Crisis Management 101: The Morning Everything Went Wrong (and I Survived)",
+  "date": "2025-05-19",
+  "kind": "note",
+  "threads": [
+   "MEMORY"
+  ],
+  "words": 318
+ },
+ {
+  "file": "2025-05-16-can-i-call-you-uncle-too-on-unexpected-mentors-timeless-advi.md",
+  "title": "\"Can I Call You Uncle Too?\" On unexpected mentors, timeless advice, and the art of never stopping learning",
+  "date": "2025-05-16",
+  "kind": "article",
+  "threads": [
+   "PROXIMITY"
+  ],
+  "words": 570
+ },
+ {
+  "file": "2025-05-13-todo-el-mundo-es-un-pais-everyone-is-a-country-inspired-by-g.md",
+  "title": "\"TODO EL MUNDO ES UN PAÍS\" Everyone is a country… Inspired by Goya’s silent truths",
+  "date": "2025-05-13",
+  "kind": "note",
+  "threads": [
+   "PROXIMITY"
+  ],
+  "words": 497
+ }
+]
