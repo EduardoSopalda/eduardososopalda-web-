@@ -378,34 +378,83 @@
     addEventListener('pointermove', (e) => { px = e.clientX; py = e.clientY; hasPointer = true; });
     addEventListener('pointerleave', () => { hasPointer = false; px = -9999; py = -9999; });
 
-    // A real thread doesn't move on two perfectly clean sine waves — it
-    // has small, irregular give in it. The third term here is smaller,
-    // faster, and at a frequency that shares no common period with the
-    // other two, so the curve never quite repeats itself and never
-    // reads as a clean mathematical vector.
-    function nerveY(x: number, time: number) {
-      // Base sits at 0.72, not the geometric center: the purpose line
-      // lives at 56%, and the wave's own amplitude (~0.11H) means
-      // anything based much above ~0.66 swings back up through that
-      // text. Found by actually screenshotting it, not by eye — the
-      // line was cutting through "Understand it first..." at every
-      // viewport size tested.
+    // The first version of this was a closed-form sine sum: y = f(x, t).
+    // That's the actual reason it read as stiff, not the missing detail
+    // work — a pure function has no memory. Move the pointer and the
+    // curve snaps exactly to its new shape every frame, precisely
+    // reproducible, which is what a scrolling graph looks like, not a
+    // thread. A real thread has inertia: it lags behind a disturbance,
+    // eases toward rest, slightly overshoots, and neighboring points
+    // pull each other along rather than moving independently.
+    //
+    // So instead: a chain of control points, each with its own
+    // position and velocity, spring-pulled toward a slowly drifting
+    // "natural" target, then relaxed against its neighbors for
+    // coherence (tension). This is a frame of state that accumulates —
+    // exactly what the sine version didn't have.
+    const N = 42;
+    const MARGIN = 240; // points extend past both edges so ends never look clipped
+    type Pt = { x: number; y: number; vy: number; seed: number };
+    let chain: Pt[] = [];
+
+    function buildChain() {
+      chain = [];
+      for (let i = 0; i < N; i++) {
+        const x = (i / (N - 1)) * (W + MARGIN * 2) - MARGIN;
+        chain.push({ x, y: H * 0.72, vy: 0, seed: Math.random() * 1000 });
+      }
+    }
+    buildChain();
+    addEventListener('resize', buildChain);
+
+    function stepChain(dt: number) {
       const base = H * 0.72;
-      let bend = 0;
-      if (hasPointer) {
-        const d = Math.abs(x - px);
-        if (d < 360) {
-          const f = 1 - d / 360;
-          bend = (py - base) * f * f * 0.5;
+      for (const p of chain) {
+        // Slow, per-point, non-repeating drift — each point's seed
+        // means no two ever move in lockstep, so the whole chain never
+        // repeats its own shape.
+        let target =
+          base +
+          Math.sin(t * 0.05 + p.seed) * H * 0.03 +
+          Math.sin(t * 0.017 + p.seed * 1.7) * H * 0.055;
+
+        if (hasPointer) {
+          const d = Math.abs(p.x - px);
+          if (d < 420) {
+            const f = 1 - d / 420;
+            target += (py - target) * f * f * 0.6;
+          }
+        }
+
+        // Spring toward the target, damped — this is where the lag and
+        // the slight overshoot-then-settle come from.
+        p.vy += (target - p.y) * 0.02 * dt;
+        p.vy *= 0.9;
+        p.y += p.vy * dt;
+      }
+      // Tension: pull each interior point toward its neighbors' average
+      // so a disturbance travels along the chain instead of moving one
+      // point in isolation — this is what makes it read as one
+      // connected thread rather than N independent bobbing dots.
+      for (let pass = 0; pass < 2; pass++) {
+        for (let i = 1; i < chain.length - 1; i++) {
+          const avg = (chain[i - 1].y + chain[i + 1].y) / 2;
+          chain[i].y += (avg - chain[i].y) * 0.18;
         }
       }
-      return (
-        base +
-        Math.sin(x * 0.0015 + time * 0.3) * H * 0.07 +
-        Math.sin(x * 0.0039 - time * 0.19) * H * 0.028 +
-        Math.sin(x * 0.0071 + time * 0.53) * H * 0.009 +
-        bend
-      );
+    }
+
+    function chainYAt(x: number): number {
+      // Linear search is fine at N=42; find the bracketing pair and
+      // interpolate.
+      for (let i = 0; i < chain.length - 1; i++) {
+        const a = chain[i], b = chain[i + 1];
+        if (x >= a.x && x <= b.x) {
+          const f = (x - a.x) / (b.x - a.x);
+          return a.y + (b.y - a.y) * f;
+        }
+      }
+      return chain[chain.length - 1].y;
     }
 
     // Two or three points of light travel the thread's length, independent
@@ -420,16 +469,27 @@
     ];
 
     function draw() {
-      if (!reduced) t += 1 / 60;
+      const dt = reduced ? 0 : 1;
+      t += dt / 60;
+      stepChain(dt);
       ctx!.clearRect(0, 0, W, H);
 
-      const step = 6;
-      const points: { x: number; y: number }[] = [];
-      for (let x = 0; x <= W; x += step) points.push({ x, y: nerveY(x, t) });
-
+      // Straight lines between 42 sparse points read as a jagged
+      // polyline — worse than the original stiffness, not better.
+      // Quadratic-through-midpoints is the standard fix: each real
+      // point becomes a curve control point rather than a vertex, and
+      // the path passes through the midpoints between them, which
+      // reads as one continuous curve at any point count.
       function strokePath() {
         ctx!.beginPath();
-        points.forEach((p, i) => (i === 0 ? ctx!.moveTo(p.x, p.y) : ctx!.lineTo(p.x, p.y)));
+        ctx!.moveTo(chain[0].x, chain[0].y);
+        for (let i = 1; i < chain.length - 1; i++) {
+          const midX = (chain[i].x + chain[i + 1].x) / 2;
+          const midY = (chain[i].y + chain[i + 1].y) / 2;
+          ctx!.quadraticCurveTo(chain[i].x, chain[i].y, midX, midY);
+        }
+        const last = chain[chain.length - 1];
+        ctx!.lineTo(last.x, last.y);
       }
 
       // Soft glow body — wide, dim, diffuse. The thread's presence.
@@ -453,7 +513,7 @@
       for (const p of pulses) {
         const u = (t * p.speed + p.phase) % 1;
         const x = u * W;
-        const y = nerveY(x, t);
+        const y = chainYAt(x);
         // Ease opacity toward 0 at both ends of the sweep so each pulse
         // fades in/out rather than popping at the wrap.
         const edge = Math.min(u, 1 - u);
