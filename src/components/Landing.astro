@@ -1,0 +1,312 @@
+---
+// The landing — first moment of the cabinet of curiosities.
+// True black. The nerve is already crossing the screen and already
+// drifting: the site is mid thought and the visitor interrupted it.
+// Centred: the name + tagline as one block, and the purpose line below
+// it. After ~3s, or on first pointer move / scroll, the mark block
+// walks to the top left and the purpose line walks to the bottom left —
+// both stay, permanence by contrast of behaviour, not size. Nothing
+// fades to nothing; everything just gets quieter, per prototype/field.html
+// (#mark, #purpose, #meta), the working reference this ports faithfully.
+//
+// Copy below (tagline, purpose line, meta) is Eduardo's own, taken
+// verbatim from that prototype — not invented here.
+---
+
+<section class="landing" id="landing" aria-label="Eduardo Sopalda">
+  <canvas class="nerve" id="nerve" aria-hidden="true"></canvas>
+
+  <div class="mark">
+    <h1 class="wordmark">
+      <span class="wordmark-eduardo">Eduardo</span> <span class="wordmark-sopalda">Sopalda</span>
+    </h1>
+    <p class="tagline">data &middot; AI &middot; the human experience</p>
+  </div>
+
+  <p class="purpose">Understand it first. Then decide whether to trust it.</p>
+
+  <p class="meta">Barcelona<br /><a href="#" id="li">LinkedIn</a></p>
+</section>
+
+<style>
+  .landing {
+    position: relative;
+    width: 100%;
+    height: 100svh;
+    overflow: hidden;
+    background: var(--void);
+  }
+
+  .nerve {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Each of the three blocks (mark, purpose, meta) positions and
+     animates itself independently — anchored at its own left/top +
+     translate, never nested inside a container that ALSO transforms.
+     Compounding a parent transform with child transforms was an
+     earlier bug: the whole group shot off-screen because the math
+     assumed a center-pinned parent that didn't exist. */
+
+  /* The mark: name + tagline, travelling together as one unit — this
+     is what prototype/field.html's #mark does (one block, one
+     transform), not two independently-animated lines. */
+  .mark {
+    position: absolute;
+    left: 50%;
+    top: 38%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 1;
+    transition: left 2.2s var(--ease), top 2.2s var(--ease), transform 2.2s var(--ease);
+  }
+
+  body[data-landing='field'] .mark {
+    left: clamp(1.25rem, 5vw, 3rem);
+    top: clamp(1.25rem, 5vh, 3rem);
+    transform: translate(0, 0);
+    text-align: left;
+  }
+
+  /* Two names, two faces: Eduardo in Fraunces — the display system's
+     "who he is" — and Sopalda in Glacial Indifference, because the
+     surname is round-letter-heavy and reads easiest leaning into that
+     rather than fighting it. Both start out of focus and resolve in,
+     Sopalda a half-beat behind, so the eye lands on the given name
+     first and the round one gathers after. */
+  .wordmark {
+    margin: 0;
+    line-height: 1;
+  }
+
+  .wordmark-eduardo,
+  .wordmark-sopalda {
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    opacity: 0;
+    filter: blur(18px);
+    animation: resolve-focus 2.4s var(--ease) forwards;
+  }
+
+  .wordmark-eduardo {
+    font-family: var(--font-display);
+    font-variation-settings: 'SOFT' 50, 'WONK' 1;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    font-size: clamp(1.3rem, 3.6vw, 2.4rem);
+    background-image: linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 45%, var(--flesh) 55%, var(--bronze) 65%, var(--bronze-deep) 100%);
+    animation-delay: 0.2s;
+    transition: font-size 2.2s var(--ease);
+  }
+
+  .wordmark-sopalda {
+    font-family: var(--font-wordmark);
+    font-weight: 700;
+    font-size: clamp(2.6rem, 8.4vw, 5.8rem);
+    background-image: linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 35%, var(--gold) 50%, var(--bronze) 65%, var(--bronze-deep) 100%);
+    animation-delay: 0.9s;
+    transition: font-size 2.2s var(--ease);
+  }
+
+  body[data-landing='field'] .wordmark-eduardo {
+    font-size: clamp(0.65rem, 1vw, 0.8rem);
+  }
+
+  body[data-landing='field'] .wordmark-sopalda {
+    font-size: clamp(0.9rem, 1.7vw, 1.15rem);
+  }
+
+  @keyframes resolve-focus {
+    to {
+      opacity: 1;
+      filter: blur(0);
+    }
+  }
+
+  .tagline {
+    margin: 0.55rem 0 0;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(0.9rem, 1.7vw, 1.4rem);
+    color: var(--flesh);
+    letter-spacing: 0.02em;
+    opacity: 0;
+    animation: resolve-quiet 1.6s var(--ease) forwards;
+    animation-delay: 1.6s;
+    transition: font-size 2.2s var(--ease), margin-top 2.2s var(--ease);
+  }
+
+  body[data-landing='field'] .tagline {
+    font-size: clamp(0.65rem, 0.9vw, 0.78rem);
+    margin-top: 0.2rem;
+  }
+
+  .purpose {
+    position: absolute;
+    left: 50%;
+    top: 56%;
+    transform: translateX(-50%);
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(0.9rem, 1.5vw, 1.25rem);
+    color: var(--bone);
+    text-align: center;
+    white-space: nowrap;
+    opacity: 0;
+    z-index: 1;
+    animation: resolve-quiet 1.6s var(--ease) forwards;
+    animation-delay: 2s;
+    transition: left 2.2s var(--ease), top 2.2s var(--ease), transform 2.2s var(--ease), font-size 2.2s var(--ease), color 2.2s var(--ease);
+  }
+
+  body[data-landing='field'] .purpose {
+    left: clamp(1.25rem, 5vw, 3rem);
+    top: calc(100% - clamp(1.5rem, 4.5vh, 3rem));
+    transform: translateX(0);
+    font-size: clamp(0.7rem, 1vw, 0.85rem);
+    color: rgba(243, 235, 224, 0.62);
+  }
+
+  @keyframes resolve-quiet {
+    to { opacity: 1; }
+  }
+
+  .meta {
+    position: fixed;
+    right: clamp(1.25rem, 5vw, 3rem);
+    bottom: clamp(1.25rem, 5vh, 3rem);
+    z-index: 1;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(227, 175, 149, 0.35);
+    text-align: right;
+    line-height: 2;
+    opacity: 0;
+    transition: opacity 1.4s var(--ease);
+  }
+
+  .meta a {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(227, 175, 149, 0.25);
+  }
+
+  .meta a:hover {
+    color: var(--gold);
+  }
+
+  body[data-landing='field'] .meta {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mark,
+    .wordmark-eduardo,
+    .wordmark-sopalda,
+    .tagline,
+    .purpose,
+    .meta {
+      transition: none;
+    }
+    .wordmark-eduardo,
+    .wordmark-sopalda,
+    .tagline,
+    .purpose {
+      animation: none;
+      opacity: 1;
+      filter: none;
+    }
+  }
+</style>
+
+<script>
+  function initLanding() {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // No real LinkedIn URL yet — stub the click rather than send anyone
+    // to a placeholder href.
+    document.getElementById('li')?.addEventListener('click', (e) => e.preventDefault());
+
+    function enterField() {
+      document.body.dataset.landing = 'field';
+    }
+
+    if (reduced) {
+      enterField();
+    } else {
+      setTimeout(enterField, 3000);
+      addEventListener('pointermove', enterField, { once: true });
+      addEventListener('wheel', enterField, { once: true, passive: true });
+      addEventListener('touchstart', enterField, { once: true, passive: true });
+    }
+  }
+
+  function initNerve() {
+    const canvas = document.getElementById('nerve') as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let W = 0, H = 0, DPR = Math.min(devicePixelRatio || 1, 2);
+    let px = -9999, py = -9999, hasPointer = false, t = 0;
+
+    function resize() {
+      W = innerWidth; H = innerHeight;
+      canvas!.width = W * DPR;
+      canvas!.height = H * DPR;
+      canvas!.style.width = W + 'px';
+      canvas!.style.height = H + 'px';
+      ctx!.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+    resize();
+    addEventListener('resize', resize);
+
+    addEventListener('pointermove', (e) => { px = e.clientX; py = e.clientY; hasPointer = true; });
+    addEventListener('pointerleave', () => { hasPointer = false; px = -9999; py = -9999; });
+
+    function nerveY(x: number, time: number) {
+      const base = H * 0.55;
+      let bend = 0;
+      if (hasPointer) {
+        const d = Math.abs(x - px);
+        if (d < 360) {
+          const f = 1 - d / 360;
+          bend = (py - base) * f * f * 0.5;
+        }
+      }
+      return base + Math.sin(x * 0.0015 + time * 0.3) * H * 0.07 + Math.sin(x * 0.0039 - time * 0.19) * H * 0.028 + bend;
+    }
+
+    function draw() {
+      if (!reduced) t += 1 / 60;
+      ctx!.clearRect(0, 0, W, H);
+      ctx!.beginPath();
+      const step = 8;
+      for (let x = 0; x <= W; x += step) {
+        const y = nerveY(x, t);
+        if (x === 0) ctx!.moveTo(x, y);
+        else ctx!.lineTo(x, y);
+      }
+      ctx!.strokeStyle = 'rgba(247, 197, 106, 0.85)';
+      ctx!.lineWidth = 1.5;
+      ctx!.shadowColor = 'rgba(247, 197, 106, 0.55)';
+      ctx!.shadowBlur = 6;
+      ctx!.stroke();
+
+      if (!reduced) requestAnimationFrame(draw);
+    }
+    draw();
+  }
+
+  initLanding();
+  initNerve();
+</script>

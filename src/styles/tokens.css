@@ -1,62 +1,37 @@
-/* EDUARDOsopalda — The Threshold
-   Palette + type + timing tokens. Swap here only if the dark
-   variant is ever preferred (see brief section 4). */
+/* EDUARDOsopalda — The Cabinet of Curiosities
+   Palette + type tokens, per docs/DESIGN-SYSTEM.md, with one deliberate
+   extension: --bronze, to match the warm rim-light already baked into
+   the specimen renders (the goldfish/jellyfish/octopus/chimp series),
+   and one deliberate exception: --font-wordmark, a bespoke rounded
+   face reserved for the name itself, not the Fraunces display system. */
 
 :root {
-  /* Palette — the dark treatment (telon/bone/bronze), per the working
-     prototype and Eduardo's direction. Canvas is the room; telon is
-     reserved deeper still, for rooms beyond this hero. */
-  --canvas: #161010;
-  --ink: #E3DAC9;
-  --bronze: #A6753C;
-  --burgundy: #5C1B26;
-  --ceniza: #9A8E76;
-  --telon: #0E0A0A;
+  /* Colour — void must be true black (see compositing note in
+     DESIGN-SYSTEM.md): specimens rendered on pure black disappear with
+     no cutting, no alpha, no mask, and their glow survives intact. */
+  --void: #000000;
+  --bone: #F3EBE0;
+  --flesh: #E3AF95;
+  --gold: #F7C56A;
+  --neon: #FF6E93;
+
+  /* Bronze — the specimens' own glow, one step down from gold. Used
+     for the wordmark gradient and nowhere gold itself needs to stay
+     scarce. */
+  --bronze: #A6613A;
+  --bronze-deep: #5E3018;
 
   --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
 
   /* Type */
-  --font-display: 'Jost', sans-serif;
-  --font-body: 'Josefin Sans', sans-serif;
+  --font-display: 'Fraunces Variable', 'Fraunces', serif;
+  --font-reading: 'Newsreader Variable', 'Newsreader', serif;
   --font-mono: 'IBM Plex Mono', monospace;
 
-  /* Choreography — all dials, tune freely */
-  --t-curtain: 1.6s;
-  --t-name: 4s;
-  --t-line: 6s;
-  --t-cue: 8s;
-
-  /* Video treatment, tunable — grades the raw clip into an oxidized
-     bronze sculpture, not a sepia photo. Near-monochromatic: contrast
-     and deep blacks do the work, saturation stays low so color reads
-     as patina rather than "warm filter." */
-  --grade-filter: contrast(1.48) brightness(0.36) saturate(0.22) sepia(0.32) hue-rotate(-12deg);
-  --metallic-opacity: 0.55;
-
-  /* Cropped in tight on purpose: a fragment (the pig, a hand, a leash),
-     not the recognizable full street-ad frame. --crop-scale is the
-     resting zoom; --zoom-scale is the small extra drift on top of it. */
-  --crop-scale: 2.6;
-  --zoom-scale: 1.04;
-  --zoom-duration: 20s;
-
-  /* Dark metals only, for the drifting plates — a Lament Configuration
-     feel: cold, brushed, beveled, never a flat paint swatch. */
-  --metal-gunmetal-lo: #17181a;
-  --metal-gunmetal-hi: #4d5157;
-  --metal-iron-lo: #0c0c0c;
-  --metal-iron-hi: #33322f;
-  --metal-brass-lo: #241a10;
-  --metal-brass-hi: #5e4626;
-  --metal-pewter-lo: #1d1e1a;
-  --metal-pewter-hi: #4c4c42;
-
-  /* The void, beyond the threshold — a deliberate contrast to the
-     hero's dark telon/bronze: desaturated white, natural pig pink,
-     graphite ink for text. No metals, no walls, no seams here. */
-  --void-white: #F4F2ED;
-  --void-white-dim: #E7E3D9;
-  --void-pig: #D9A9A0;
-  --void-ink: #211D1B;
-  --void-fade: #B9B3A6;
+  /* The surname half of the wordmark: Glacial Indifference, chosen
+     because "Sopalda" is round-letter-heavy and reads easiest in a
+     face that leans into that rather than fighting it. Deliberately
+     not Fraunces — the one exception to the display system, reserved
+     for the name-mark alone. "Eduardo" stays in Fraunces (--font-display). */
+  --font-wordmark: 'Glacial Indifference', sans-serif;
 }

@@ -1,10 +1,10 @@
 ---
-import '@fontsource/jost/600.css';
-import '@fontsource/josefin-sans/300.css';
+import '@fontsource-variable/fraunces/full.css';
+import '@fontsource-variable/newsreader';
+import 'typeface-glacial-indifference';
 import '@fontsource/ibm-plex-mono/400.css';
 import '../styles/global.css';
-import Threshold from '../components/Threshold.astro';
-import Beyond from '../components/Beyond.astro';
+import Landing from '../components/Landing.astro';
 ---
 
 <!doctype html>
@@ -16,8 +16,7 @@ import Beyond from '../components/Beyond.astro';
     <title>EDUARDOsopalda</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
-  <body>
-    <Threshold />
-    <Beyond />
+  <body data-landing="landing">
+    <Landing />
   </body>
 </html>
