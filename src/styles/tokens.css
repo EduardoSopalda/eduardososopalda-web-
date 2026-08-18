@@ -28,6 +28,11 @@
   --nacar: #F1EDE6;
   --nacar-sheen: #FDFBF6;
 
+  /* Champagne — warmer and more golden than nácar, closer to the
+     bronze/gold family. For text that needs real warmth rather than
+     a pale shell tone (e.g. the tagline). */
+  --champagne: #E6CB9B;
+
   --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
 
   /* Type */
