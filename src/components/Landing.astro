@@ -29,6 +29,11 @@
   <p class="purpose">Understand it first&hellip; then you decide if you trust it.</p>
 
   <p class="meta">Barcelona<br /><a href="#" id="li">LinkedIn</a></p>
+
+  <button type="button" class="cue" id="cue" aria-label="Continue">
+    <span class="cue-line" aria-hidden="true"></span>
+    <span class="cue-dot" aria-hidden="true"></span>
+  </button>
 </section>
 
 <style>
@@ -224,22 +229,87 @@
     opacity: 1;
   }
 
+  /* ---- The cue: no word for "enter," just a quiet signal that there's
+     more here — same gold-pulse language as the nerve and its stops.
+     This is the thing that actually gets someone into the field now;
+     nothing times out on its own (see script below), so this has to
+     read as clickable without saying so. Pointer move / scroll / touch
+     still work too, as a low-friction fallback for anyone who starts
+     exploring before noticing it. */
+  .cue {
+    position: absolute;
+    left: 50%;
+    bottom: clamp(2.25rem, 8vh, 4rem);
+    transform: translateX(-50%);
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    background: none;
+    border: none;
+    padding: 0.9rem;
+    margin: -0.9rem;
+    cursor: pointer;
+    opacity: 0;
+    animation: resolve-quiet 1.6s var(--ease) forwards;
+    animation-delay: 2.6s;
+    transition: opacity 1.4s var(--ease);
+  }
+
+  .cue-line {
+    width: 1px;
+    height: 2.1rem;
+    background: linear-gradient(to bottom, transparent, var(--gold));
+  }
+
+  .cue-dot {
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 0.7rem 0.15rem rgba(247, 197, 106, 0.5);
+    animation: cue-breathe 2.6s var(--ease) infinite;
+  }
+
+  @keyframes cue-breathe {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.3); }
+  }
+
+  .cue:focus-visible {
+    outline: 1.5px solid var(--gold);
+    outline-offset: 4px;
+    border-radius: 2px;
+  }
+
+  body[data-landing='field'] .cue {
+    animation: none;
+    opacity: 0;
+    pointer-events: none;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .mark,
     .wordmark-eduardo,
     .wordmark-sopalda,
     .tagline,
     .purpose,
-    .meta {
+    .meta,
+    .cue {
       transition: none;
     }
     .wordmark-eduardo,
     .wordmark-sopalda,
     .tagline,
-    .purpose {
+    .purpose,
+    .cue {
       animation: none;
       opacity: 1;
       filter: none;
+    }
+    .cue-dot {
+      animation: none;
     }
   }
 </style>
@@ -259,8 +329,12 @@
     if (reduced) {
       enterField();
     } else {
-      setTimeout(enterField, 5000);
-      addEventListener('pointermove', enterField, { once: true });
+      // Deliberate only — nothing times out and forces this on its own,
+      // and plain pointer movement doesn't count: someone just moving
+      // the mouse to read isn't choosing to continue. The cue is the
+      // intended path; scroll and touch are the low-friction fallback,
+      // since both are already an act of trying to move past this screen.
+      document.getElementById('cue')?.addEventListener('click', enterField);
       addEventListener('wheel', enterField, { once: true, passive: true });
       addEventListener('touchstart', enterField, { once: true, passive: true });
     }
