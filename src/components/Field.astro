@@ -371,14 +371,21 @@
       chain = [];
       for (let i = 0; i < N; i++) {
         const x = (i / (N - 1)) * (W + MARGIN * 2) - MARGIN;
-        chain.push({ x, y: H * 0.55, vy: 0, seed: Math.random() * 1000 });
+        chain.push({ x, y: H * 0.55, vy: 0, seed: i });
       }
     }
 
     function stepChain(dt: number) {
       const base = H * 0.55 + worldYoff * 0.4;
+      // Phase is driven by chain index (position along the rope), not a
+      // per-point random seed -- neighbors need correlated targets or the
+      // tension pass below (which pulls each point toward its neighbors'
+      // average) cancels the noise into a flat line instead of a wave.
       for (const p of chain) {
-        let target = base + Math.sin(t * 0.05 + p.seed) * H * 0.03 + Math.sin(t * 0.017 + p.seed * 1.7) * H * 0.055;
+        let target =
+          base +
+          Math.sin(t * 0.045 + p.seed * 0.16) * H * 0.03 +
+          Math.sin(t * 0.02 + p.seed * 0.42 + 2.1) * H * 0.045;
         if (hasPointer) {
           const d = Math.abs(p.x - px);
           if (d < 420) {
@@ -386,9 +393,14 @@
             target += (py - target) * f * f * 0.6;
           }
         }
-        p.vy += (target - p.y) * 0.02 * dt;
+        // Per-frame spring, not per-second: dt is a fixed 1/60 constant
+        // everywhere else in this file (worldX, the tension pass below),
+        // so scaling only the gain by dt while damping stayed at a flat
+        // 0.9 every frame made the spring ~3600x too weak to ever reach
+        // its target -- the chain sat frozen at its initial resting y.
+        p.vy += (target - p.y) * 0.02;
         p.vy *= 0.9;
-        p.y += p.vy * dt;
+        p.y += p.vy;
       }
       for (let pass = 0; pass < 2; pass++) {
         for (let i = 1; i < chain.length - 1; i++) {
