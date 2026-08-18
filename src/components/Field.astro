@@ -1,0 +1,841 @@
+---
+// The field itself: the cabinet of curiosities. Specimens and
+// fragments drifting at depth, a nerve running through it, the seven
+// stops riding that nerve. Ported from prototype/field.html's proven
+// drift/decay math (CLAUDE.md: "it already works"), with the nerve
+// upgraded to the spring/tension chain from Landing.astro rather than
+// its original closed-form sine.
+//
+// Fragment text is Eduardo's own, verbatim from fragments/fragments.md
+// (50 real fragments, thread + weight). Specimen images/video are the
+// confirmed assets from this session — see public/specimens/. Three
+// have real "DATA" catalogue tags per the cabinet's thread mapping
+// decided earlier; the rest (seaweed, eyefish) are untagged
+// atmosphere, on purpose — the tag is the scarce thing here, same
+// logic as gold.
+---
+
+<section class="field" id="field-root" aria-hidden="true">
+  <canvas class="nerve" id="nerve"></canvas>
+  <div class="world" id="world"></div>
+</section>
+
+<style is:global>
+  /* is:global, not scoped: every selector below targets elements
+     created dynamically via document.createElement in the script —
+     .spec, .frag, .stop, .spec-tag, and their children. Astro scopes
+     component styles by attaching a data-astro-cid attribute to
+     elements written in the template; JS-created elements never get
+     that attribute, so scoped rules silently never matched them. This
+     was the actual cause of fragments/specimens rendering in normal
+     block flow (stacking downward) instead of at their absolute,
+     transform-driven positions — found by measuring getBoundingClientRect
+     against the inline transform and seeing them disagree by a growing
+     offset per element, not by inspection. */
+  .field {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    background: var(--void);
+    cursor: grab;
+  }
+
+  .field:active {
+    cursor: grabbing;
+  }
+
+  .nerve {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .world {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 2.6s var(--ease);
+    pointer-events: none;
+  }
+
+  body[data-landing='field'] .world {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* ---- specimens ---- */
+  .spec {
+    position: absolute;
+    top: 0;
+    left: 0;
+    line-height: 0;
+    will-change: transform;
+  }
+
+  /* --awake and --flare are both set per-frame in JS (0 to 1 floats).
+     Awake is proximity/tap; flare is the unprompted cycle. Combined
+     additively into one filter so a specimen that happens to flare
+     while already awake gets both effects at once instead of one
+     silently overriding the other via CSS specificity. */
+  .spec img,
+  .spec video {
+    display: block;
+    width: 100%;
+    height: auto;
+    filter:
+      brightness(calc(0.6 + var(--awake, 0) * 0.4 + var(--flare, 0) * 0.55))
+      contrast(1.24)
+      saturate(calc(0.85 + var(--awake, 0) * 0.15 + var(--flare, 0) * 0.3));
+    transition: filter 1.1s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+
+  .spec-tag {
+    position: absolute;
+    left: 0;
+    bottom: -1.6em;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0;
+    white-space: nowrap;
+    transition: opacity 0.8s var(--ease);
+  }
+
+  .spec[data-awake='1'] .spec-tag {
+    opacity: 0.85;
+  }
+
+  /* Unprompted flare — the one piece of the field that doesn't wait for
+     the visitor to do anything. --flare is set per-frame in JS (0 to 1,
+     triangular envelope over ~2.6s, randomized per specimen); driven as
+     a halo here rather than a CSS animation, since its timing isn't a
+     fixed loop. The brightness/saturation half of the effect lives in
+     the .spec img/video rule above, combined with --awake. */
+  .spec {
+    filter: drop-shadow(0 0 calc(var(--flare, 0) * 34px) rgba(247, 197, 106, calc(var(--flare, 0) * 0.55)));
+  }
+
+  /* ---- fragments: quotes, not one-liners. Wrapped to 2-3 lines,
+     a specimen card rather than wallpaper text, since there are only
+     ever a handful on screen at once now. ---- */
+  .frag-slot {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: min(24em, 62vw);
+    will-change: transform, opacity;
+  }
+
+  .frag-quote {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-variation-settings: 'SOFT' 50, 'WONK' 1;
+    color: var(--flesh);
+    line-height: 1.4;
+    border-left: 1px solid rgba(247, 197, 106, 0.22);
+    padding-left: 0.85em;
+    transition: border-color 0.7s var(--ease);
+  }
+
+  .frag-quote i {
+    display: inline-block;
+    font-style: normal;
+    will-change: transform, opacity;
+  }
+
+  .frag-ref {
+    margin: 0.5em 0 0 0.85em;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.05em;
+    color: rgba(227, 175, 149, 0.45);
+    line-height: 1.3;
+  }
+
+  /* ---- nerve stops ---- */
+  .stop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: rgba(243, 235, 224, 0.3);
+    white-space: nowrap;
+    transition: color 0.5s, letter-spacing 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
+    cursor: pointer;
+    /* z-index alone decides paint ORDER, not whether something behind
+       it is still legible -- plain text with nothing opaque behind it
+       still visually tangles with whatever's underneath regardless of
+       stacking order. A soft black halo (not a hard-edged box, to stay
+       out of the way aesthetically) keeps navigation readable no
+       matter what a fragment happens to be drifting through at the
+       same spot. */
+    text-shadow: 0 0 4px var(--void), 0 0 8px var(--void), 0 0 14px var(--void);
+  }
+
+  .stop[data-near='1'] {
+    color: var(--gold);
+    letter-spacing: 0.52em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spec img,
+    .spec video,
+    .spec-tag,
+    .stop {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  type Specimen = {
+    img?: string;
+    vid?: string;
+    poster?: string;
+    w: number;
+    y: number;
+    d: number;
+    tag?: string;
+  };
+
+  const SPECIMENS: Specimen[] = [
+    { img: '/specimens/chimp.png', w: 460, y: 0.28, d: 1.0, tag: 'No.04 · PROXIMITY · CHIMP' },
+    { img: '/specimens/octopus.png', w: 380, y: 0.64, d: 0.86, tag: 'No.02 · GOVERNANCE · OCTOPUS' },
+    { vid: '/specimens/jellyfish.mp4', poster: '/specimens/jellyfish.png', w: 300, y: 0.2, d: 0.66, tag: 'No.03 · TRUST · JELLYFISH' },
+    { vid: '/specimens/goldfish.mp4', poster: '/specimens/goldfish.png', w: 400, y: 0.7, d: 0.94, tag: 'No.01 · MEMORY · GOLDFISH' },
+    { img: '/specimens/pig.png', w: 300, y: 0.42, d: 0.74, tag: 'No.05 · MEANING · PIGLET' },
+    { img: '/specimens/eyefish.png', w: 260, y: 0.54, d: 0.58 },
+    { vid: '/specimens/seaweed.mp4', w: 300, y: 0.34, d: 0.5 },
+  ];
+
+  // "source" is the real article title each fragment was lifted from
+  // (content/_index.json), not invented — matches fragments.md's own
+  // arrow-target links, resolved to human-readable titles. Fragments
+  // tagged "site" in the source file aren't from any article (a line
+  // about the site itself), so they carry no source and the field
+  // just omits the reference line for those.
+  const FRAGS: { text: string; thread: string; weight: 'short' | 'long'; source: string | null }[] = [
+    { text: 'Governance without proximity is just opinion with a logo.', thread: 'MEANING', weight: 'short', source: 'The Data Is My Shepherd, I Shall Not Want' },
+    { text: 'That, my friends, is semantic chaos.', thread: 'MEANING', weight: 'short', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
+    { text: 'Spoiler: nobody ever finds them.', thread: 'MEANING', weight: 'short', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
+    { text: 'You cannot build a data-quality penthouse on semantic quicksand.', thread: 'MEANING', weight: 'short', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
+    { text: 'Ask five people across one company what "revenue" means and you will get eight answers.', thread: 'MEANING', weight: 'long', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
+    { text: 'Everyone guards their terminology like national heritage.', thread: 'MEANING', weight: 'short', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
+    { text: 'That is archaeology, not governance.', thread: 'MEANING', weight: 'short', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
+    { text: 'Wittgenstein is still making data people uncomfortable. Good. We deserve it.', thread: 'MEANING', weight: 'long', source: 'The Data Is My Shepherd, I Shall Not Want' },
+    { text: 'A document waiting to be ignored.', thread: 'MEANING', weight: 'short', source: 'The Data Is My Shepherd, I Shall Not Want' },
+    { text: 'Asking the right question is key to getting the right results.', thread: 'MEANING', weight: 'short', source: "Why the Smarter AI Isn't the One That Predicts" },
+    { text: 'Governance becomes a narrative, not a reflex.', thread: 'GOVERNANCE', weight: 'short', source: 'When Governance Lives in Memory… and When It Becomes Muscle' },
+    { text: 'Most organizations already have governance. What they lack is practice.', thread: 'GOVERNANCE', weight: 'short', source: 'When Governance Lives in Memory… and When It Becomes Muscle' },
+    { text: 'That is the day governance stops being memory. And starts being muscle.', thread: 'GOVERNANCE', weight: 'long', source: 'When Governance Lives in Memory… and When It Becomes Muscle' },
+    { text: 'Tools do not replace culture. But they prevent culture from breaking at the first tight deadline.', thread: 'GOVERNANCE', weight: 'long', source: 'When Governance Lives in Memory… and When It Becomes Muscle' },
+    { text: 'No se puede empezar la casa por el tejado.', thread: 'GOVERNANCE', weight: 'short', source: 'From Stewardship to Partnership: Why GenAI in Data Governance Is No Longer “The Future”' },
+    { text: 'Human override exists only on paper.', thread: 'GOVERNANCE', weight: 'short', source: 'Responsible AI in Times of Chaos: Why Trust Is Not a Feature' },
+    { text: 'AI is a hammer.', thread: 'GOVERNANCE', weight: 'short', source: 'The Data Is My Shepherd, I Shall Not Want' },
+    { text: 'I do not trust evangelists.', thread: 'TRUST', weight: 'short', source: 'The Data Is My Shepherd, I Shall Not Want' },
+    { text: 'AI does not hesitate. It does not say, "That depends." It simply responds.', thread: 'TRUST', weight: 'long', source: 'ATLAN´S Great Data Debate: DATA, Dashboards, AI, and the Fragility of Meaning' },
+    { text: 'Agents do not own risk. They do not carry accountability. Humans do… always.', thread: 'TRUST', weight: 'long', source: 'From Stewardship to Partnership: Why GenAI in Data Governance Is No Longer “The Future”' },
+    { text: "In times of chaos, the absence of friction is not efficiency. It's a warning sign.", thread: 'TRUST', weight: 'long', source: 'Responsible AI in Times of Chaos: Why Trust Is Not a Feature' },
+    { text: 'Speed is mistaken for correctness.', thread: 'TRUST', weight: 'short', source: 'Responsible AI in Times of Chaos: Why Trust Is Not a Feature' },
+    { text: 'There is nothing more human than that.', thread: 'TRUST', weight: 'short', source: 'From Stewardship to Partnership: Why GenAI in Data Governance Is No Longer “The Future”' },
+    { text: "It didn't replace the rep. It amplified their judgment.", thread: 'TRUST', weight: 'short', source: "Why the Smarter AI Isn't the One That Predicts" },
+    { text: 'Nothing here is for sale, including the optimism.', thread: 'TRUST', weight: 'short', source: null },
+    { text: 'Come down from the tower. The coffee is better down here.', thread: 'PROXIMITY', weight: 'long', source: 'The Data Is My Shepherd, I Shall Not Want' },
+    { text: 'Data is love.', thread: 'PROXIMITY', weight: 'short', source: 'The Data Is My Shepherd, I Shall Not Want' },
+    { text: 'They didn’t want promises. They wanted presence.', thread: 'PROXIMITY', weight: 'short', source: '“TODO EL MUNDO ES UN PAÍS” Everyone is a country… Inspired by Goya’s silent truths' },
+    { text: 'Everyone is a country.', thread: 'PROXIMITY', weight: 'short', source: '“TODO EL MUNDO ES UN PAÍS” Everyone is a country… Inspired by Goya’s silent truths' },
+    { text: "Don't stop learning.", thread: 'PROXIMITY', weight: 'short', source: '"Can I Call You Uncle Too?" On unexpected mentors, timeless advice, and the art of never stopping learning' },
+    { text: "Sometimes it's a sentence. Sometimes it's silence.", thread: 'PROXIMITY', weight: 'short', source: '"Can I Call You Uncle Too?" On unexpected mentors, timeless advice, and the art of never stopping learning' },
+    { text: 'But I switched them. The wrong envelopes went to the wrong places.', thread: 'PROXIMITY', weight: 'long', source: 'Crisis Management 101: The Morning Everything Went Wrong (and I Survived)' },
+    { text: "Not every Monday starts right.", thread: 'PROXIMITY', weight: 'short', source: 'Crisis Management 101: The Morning Everything Went Wrong (and I Survived)' },
+    { text: 'Roughly two thousand of them are relevant.', thread: 'MEMORY', weight: 'short', source: 'Ten Thousand Files, Two Thousand That Mattered' },
+    { text: 'It is like guarding the vault while the library burns down.', thread: 'MEMORY', weight: 'long', source: 'Ten Thousand Files, Two Thousand That Mattered' },
+    { text: 'Data is perishable.', thread: 'MEMORY', weight: 'short', source: 'Ten Thousand Files, Two Thousand That Mattered' },
+    { text: 'Nobody was going to read that folder.', thread: 'MEMORY', weight: 'short', source: 'Ten Thousand Files, Two Thousand That Mattered' },
+    { text: "Raw data doesn't scream; it whispers.", thread: 'MEMORY', weight: 'short', source: 'Strada Maestra: Lessons from an Italian Curve' },
+    { text: 'You do not reach 1,000 without doing 1.', thread: 'CURIOSITY', weight: 'short', source: 'Starting the AI Journey: From First Wave to Business-Ready AI' },
+    { text: 'Most people never start because they wait to feel "ready."', thread: 'CURIOSITY', weight: 'long', source: 'Starting the AI Journey: From First Wave to Business-Ready AI' },
+    { text: 'Knowing the ingredients is not the same as understanding the process.', thread: 'CURIOSITY', weight: 'long', source: '“Knowing the Ingredients Isn’t Enough” – The Scientific Method According to a Hibiscus Margarita' },
+    { text: 'Three ingredients. How hard could it be?', thread: 'CURIOSITY', weight: 'short', source: '“Knowing the Ingredients Isn’t Enough” – The Scientific Method According to a Hibiscus Margarita' },
+    { text: 'Spoiler: it was a disaster.', thread: 'CURIOSITY', weight: 'short', source: '“Knowing the Ingredients Isn’t Enough” – The Scientific Method According to a Hibiscus Margarita' },
+    { text: 'Lime is the green one.', thread: 'CURIOSITY', weight: 'short', source: '“Knowing the Ingredients Isn’t Enough” – The Scientific Method According to a Hibiscus Margarita' },
+    { text: 'Honk before the curve.', thread: 'CURIOSITY', weight: 'short', source: 'Strada Maestra: Lessons from an Italian Curve' },
+    { text: 'And yes, there was a goat.', thread: 'CURIOSITY', weight: 'short', source: 'Strada Maestra: Lessons from an Italian Curve' },
+    { text: 'Claude: Therapy-energy, brings herbal tea and listening skills.', thread: 'CURIOSITY', weight: 'long', source: 'Speed Dating with AI: Grok' },
+    { text: 'Bring holy water and a firewall.', thread: 'CURIOSITY', weight: 'short', source: 'Speed-Dating with AI: The GitHub Copilot' },
+    { text: "You know you won't find \"the one\" if you don't shop around.", thread: 'CURIOSITY', weight: 'long', source: 'Speed Dating with AI: Shopping Around' },
+    { text: 'Also, ducks. Always ducks.', thread: 'CURIOSITY', weight: 'short', source: 'Speed Dating with AI: ChatGPT' },
+  ];
+
+  const STOPS: [string, string][] = [
+    ['Manifesto', 'the argument, stated once'],
+    ['Writing', 'twenty five signals'],
+    ['Lexicon', 'contested words, defined in public'],
+    ['Out Loud', 'talks, panels, DAMA, the white paper'],
+    ['First Dates', 'speed dating the machines'],
+    ['Who', 'Panama, Finland, Barcelona, a goat'],
+    ['Contact', 'a question, answerable'],
+  ];
+
+  function initField() {
+    const root = document.getElementById('field-root');
+    const world = document.getElementById('world');
+    const canvas = document.getElementById('nerve') as HTMLCanvasElement | null;
+    if (!root || !world || !canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Almost everything in the field -- specimens waking, fragments
+    // holding their decay, the nerve bending -- is a hover mechanic.
+    // A touch device has no hover, only contact, so on its own terms
+    // the whole system would sit permanently in its dimmest, most
+    // passive state: specimens never wake, fragments never get
+    // "held." isTouch changes two things below: specimens wake on tap
+    // instead of proximity, and fragments get a longer base lifespan
+    // since touch users can't hover-protect one the way a mouse user
+    // can.
+    const isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+    let W = 0, H = 0, DPR = Math.min(devicePixelRatio || 1, 2);
+    let WORLD_W = 4200;
+    let px = -9999, py = -9999, hasPointer = false, t = 0;
+    let worldX = 0, targetX = 0, worldYoff = 0, dragY = 0;
+    let drag = false, lastX = 0, lastY = 0;
+
+    const wrap = (v: number, m: number) => ((v % m) + m) % m;
+
+    function resize() {
+      W = innerWidth; H = innerHeight;
+      DPR = Math.min(devicePixelRatio || 1, 2);
+      WORLD_W = Math.max(1600, Math.min(4600, W * 3.2));
+      canvas!.width = W * DPR;
+      canvas!.height = H * DPR;
+      canvas!.style.width = W + 'px';
+      canvas!.style.height = H + 'px';
+      ctx!.setTransform(DPR, 0, 0, DPR, 0, 0);
+      buildChain();
+    }
+
+    // ---- input: drag horizontal (infinite) + vertical (bounded), wheel scrolls horizontal ----
+    addEventListener('pointermove', (e) => {
+      px = e.clientX; py = e.clientY; hasPointer = true;
+      if (drag) {
+        targetX -= (e.clientX - lastX) * 1.7;
+        dragY = Math.max(-H * 0.34, Math.min(H * 0.34, dragY + (e.clientY - lastY) * 0.9));
+        lastX = e.clientX; lastY = e.clientY;
+      }
+    });
+    addEventListener('pointerleave', () => { hasPointer = false; px = -9999; py = -9999; });
+    root.addEventListener('pointerdown', (e) => {
+      if ((e.target as HTMLElement).closest('.stop')) return;
+      drag = true; lastX = e.clientX; lastY = e.clientY;
+    });
+    addEventListener('pointerup', () => { drag = false; });
+    addEventListener('wheel', (e) => {
+      targetX += (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) * 1.1;
+    }, { passive: true });
+
+    // ================= nerve: spring/tension chain (see Landing.astro) =================
+    const N = 42, MARGIN = 240;
+    type Pt = { x: number; y: number; vy: number; seed: number };
+    let chain: Pt[] = [];
+    function buildChain() {
+      chain = [];
+      for (let i = 0; i < N; i++) {
+        const x = (i / (N - 1)) * (W + MARGIN * 2) - MARGIN;
+        chain.push({ x, y: H * 0.55, vy: 0, seed: Math.random() * 1000 });
+      }
+    }
+
+    function stepChain(dt: number) {
+      const base = H * 0.55 + worldYoff * 0.4;
+      for (const p of chain) {
+        let target = base + Math.sin(t * 0.05 + p.seed) * H * 0.03 + Math.sin(t * 0.017 + p.seed * 1.7) * H * 0.055;
+        if (hasPointer) {
+          const d = Math.abs(p.x - px);
+          if (d < 420) {
+            const f = 1 - d / 420;
+            target += (py - target) * f * f * 0.6;
+          }
+        }
+        p.vy += (target - p.y) * 0.02 * dt;
+        p.vy *= 0.9;
+        p.y += p.vy * dt;
+      }
+      for (let pass = 0; pass < 2; pass++) {
+        for (let i = 1; i < chain.length - 1; i++) {
+          const avg = (chain[i - 1].y + chain[i + 1].y) / 2;
+          chain[i].y += (avg - chain[i].y) * 0.18;
+        }
+      }
+    }
+
+    function chainYAt(x: number): number {
+      for (let i = 0; i < chain.length - 1; i++) {
+        const a = chain[i], b = chain[i + 1];
+        if (x >= a.x && x <= b.x) return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
+      }
+      return chain[chain.length - 1].y;
+    }
+
+    const pulses = [
+      { speed: 0.055, phase: 0.1 }, { speed: 0.08, phase: 0.62 }, { speed: 0.038, phase: 0.35 },
+    ];
+
+    // ================= specimens =================
+    const specNodes = SPECIMENS.map((s, i) => {
+      const el = document.createElement('div');
+      el.className = 'spec';
+      if (s.img) {
+        el.innerHTML = `<img src="${s.img}" alt="" loading="lazy" />`;
+      } else if (s.vid) {
+        const posterAttr = s.poster ? ` poster="${s.poster}"` : '';
+        el.innerHTML = `<video src="${s.vid}" muted loop playsinline preload="metadata"${posterAttr}></video>`;
+      }
+      if (s.tag) {
+        const tag = document.createElement('span');
+        tag.className = 'spec-tag';
+        tag.textContent = s.tag;
+        el.appendChild(tag);
+      }
+      world!.appendChild(el);
+      const video = el.querySelector('video') as HTMLVideoElement | null;
+      if (video) video.playbackRate = 0.45; // slowed for drama, per Eduardo's note
+      el.style.zIndex = String(Math.round(s.d * 100));
+      const node = {
+        el, s, video,
+        xn: (i + 0.5) / SPECIMENS.length + (((i * 67) % 140) - 70) / 4200,
+        awake: 0, playing: false,
+        tapAwakeUntil: 0,
+        leanX: 0, leanY: 0,
+        // Independent per-specimen cycle, per the field spec: "Every
+        // few seconds one flares unprompted... asking to be looked
+        // at." This is the one piece of aliveness that doesn't depend
+        // on anyone doing anything -- everything else in the field
+        // reacts to the visitor; this one doesn't wait to be found.
+        flareIn: 6 + Math.random() * 14,
+        flareT: -1, // -1 = not currently flaring
+      };
+      if (isTouch) {
+        el.style.pointerEvents = 'auto';
+        el.addEventListener('click', () => { node.tapAwakeUntil = t + 4; });
+      }
+      return node;
+    });
+
+    // ================= fragments =================
+    // Only a handful exist on screen at once -- an infinite pool of 50,
+    // shown a few at a time, staggered in over the first ~20s rather
+    // than all appearing together. When one decays and dies, that slot
+    // (after a pause) picks the next fragment from a shuffled queue and
+    // arrives fresh: from a random edge (left/right/top/bottom), never
+    // just sliding in with the horizontal drift like everything else.
+    // Depth is shared with specimens for z-index, so fragments genuinely
+    // interleave in front of and behind them rather than always sitting
+    // on top.
+    // Fewer concurrent slots on narrow screens: 6 quote blocks (each up
+    // to several lines tall) simply don't fit in the compressed vertical
+    // range a short mobile viewport leaves once the bottom marks are
+    // excluded -- window.innerWidth here, not the closure W, since W
+    // isn't set until the first resize() call, which happens after this.
+    const SLOT_COUNT = window.innerWidth < 500 ? 3 : 6;
+    type Dir = 'left' | 'right' | 'top' | 'bottom';
+    const DIRS: Dir[] = ['left', 'right', 'top', 'bottom'];
+
+    let fragQueue: number[] = [];
+    function shuffledIndices(n: number) {
+      const arr = Array.from({ length: n }, (_, i) => i);
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+    function nextFragIndex() {
+      if (fragQueue.length === 0) fragQueue = shuffledIndices(FRAGS.length);
+      return fragQueue.pop()!;
+    }
+
+    const fragSlots = Array.from({ length: SLOT_COUNT }, (_, slotI) => {
+      const el = document.createElement('div');
+      el.className = 'frag-slot';
+      const quote = document.createElement('p');
+      quote.className = 'frag-quote';
+      const ref = document.createElement('p');
+      ref.className = 'frag-ref';
+      el.appendChild(quote);
+      el.appendChild(ref);
+      world!.appendChild(el);
+
+      return {
+        el, quote, ref, slotI,
+        chars: [] as HTMLElement[],
+        parts: [] as { vx: number; vy: number; baseX: number; baseY: number }[],
+        fragIndex: -1,
+        depth: 0.5,
+        xn: 0, y: 0.5,
+        entryDir: 'left' as Dir,
+        entryAmt: 0, // 1 = fully off-screen at entry point, eases to 0
+        aloneTime: 0,
+        state: 'pending' as 'pending' | 'alive' | 'decaying' | 'dead',
+        pendingT: slotI * 3 + Math.random() * 3, // staggered first appearance
+        decayT: 0,
+        respawnDelay: 0,
+      };
+    });
+
+    function assignFragment(slot: typeof fragSlots[number]) {
+      const idx = nextFragIndex();
+      const f = FRAGS[idx];
+      slot.fragIndex = idx;
+      slot.quote.textContent = '';
+      slot.chars = [...f.text].map((ch) => {
+        const s = document.createElement('i');
+        // A plain space as the sole content of an inline-block collapses
+        // to zero width -- browsers trim it as leading/trailing
+        // whitespace in the inline formatting context. A non-breaking
+        // space renders as a real, breakable-adjacent gap instead.
+        s.textContent = ch === ' ' ? ' ' : ch;
+        slot.quote.appendChild(s);
+        return s;
+      });
+      slot.parts = slot.chars.map(() => ({ vx: 0, vy: 0, baseX: 0, baseY: 0 }));
+      slot.ref.textContent = f.source ? `— ${f.source}` : '';
+      slot.ref.style.display = f.source ? '' : 'none';
+      slot.ref.style.transition = '';
+      slot.ref.style.opacity = '1';
+      slot.depth = f.weight === 'long' ? 0.6 + Math.random() * 0.22 : 0.3 + Math.random() * 0.3;
+      // Spawn where it can actually be seen: solve for the xn that puts
+      // it inside the current viewport right now, rather than a random
+      // point across the whole ~4000px world (which, at 6 slots vs. a
+      // world wider than the screen, would spawn most fragments
+      // somewhere nobody will ever scroll to before they decay unseen).
+      const depthFactor = 0.3 + slot.depth * 0.7;
+      // Leaves room on the right for the quote block's own width (up to
+      // 24em) so it doesn't spawn overflowing off the viewport edge —
+      // the first version placed it anywhere up to 0.84W and clipped.
+      const targetScreenX = W * 0.06 + Math.random() * W * 0.5;
+      const offset = Math.min(520, W * 0.4);
+      slot.xn = wrap(targetScreenX + offset + worldX * depthFactor, WORLD_W) / WORLD_W;
+      // Kept out of the bottom ~35% of the viewport on purpose -- the
+      // purpose line and the Barcelona/LinkedIn mark both live down
+      // there and are permanent fixtures, not other field objects a
+      // fragment is allowed to drift behind. Within that, each slot
+      // gets its own dedicated vertical band rather than a fully
+      // random y -- random placement let multiple 3-6-line quote
+      // blocks land on the same rows and pile up unreadably, most
+      // visible on short mobile viewports where the usable range is
+      // small to begin with. One slot, one shelf.
+      const bandH = 0.55 / SLOT_COUNT;
+      slot.y = 0.08 + slot.slotI * bandH + Math.random() * bandH * 0.5;
+      slot.entryDir = DIRS[Math.floor(Math.random() * DIRS.length)];
+      slot.entryAmt = 1;
+      slot.aloneTime = 0;
+      slot.state = 'alive';
+      slot.quote.style.fontSize = (14 + (1 - Math.abs(slot.depth - 0.7)) * 8) + 'px';
+      slot.el.style.zIndex = String(Math.round(slot.depth * 100));
+    }
+
+    // ================= stops =================
+    const stopNodes = STOPS.map((s, i) => {
+      const el = document.createElement('div');
+      el.className = 'stop';
+      el.textContent = s[0];
+      world!.appendChild(el);
+      el.style.zIndex = '200'; // navigation always reads above specimens/fragments
+      el.addEventListener('click', () => {
+        // Rooms aren't built yet — quiet no-op stub, matching the
+        // working prototype's own "not built yet" placeholder rather
+        // than a dead link or a fake destination.
+        el.dataset.justClicked = '1';
+        setTimeout(() => delete el.dataset.justClicked, 400);
+      });
+      return { el, name: s[0], xn: (i + 0.5) / STOPS.length, near: 0 };
+    });
+
+    // Touch users can't rest a cursor near a fragment to hold it the
+    // way a mouse user can, so they'd otherwise lose every fragment to
+    // decay regardless of attention. Longer base life, not proximity,
+    // is the touch equivalent -- unconditional rather than earned.
+    const DECAY_AFTER = isTouch ? 70 : 40, DECAY_TIME = 10;
+
+    function frame() {
+      const dt = reduced ? 0 : 1 / 60;
+      t += dt;
+
+      if (!drag) targetX += reduced ? 0 : 0.34;
+      worldX += (targetX - worldX) * 0.06;
+      worldYoff = dragY + (reduced ? 0 : Math.sin(t * 0.0817) * H * 0.16);
+
+      stepChain(dt);
+      ctx!.clearRect(0, 0, W, H);
+
+      function strokePath() {
+        ctx!.beginPath();
+        ctx!.moveTo(chain[0].x, chain[0].y);
+        for (let i = 1; i < chain.length - 1; i++) {
+          const midX = (chain[i].x + chain[i + 1].x) / 2;
+          const midY = (chain[i].y + chain[i + 1].y) / 2;
+          ctx!.quadraticCurveTo(chain[i].x, chain[i].y, midX, midY);
+        }
+        const last = chain[chain.length - 1];
+        ctx!.lineTo(last.x, last.y);
+      }
+
+      ctx!.shadowColor = 'rgba(247, 197, 106, 0.5)';
+      ctx!.shadowBlur = 10;
+      strokePath();
+      ctx!.strokeStyle = 'rgba(198, 145, 68, 0.4)';
+      ctx!.lineWidth = 3;
+      ctx!.stroke();
+
+      ctx!.shadowBlur = 4;
+      strokePath();
+      ctx!.strokeStyle = 'rgba(247, 197, 106, 0.9)';
+      ctx!.lineWidth = 1;
+      ctx!.stroke();
+
+      ctx!.shadowBlur = 8;
+      ctx!.shadowColor = 'rgba(255, 226, 160, 0.9)';
+      for (const p of pulses) {
+        const u = (t * p.speed + p.phase) % 1;
+        const x = u * W;
+        const y = chainYAt(x);
+        const edge = Math.min(u, 1 - u);
+        const o = Math.min(1, edge * 9);
+        ctx!.beginPath();
+        ctx!.arc(x, y, 2.4, 0, Math.PI * 2);
+        ctx!.fillStyle = `rgba(255, 232, 176, ${o})`;
+        ctx!.fill();
+      }
+      ctx!.shadowBlur = 0;
+
+      // ---- specimens: position by depth, wake near cursor, play video on approach ----
+      const flareLines: { x: number; y1: number; y2: number; o: number }[] = [];
+      for (const n of specNodes) {
+        // Scale floor was 0.48 with no cap, so on a 375px phone a
+        // 380-460px specimen (octopus, chimp) still rendered at
+        // ~180-220px -- roughly half the screen width for one
+        // creature. Lower floor plus an explicit viewport-relative cap
+        // (found by actually measuring a mobile screenshot, not by
+        // assumption) keeps any single specimen from dominating a
+        // narrow screen.
+        const w = Math.min(n.s.w * Math.min(1, Math.max(0.32, W / 1300)), W * 0.42);
+        const baseX = wrap(n.xn * WORLD_W - worldX * n.s.d, WORLD_W) - Math.min(520, W * 0.4);
+        const baseY = n.s.y * H - w * 0.3 + worldYoff * n.s.d;
+        const bsx = baseX + w * 0.5, bsy = baseY + w * 0.28;
+
+        // Lean toward the cursor within a wider radius than the wake
+        // threshold -- a specimen reaches slightly before it fully
+        // wakes, rather than snapping straight from asleep to awake.
+        let wantLeanX = 0, wantLeanY = 0;
+        if (!isTouch && hasPointer) {
+          const d = Math.hypot(px - bsx, py - bsy);
+          const leanRadius = w * 1.2;
+          if (d < leanRadius) {
+            const f = 1 - d / leanRadius;
+            const dx = px - bsx, dy = py - bsy, dl = Math.hypot(dx, dy) || 1;
+            wantLeanX = (dx / dl) * f * f * 14;
+            wantLeanY = (dy / dl) * f * f * 9;
+          }
+        }
+        n.leanX += (wantLeanX - n.leanX) * 0.08;
+        n.leanY += (wantLeanY - n.leanY) * 0.08;
+
+        const X = baseX + n.leanX, Y = baseY + n.leanY;
+        const sx = X + w * 0.5, sy = Y + w * 0.28;
+        const on = X > -(w + 300) && X < W + 300 && Y > -w && Y < H + w;
+        n.el.style.visibility = on ? 'visible' : 'hidden';
+
+        // Flare cycle runs regardless of on-screen visibility (a
+        // specimen currently off-screen shouldn't come back already
+        // mid-flare, or always flare the instant it enters view) --
+        // this is genuinely unprompted, not a reaction to being seen.
+        if (n.flareT < 0) {
+          n.flareIn -= dt;
+          if (n.flareIn <= 0) { n.flareT = 0; n.flareIn = 9 + Math.random() * 16; }
+        } else {
+          n.flareT += dt;
+          if (n.flareT >= 2.6) n.flareT = -1;
+        }
+        const flareEnv = n.flareT < 0 ? 0
+          : n.flareT < 0.8 ? n.flareT / 0.8
+          : n.flareT < 1.8 ? 1
+          : (2.6 - n.flareT) / 0.8;
+        n.el.style.setProperty('--flare', flareEnv.toFixed(3));
+
+        if (!on) continue;
+        n.el.style.transform = `translate3d(${X}px, ${Y}px, 0)`;
+        n.el.style.width = w + 'px';
+
+        if (flareEnv > 0.02) {
+          flareLines.push({ x: sx, y1: sy, y2: chainYAt(sx), o: flareEnv * 0.7 });
+        }
+
+        let want = 0;
+        if (isTouch) {
+          want = t < n.tapAwakeUntil ? 1 : 0;
+        } else if (hasPointer) {
+          const d = Math.hypot(px - sx, py - sy);
+          want = d < w * 0.62 ? 1 : 0;
+        }
+        n.awake += (want - n.awake) * 0.1;
+        n.el.dataset.awake = n.awake > 0.5 ? '1' : '0';
+        n.el.style.setProperty('--awake', n.awake.toFixed(3));
+
+        if (n.video) {
+          const shouldPlay = n.awake > 0.4;
+          if (shouldPlay && !n.playing) { n.video.play().catch(() => {}); n.playing = true; }
+          if (!shouldPlay && n.playing) { n.video.pause(); n.playing = false; }
+        }
+      }
+
+      // The flare's "gold line dropped to the nerve" -- drawn after the
+      // specimen loop so sx/chainYAt are already known for anything
+      // currently flaring.
+      if (flareLines.length) {
+        ctx!.shadowBlur = 10;
+        ctx!.shadowColor = 'rgba(247, 197, 106, 0.7)';
+        for (const fl of flareLines) {
+          ctx!.beginPath();
+          ctx!.moveTo(fl.x, fl.y1);
+          ctx!.lineTo(fl.x, fl.y2);
+          ctx!.strokeStyle = `rgba(247, 197, 106, ${fl.o})`;
+          ctx!.lineWidth = 1.2;
+          ctx!.stroke();
+        }
+        ctx!.shadowBlur = 0;
+      }
+
+      // ---- fragments: staggered entrance, drift, decay onto the nerve ----
+      const ENTRY_OFFSET = 320;
+      for (const slot of fragSlots) {
+        if (slot.state === 'pending') {
+          slot.pendingT -= dt;
+          slot.el.style.visibility = 'hidden';
+          if (slot.pendingT <= 0) assignFragment(slot);
+          continue;
+        }
+
+        const depthFactor = 0.3 + slot.depth * 0.7;
+        const baseX = wrap(slot.xn * WORLD_W - worldX * depthFactor, WORLD_W) - Math.min(520, W * 0.4);
+        const baseY = slot.y * H + worldYoff * depthFactor;
+
+        // Entry offset decays toward 0 each frame -- this is what makes
+        // a freshly spawned fragment fly in from its chosen edge rather
+        // than simply fading in at its resting spot.
+        slot.entryAmt *= reduced ? 0 : 0.94;
+        const off = slot.entryAmt * ENTRY_OFFSET;
+        let ox = 0, oy = 0;
+        if (slot.entryDir === 'left') ox = -off;
+        else if (slot.entryDir === 'right') ox = off;
+        else if (slot.entryDir === 'top') oy = -off;
+        else oy = off;
+
+        const X = baseX + ox, Y = baseY + oy;
+        // Visibility is checked against the RESTING position (no entry
+        // offset), and requires the whole block to fit -- not a wide
+        // fixed-pixel margin around a partial overlap. The old margin
+        // (700px) was sized for a 1440px desktop; on a 375px phone
+        // that's nearly the entire screen of allowed overhang, so a
+        // fragment mid-drift off the edge stayed "visible" while
+        // showing only its right half, reading as clipped, broken
+        // text. A fragment flying in from off-screen (entryAmt > 0)
+        // still needs to render during that animation even though its
+        // CURRENT position is off-screen on purpose, so containment is
+        // judged on baseX/baseY, not the animated X/Y.
+        const bw = slot.el.offsetWidth || 260;
+        const bh = slot.el.offsetHeight || 80;
+        const on = baseX > -10 && baseX + bw < W + 10 && baseY > -10 && baseY + bh < H + 10;
+        slot.el.style.visibility = on ? 'visible' : 'hidden';
+        slot.el.style.transform = `translate3d(${X}px, ${Y}px, 0)`;
+
+        const fx = X + 140, fy = Y + 20;
+        let near = false;
+        if (on && hasPointer) near = Math.hypot(px - fx, py - fy) < 240;
+
+        if (slot.state === 'alive') {
+          slot.aloneTime += near ? -dt * 2.5 : dt;
+          if (slot.aloneTime < 0) slot.aloneTime = 0;
+          const opacity = (0.5 + (1 - slot.depth) * 0.15 + (near ? 0.3 : 0)) * (1 - slot.entryAmt * 0.85);
+          slot.el.style.opacity = String(Math.min(0.92, opacity));
+
+          if (slot.aloneTime >= DECAY_AFTER) {
+            slot.state = 'decaying'; slot.decayT = 0;
+            // Capture each letter's real on-screen position right now,
+            // before any decay transform is applied -- the fall target
+            // is the nerve's actual curve at THIS letter's x, not one
+            // shared point for the whole fragment, so letters land
+            // along the wire's shape rather than dropping to one spot.
+            slot.chars.forEach((c, i) => {
+              const r = c.getBoundingClientRect();
+              slot.parts[i] = {
+                vx: (Math.random() - 0.5) * 44,
+                vy: 6 + Math.random() * 18,
+                baseX: r.left + r.width / 2,
+                baseY: r.top,
+              };
+            });
+            slot.ref.style.transition = `opacity ${DECAY_TIME}s linear`;
+            slot.ref.style.opacity = '0';
+          }
+        } else if (slot.state === 'decaying') {
+          slot.decayT += dt;
+          const prog = Math.min(1, slot.decayT / DECAY_TIME);
+          slot.el.style.opacity = '1';
+          slot.chars.forEach((c, i) => {
+            const p = slot.parts[i];
+            const targetY = chainYAt(p.baseX) - p.baseY;
+            const x = p.vx * slot.decayT * 0.5;
+            const y = p.vy * slot.decayT * 0.7 + targetY * Math.min(1, slot.decayT / 3.5);
+            c.style.transform = `translate(${x}px, ${y}px) rotate(${p.vx * Math.min(1, prog * 1.3)}deg)`;
+            c.style.opacity = String(Math.max(0, 1 - prog));
+            // The letters turn gold as they come apart -- Eduardo's
+            // "small gold particles" image, made literal.
+            c.style.color = prog > 0.15 ? 'var(--gold)' : '';
+          });
+          if (slot.decayT >= DECAY_TIME) {
+            slot.state = 'dead';
+            slot.respawnDelay = 1 + Math.random() * 2.5;
+          }
+        } else {
+          // dead -- waiting to respawn as a different fragment
+          slot.el.style.opacity = '0';
+          slot.respawnDelay -= dt;
+          if (slot.respawnDelay <= 0) assignFragment(slot);
+        }
+      }
+      // ---- stops ----
+      for (const s of stopNodes) {
+        const X = wrap(s.xn * WORLD_W - worldX, WORLD_W) - Math.min(520, W * 0.4);
+        const y = chainYAt(X) + worldYoff * 0.02;
+        const on = X > -200 && X < W + 200;
+        s.el.style.visibility = on ? 'visible' : 'hidden';
+        if (!on) continue;
+        s.el.style.transform = `translate3d(${X}px, ${y - 22}px, 0)`;
+        let near = 0;
+        if (hasPointer) {
+          const d = Math.hypot(px - X, py - y);
+          near = d < 140 ? 1 : 0;
+        }
+        s.el.dataset.near = String(near);
+      }
+
+      requestAnimationFrame(frame);
+    }
+
+    resize();
+    addEventListener('resize', resize);
+    frame();
+  }
+
+  initField();
+</script>
