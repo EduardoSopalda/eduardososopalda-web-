@@ -17,9 +17,12 @@
 
   /* Bronze — the specimens' own glow, one step down from gold. Used
      for the wordmark gradient and nowhere gold itself needs to stay
-     scarce. */
+     scarce. --bronze-deep was originally #5E3018 (1.91:1 against
+     black, fails WCAG AA even for large text) — lightened to clear
+     3.96:1, since it's the darkest stop in every wordmark/purpose-line
+     gradient and shows up at real size on the small corner-state text. */
   --bronze: #A6613A;
-  --bronze-deep: #5E3018;
+  --bronze-deep: #9C5B36;
 
   /* Nácar — mother-of-pearl, the other classic Wunderkammer material
      alongside bronze and glass. A cool, faintly iridescent white,

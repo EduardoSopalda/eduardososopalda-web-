@@ -151,10 +151,11 @@
     letter-spacing: 0.32em;
     text-transform: uppercase;
     text-align: center;
+    text-wrap: balance;
     opacity: 0;
     animation: resolve-quiet 1.6s var(--ease) forwards;
     animation-delay: 1.6s;
-    transition: font-size 2.2s var(--ease), margin-top 2.2s var(--ease);
+    transition: font-size 2.2s var(--ease), margin-top 2.2s var(--ease), letter-spacing 2.2s var(--ease);
   }
 
   body[data-landing='field'] .tagline {
@@ -162,6 +163,16 @@
     letter-spacing: 0.24em;
     margin-top: 0.3rem;
     text-align: left;
+  }
+
+  /* Full tracking only works with room to breathe. Under ~30rem the
+     wide letter-spacing that reads as a specimen tag on desktop pushes
+     this onto three ragged lines instead — found by actually
+     screenshotting a phone-width viewport, not by assumption. */
+  @media (max-width: 30rem) {
+    .tagline {
+      letter-spacing: 0.14em;
+    }
   }
 
   .purpose {
@@ -373,7 +384,13 @@
     // other two, so the curve never quite repeats itself and never
     // reads as a clean mathematical vector.
     function nerveY(x: number, time: number) {
-      const base = H * 0.55;
+      // Base sits at 0.72, not the geometric center: the purpose line
+      // lives at 56%, and the wave's own amplitude (~0.11H) means
+      // anything based much above ~0.66 swings back up through that
+      // text. Found by actually screenshotting it, not by eye — the
+      // line was cutting through "Understand it first..." at every
+      // viewport size tested.
+      const base = H * 0.72;
       let bend = 0;
       if (hasPointer) {
         const d = Math.abs(x - px);
