@@ -106,23 +106,42 @@
     opacity: 0.85;
   }
 
-  /* ---- fragments ---- */
-  .frag {
+  /* ---- fragments: quotes, not one-liners. Wrapped to 2-3 lines,
+     a specimen card rather than wallpaper text, since there are only
+     ever a handful on screen at once now. ---- */
+  .frag-slot {
     position: absolute;
     top: 0;
     left: 0;
-    white-space: nowrap;
+    width: min(24em, 62vw);
+    will-change: transform, opacity;
+  }
+
+  .frag-quote {
+    margin: 0;
     font-family: var(--font-display);
     font-weight: 400;
     font-variation-settings: 'SOFT' 50, 'WONK' 1;
     color: var(--flesh);
-    will-change: transform;
+    line-height: 1.4;
+    border-left: 1px solid rgba(247, 197, 106, 0.22);
+    padding-left: 0.85em;
+    transition: border-color 0.7s var(--ease);
   }
 
-  .frag i {
+  .frag-quote i {
     display: inline-block;
     font-style: normal;
     will-change: transform, opacity;
+  }
+
+  .frag-ref {
+    margin: 0.5em 0 0 0.85em;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.05em;
+    color: rgba(227, 175, 149, 0.45);
+    line-height: 1.3;
   }
 
   /* ---- nerve stops ---- */
@@ -176,57 +195,63 @@
     { vid: '/specimens/seaweed.mp4', w: 300, y: 0.34, d: 0.5 },
   ];
 
-  const FRAGS: { text: string; thread: string; weight: 'short' | 'long' }[] = [
-    { text: 'Governance without proximity is just opinion with a logo.', thread: 'MEANING', weight: 'short' },
-    { text: 'That, my friends, is semantic chaos.', thread: 'MEANING', weight: 'short' },
-    { text: 'Spoiler: nobody ever finds them.', thread: 'MEANING', weight: 'short' },
-    { text: 'You cannot build a data-quality penthouse on semantic quicksand.', thread: 'MEANING', weight: 'short' },
-    { text: 'Ask five people across one company what "revenue" means and you will get eight answers.', thread: 'MEANING', weight: 'long' },
-    { text: 'Everyone guards their terminology like national heritage.', thread: 'MEANING', weight: 'short' },
-    { text: 'That is archaeology, not governance.', thread: 'MEANING', weight: 'short' },
-    { text: 'Wittgenstein is still making data people uncomfortable. Good. We deserve it.', thread: 'MEANING', weight: 'long' },
-    { text: 'A document waiting to be ignored.', thread: 'MEANING', weight: 'short' },
-    { text: 'Asking the right question is key to getting the right results.', thread: 'MEANING', weight: 'short' },
-    { text: 'Governance becomes a narrative, not a reflex.', thread: 'GOVERNANCE', weight: 'short' },
-    { text: 'Most organizations already have governance. What they lack is practice.', thread: 'GOVERNANCE', weight: 'short' },
-    { text: 'That is the day governance stops being memory. And starts being muscle.', thread: 'GOVERNANCE', weight: 'long' },
-    { text: 'Tools do not replace culture. But they prevent culture from breaking at the first tight deadline.', thread: 'GOVERNANCE', weight: 'long' },
-    { text: 'No se puede empezar la casa por el tejado.', thread: 'GOVERNANCE', weight: 'short' },
-    { text: 'Human override exists only on paper.', thread: 'GOVERNANCE', weight: 'short' },
-    { text: 'AI is a hammer.', thread: 'GOVERNANCE', weight: 'short' },
-    { text: 'I do not trust evangelists.', thread: 'TRUST', weight: 'short' },
-    { text: 'AI does not hesitate. It does not say, "That depends." It simply responds.', thread: 'TRUST', weight: 'long' },
-    { text: 'Agents do not own risk. They do not carry accountability. Humans do… always.', thread: 'TRUST', weight: 'long' },
-    { text: "In times of chaos, the absence of friction is not efficiency. It's a warning sign.", thread: 'TRUST', weight: 'long' },
-    { text: 'Speed is mistaken for correctness.', thread: 'TRUST', weight: 'short' },
-    { text: 'There is nothing more human than that.', thread: 'TRUST', weight: 'short' },
-    { text: "It didn't replace the rep. It amplified their judgment.", thread: 'TRUST', weight: 'short' },
-    { text: 'Nothing here is for sale, including the optimism.', thread: 'TRUST', weight: 'short' },
-    { text: 'Come down from the tower. The coffee is better down here.', thread: 'PROXIMITY', weight: 'long' },
-    { text: 'Data is love.', thread: 'PROXIMITY', weight: 'short' },
-    { text: 'They didn’t want promises. They wanted presence.', thread: 'PROXIMITY', weight: 'short' },
-    { text: 'Everyone is a country.', thread: 'PROXIMITY', weight: 'short' },
-    { text: "Don't stop learning.", thread: 'PROXIMITY', weight: 'short' },
-    { text: "Sometimes it's a sentence. Sometimes it's silence.", thread: 'PROXIMITY', weight: 'short' },
-    { text: 'But I switched them. The wrong envelopes went to the wrong places.', thread: 'PROXIMITY', weight: 'long' },
-    { text: "Not every Monday starts right.", thread: 'PROXIMITY', weight: 'short' },
-    { text: 'Roughly two thousand of them are relevant.', thread: 'MEMORY', weight: 'short' },
-    { text: 'It is like guarding the vault while the library burns down.', thread: 'MEMORY', weight: 'long' },
-    { text: 'Data is perishable.', thread: 'MEMORY', weight: 'short' },
-    { text: 'Nobody was going to read that folder.', thread: 'MEMORY', weight: 'short' },
-    { text: "Raw data doesn't scream; it whispers.", thread: 'MEMORY', weight: 'short' },
-    { text: 'You do not reach 1,000 without doing 1.', thread: 'CURIOSITY', weight: 'short' },
-    { text: 'Most people never start because they wait to feel "ready."', thread: 'CURIOSITY', weight: 'long' },
-    { text: 'Knowing the ingredients is not the same as understanding the process.', thread: 'CURIOSITY', weight: 'long' },
-    { text: 'Three ingredients. How hard could it be?', thread: 'CURIOSITY', weight: 'short' },
-    { text: 'Spoiler: it was a disaster.', thread: 'CURIOSITY', weight: 'short' },
-    { text: 'Lime is the green one.', thread: 'CURIOSITY', weight: 'short' },
-    { text: 'Honk before the curve.', thread: 'CURIOSITY', weight: 'short' },
-    { text: 'And yes, there was a goat.', thread: 'CURIOSITY', weight: 'short' },
-    { text: 'Claude: Therapy-energy, brings herbal tea and listening skills.', thread: 'CURIOSITY', weight: 'long' },
-    { text: 'Bring holy water and a firewall.', thread: 'CURIOSITY', weight: 'short' },
-    { text: "You know you won't find \"the one\" if you don't shop around.", thread: 'CURIOSITY', weight: 'long' },
-    { text: 'Also, ducks. Always ducks.', thread: 'CURIOSITY', weight: 'short' },
+  // "source" is the real article title each fragment was lifted from
+  // (content/_index.json), not invented — matches fragments.md's own
+  // arrow-target links, resolved to human-readable titles. Fragments
+  // tagged "site" in the source file aren't from any article (a line
+  // about the site itself), so they carry no source and the field
+  // just omits the reference line for those.
+  const FRAGS: { text: string; thread: string; weight: 'short' | 'long'; source: string | null }[] = [
+    { text: 'Governance without proximity is just opinion with a logo.', thread: 'MEANING', weight: 'short', source: 'The Data Is My Shepherd, I Shall Not Want' },
+    { text: 'That, my friends, is semantic chaos.', thread: 'MEANING', weight: 'short', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
+    { text: 'Spoiler: nobody ever finds them.', thread: 'MEANING', weight: 'short', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
+    { text: 'You cannot build a data-quality penthouse on semantic quicksand.', thread: 'MEANING', weight: 'short', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
+    { text: 'Ask five people across one company what "revenue" means and you will get eight answers.', thread: 'MEANING', weight: 'long', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
+    { text: 'Everyone guards their terminology like national heritage.', thread: 'MEANING', weight: 'short', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
+    { text: 'That is archaeology, not governance.', thread: 'MEANING', weight: 'short', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
+    { text: 'Wittgenstein is still making data people uncomfortable. Good. We deserve it.', thread: 'MEANING', weight: 'long', source: 'The Data Is My Shepherd, I Shall Not Want' },
+    { text: 'A document waiting to be ignored.', thread: 'MEANING', weight: 'short', source: 'The Data Is My Shepherd, I Shall Not Want' },
+    { text: 'Asking the right question is key to getting the right results.', thread: 'MEANING', weight: 'short', source: "Why the Smarter AI Isn't the One That Predicts" },
+    { text: 'Governance becomes a narrative, not a reflex.', thread: 'GOVERNANCE', weight: 'short', source: 'When Governance Lives in Memory… and When It Becomes Muscle' },
+    { text: 'Most organizations already have governance. What they lack is practice.', thread: 'GOVERNANCE', weight: 'short', source: 'When Governance Lives in Memory… and When It Becomes Muscle' },
+    { text: 'That is the day governance stops being memory. And starts being muscle.', thread: 'GOVERNANCE', weight: 'long', source: 'When Governance Lives in Memory… and When It Becomes Muscle' },
+    { text: 'Tools do not replace culture. But they prevent culture from breaking at the first tight deadline.', thread: 'GOVERNANCE', weight: 'long', source: 'When Governance Lives in Memory… and When It Becomes Muscle' },
+    { text: 'No se puede empezar la casa por el tejado.', thread: 'GOVERNANCE', weight: 'short', source: 'From Stewardship to Partnership: Why GenAI in Data Governance Is No Longer “The Future”' },
+    { text: 'Human override exists only on paper.', thread: 'GOVERNANCE', weight: 'short', source: 'Responsible AI in Times of Chaos: Why Trust Is Not a Feature' },
+    { text: 'AI is a hammer.', thread: 'GOVERNANCE', weight: 'short', source: 'The Data Is My Shepherd, I Shall Not Want' },
+    { text: 'I do not trust evangelists.', thread: 'TRUST', weight: 'short', source: 'The Data Is My Shepherd, I Shall Not Want' },
+    { text: 'AI does not hesitate. It does not say, "That depends." It simply responds.', thread: 'TRUST', weight: 'long', source: 'ATLAN´S Great Data Debate: DATA, Dashboards, AI, and the Fragility of Meaning' },
+    { text: 'Agents do not own risk. They do not carry accountability. Humans do… always.', thread: 'TRUST', weight: 'long', source: 'From Stewardship to Partnership: Why GenAI in Data Governance Is No Longer “The Future”' },
+    { text: "In times of chaos, the absence of friction is not efficiency. It's a warning sign.", thread: 'TRUST', weight: 'long', source: 'Responsible AI in Times of Chaos: Why Trust Is Not a Feature' },
+    { text: 'Speed is mistaken for correctness.', thread: 'TRUST', weight: 'short', source: 'Responsible AI in Times of Chaos: Why Trust Is Not a Feature' },
+    { text: 'There is nothing more human than that.', thread: 'TRUST', weight: 'short', source: 'From Stewardship to Partnership: Why GenAI in Data Governance Is No Longer “The Future”' },
+    { text: "It didn't replace the rep. It amplified their judgment.", thread: 'TRUST', weight: 'short', source: "Why the Smarter AI Isn't the One That Predicts" },
+    { text: 'Nothing here is for sale, including the optimism.', thread: 'TRUST', weight: 'short', source: null },
+    { text: 'Come down from the tower. The coffee is better down here.', thread: 'PROXIMITY', weight: 'long', source: 'The Data Is My Shepherd, I Shall Not Want' },
+    { text: 'Data is love.', thread: 'PROXIMITY', weight: 'short', source: 'The Data Is My Shepherd, I Shall Not Want' },
+    { text: 'They didn’t want promises. They wanted presence.', thread: 'PROXIMITY', weight: 'short', source: '“TODO EL MUNDO ES UN PAÍS” Everyone is a country… Inspired by Goya’s silent truths' },
+    { text: 'Everyone is a country.', thread: 'PROXIMITY', weight: 'short', source: '“TODO EL MUNDO ES UN PAÍS” Everyone is a country… Inspired by Goya’s silent truths' },
+    { text: "Don't stop learning.", thread: 'PROXIMITY', weight: 'short', source: '"Can I Call You Uncle Too?" On unexpected mentors, timeless advice, and the art of never stopping learning' },
+    { text: "Sometimes it's a sentence. Sometimes it's silence.", thread: 'PROXIMITY', weight: 'short', source: '"Can I Call You Uncle Too?" On unexpected mentors, timeless advice, and the art of never stopping learning' },
+    { text: 'But I switched them. The wrong envelopes went to the wrong places.', thread: 'PROXIMITY', weight: 'long', source: 'Crisis Management 101: The Morning Everything Went Wrong (and I Survived)' },
+    { text: "Not every Monday starts right.", thread: 'PROXIMITY', weight: 'short', source: 'Crisis Management 101: The Morning Everything Went Wrong (and I Survived)' },
+    { text: 'Roughly two thousand of them are relevant.', thread: 'MEMORY', weight: 'short', source: 'Ten Thousand Files, Two Thousand That Mattered' },
+    { text: 'It is like guarding the vault while the library burns down.', thread: 'MEMORY', weight: 'long', source: 'Ten Thousand Files, Two Thousand That Mattered' },
+    { text: 'Data is perishable.', thread: 'MEMORY', weight: 'short', source: 'Ten Thousand Files, Two Thousand That Mattered' },
+    { text: 'Nobody was going to read that folder.', thread: 'MEMORY', weight: 'short', source: 'Ten Thousand Files, Two Thousand That Mattered' },
+    { text: "Raw data doesn't scream; it whispers.", thread: 'MEMORY', weight: 'short', source: 'Strada Maestra: Lessons from an Italian Curve' },
+    { text: 'You do not reach 1,000 without doing 1.', thread: 'CURIOSITY', weight: 'short', source: 'Starting the AI Journey: From First Wave to Business-Ready AI' },
+    { text: 'Most people never start because they wait to feel "ready."', thread: 'CURIOSITY', weight: 'long', source: 'Starting the AI Journey: From First Wave to Business-Ready AI' },
+    { text: 'Knowing the ingredients is not the same as understanding the process.', thread: 'CURIOSITY', weight: 'long', source: '“Knowing the Ingredients Isn’t Enough” – The Scientific Method According to a Hibiscus Margarita' },
+    { text: 'Three ingredients. How hard could it be?', thread: 'CURIOSITY', weight: 'short', source: '“Knowing the Ingredients Isn’t Enough” – The Scientific Method According to a Hibiscus Margarita' },
+    { text: 'Spoiler: it was a disaster.', thread: 'CURIOSITY', weight: 'short', source: '“Knowing the Ingredients Isn’t Enough” – The Scientific Method According to a Hibiscus Margarita' },
+    { text: 'Lime is the green one.', thread: 'CURIOSITY', weight: 'short', source: '“Knowing the Ingredients Isn’t Enough” – The Scientific Method According to a Hibiscus Margarita' },
+    { text: 'Honk before the curve.', thread: 'CURIOSITY', weight: 'short', source: 'Strada Maestra: Lessons from an Italian Curve' },
+    { text: 'And yes, there was a goat.', thread: 'CURIOSITY', weight: 'short', source: 'Strada Maestra: Lessons from an Italian Curve' },
+    { text: 'Claude: Therapy-energy, brings herbal tea and listening skills.', thread: 'CURIOSITY', weight: 'long', source: 'Speed Dating with AI: Grok' },
+    { text: 'Bring holy water and a firewall.', thread: 'CURIOSITY', weight: 'short', source: 'Speed-Dating with AI: The GitHub Copilot' },
+    { text: "You know you won't find \"the one\" if you don't shop around.", thread: 'CURIOSITY', weight: 'long', source: 'Speed Dating with AI: Shopping Around' },
+    { text: 'Also, ducks. Always ducks.', thread: 'CURIOSITY', weight: 'short', source: 'Speed Dating with AI: ChatGPT' },
   ];
 
   const STOPS: [string, string][] = [
@@ -353,6 +378,7 @@
       world!.appendChild(el);
       const video = el.querySelector('video') as HTMLVideoElement | null;
       if (video) video.playbackRate = 0.45; // slowed for drama, per Eduardo's note
+      el.style.zIndex = String(Math.round(s.d * 100));
       return {
         el, s, video,
         xn: (i + 0.5) / SPECIMENS.length + (((i * 67) % 140) - 70) / 4200,
@@ -361,29 +387,102 @@
     });
 
     // ================= fragments =================
-    const fragNodes = FRAGS.map((f, i) => {
+    // Only a handful exist on screen at once -- an infinite pool of 50,
+    // shown a few at a time, staggered in over the first ~20s rather
+    // than all appearing together. When one decays and dies, that slot
+    // (after a pause) picks the next fragment from a shuffled queue and
+    // arrives fresh: from a random edge (left/right/top/bottom), never
+    // just sliding in with the horizontal drift like everything else.
+    // Depth is shared with specimens for z-index, so fragments genuinely
+    // interleave in front of and behind them rather than always sitting
+    // on top.
+    const SLOT_COUNT = 6;
+    type Dir = 'left' | 'right' | 'top' | 'bottom';
+    const DIRS: Dir[] = ['left', 'right', 'top', 'bottom'];
+
+    let fragQueue: number[] = [];
+    function shuffledIndices(n: number) {
+      const arr = Array.from({ length: n }, (_, i) => i);
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+    function nextFragIndex() {
+      if (fragQueue.length === 0) fragQueue = shuffledIndices(FRAGS.length);
+      return fragQueue.pop()!;
+    }
+
+    const fragSlots = Array.from({ length: SLOT_COUNT }, (_, slotI) => {
       const el = document.createElement('div');
-      el.className = 'frag';
-      const chars = [...f.text].map((ch) => {
-        const s = document.createElement('i');
-        s.textContent = ch === ' ' ? ' ' : ch;
-        el.appendChild(s);
-        return s;
-      });
+      el.className = 'frag-slot';
+      const quote = document.createElement('p');
+      quote.className = 'frag-quote';
+      const ref = document.createElement('p');
+      ref.className = 'frag-ref';
+      el.appendChild(quote);
+      el.appendChild(ref);
       world!.appendChild(el);
-      const depth = f.weight === 'long' ? 0.62 + ((i * 13) % 5) * 0.05 : 0.32 + ((i * 17) % 6) * 0.06;
+
       return {
-        el, chars, text: f.text, thread: f.thread, weight: f.weight, depth,
-        size: 13 + (1 - Math.abs(depth - 0.7)) * 15,
-        xn: (i + 0.5) / FRAGS.length + (((i * 91) % 260) - 130) / 4200,
-        y: 0.08 + ((i * 37) % 100) / 100 * 0.8,
-        aloneTime: (i * 7919) % 4000 / 100, // stagger starting decay clocks so they don't all fall at once
-        state: 'alive' as 'alive' | 'decaying' | 'dead',
+        el, quote, ref,
+        chars: [] as HTMLElement[],
+        parts: [] as { vx: number; vy: number; baseX: number; baseY: number }[],
+        fragIndex: -1,
+        depth: 0.5,
+        xn: 0, y: 0.5,
+        entryDir: 'left' as Dir,
+        entryAmt: 0, // 1 = fully off-screen at entry point, eases to 0
+        aloneTime: 0,
+        state: 'pending' as 'pending' | 'alive' | 'decaying' | 'dead',
+        pendingT: slotI * 3 + Math.random() * 3, // staggered first appearance
         decayT: 0,
-        parts: chars.map(() => ({ x: 0, y: 0, vx: 0, vy: 0 })),
         respawnDelay: 0,
       };
     });
+
+    function assignFragment(slot: typeof fragSlots[number]) {
+      const idx = nextFragIndex();
+      const f = FRAGS[idx];
+      slot.fragIndex = idx;
+      slot.quote.textContent = '';
+      slot.chars = [...f.text].map((ch) => {
+        const s = document.createElement('i');
+        // A plain space as the sole content of an inline-block collapses
+        // to zero width -- browsers trim it as leading/trailing
+        // whitespace in the inline formatting context. A non-breaking
+        // space renders as a real, breakable-adjacent gap instead.
+        s.textContent = ch === ' ' ? ' ' : ch;
+        slot.quote.appendChild(s);
+        return s;
+      });
+      slot.parts = slot.chars.map(() => ({ vx: 0, vy: 0, baseX: 0, baseY: 0 }));
+      slot.ref.textContent = f.source ? `— ${f.source}` : '';
+      slot.ref.style.display = f.source ? '' : 'none';
+      slot.ref.style.transition = '';
+      slot.ref.style.opacity = '1';
+      slot.depth = f.weight === 'long' ? 0.6 + Math.random() * 0.22 : 0.3 + Math.random() * 0.3;
+      // Spawn where it can actually be seen: solve for the xn that puts
+      // it inside the current viewport right now, rather than a random
+      // point across the whole ~4000px world (which, at 6 slots vs. a
+      // world wider than the screen, would spawn most fragments
+      // somewhere nobody will ever scroll to before they decay unseen).
+      const depthFactor = 0.3 + slot.depth * 0.7;
+      // Leaves room on the right for the quote block's own width (up to
+      // 24em) so it doesn't spawn overflowing off the viewport edge —
+      // the first version placed it anywhere up to 0.84W and clipped.
+      const targetScreenX = W * 0.06 + Math.random() * W * 0.5;
+      const offset = Math.min(520, W * 0.4);
+      slot.xn = wrap(targetScreenX + offset + worldX * depthFactor, WORLD_W) / WORLD_W;
+      slot.y = 0.1 + Math.random() * 0.72;
+      slot.entryDir = DIRS[Math.floor(Math.random() * DIRS.length)];
+      slot.entryAmt = 1;
+      slot.aloneTime = 0;
+      slot.state = 'alive';
+      slot.quote.style.fontSize = (14 + (1 - Math.abs(slot.depth - 0.7)) * 8) + 'px';
+      slot.el.style.zIndex = String(Math.round(slot.depth * 100));
+    }
 
     // ================= stops =================
     const stopNodes = STOPS.map((s, i) => {
@@ -391,6 +490,7 @@
       el.className = 'stop';
       el.textContent = s[0];
       world!.appendChild(el);
+      el.style.zIndex = '200'; // navigation always reads above specimens/fragments
       el.addEventListener('click', () => {
         // Rooms aren't built yet — quiet no-op stub, matching the
         // working prototype's own "not built yet" placeholder rather
@@ -481,66 +581,91 @@
         }
       }
 
-      // ---- fragments: drift + decay ----
-      for (const f of fragNodes) {
-        const w = 1; // fragments don't scale by viewport the way specimens do
-        const X = wrap(f.xn * WORLD_W - worldX * (0.3 + f.depth * 0.7), WORLD_W) - Math.min(520, W * 0.4);
-        const Y = f.y * H + worldYoff * (0.3 + f.depth * 0.7);
-        const on = X > -600 && X < W + 600 && Y > -60 && Y < H + 60;
-        f.el.style.visibility = on ? 'visible' : 'hidden';
-        if (!on) continue;
+      // ---- fragments: staggered entrance, drift, decay onto the nerve ----
+      const ENTRY_OFFSET = 320;
+      for (const slot of fragSlots) {
+        if (slot.state === 'pending') {
+          slot.pendingT -= dt;
+          slot.el.style.visibility = 'hidden';
+          if (slot.pendingT <= 0) assignFragment(slot);
+          continue;
+        }
 
-        const fx = X + 200, fy = Y;
+        const depthFactor = 0.3 + slot.depth * 0.7;
+        const baseX = wrap(slot.xn * WORLD_W - worldX * depthFactor, WORLD_W) - Math.min(520, W * 0.4);
+        const baseY = slot.y * H + worldYoff * depthFactor;
+
+        // Entry offset decays toward 0 each frame -- this is what makes
+        // a freshly spawned fragment fly in from its chosen edge rather
+        // than simply fading in at its resting spot.
+        slot.entryAmt *= reduced ? 0 : 0.94;
+        const off = slot.entryAmt * ENTRY_OFFSET;
+        let ox = 0, oy = 0;
+        if (slot.entryDir === 'left') ox = -off;
+        else if (slot.entryDir === 'right') ox = off;
+        else if (slot.entryDir === 'top') oy = -off;
+        else oy = off;
+
+        const X = baseX + ox, Y = baseY + oy;
+        const on = X > -700 && X < W + 700 && Y > -150 && Y < H + 150;
+        slot.el.style.visibility = on ? 'visible' : 'hidden';
+        slot.el.style.transform = `translate3d(${X}px, ${Y}px, 0)`;
+
+        const fx = X + 140, fy = Y + 20;
         let near = false;
-        if (hasPointer) near = Math.hypot(px - fx, py - fy) < 220;
+        if (on && hasPointer) near = Math.hypot(px - fx, py - fy) < 240;
 
-        if (f.state === 'alive') {
-          f.aloneTime += near ? -dt * 2.5 : dt;
-          if (f.aloneTime < 0) f.aloneTime = 0;
-          if (f.aloneTime >= DECAY_AFTER) {
-            f.state = 'decaying'; f.decayT = 0;
-            f.parts.forEach((p) => {
-              p.vx = (Math.random() - 0.5) * 40;
-              p.vy = 10 + Math.random() * 20;
+        if (slot.state === 'alive') {
+          slot.aloneTime += near ? -dt * 2.5 : dt;
+          if (slot.aloneTime < 0) slot.aloneTime = 0;
+          const opacity = (0.5 + (1 - slot.depth) * 0.15 + (near ? 0.3 : 0)) * (1 - slot.entryAmt * 0.85);
+          slot.el.style.opacity = String(Math.min(0.92, opacity));
+
+          if (slot.aloneTime >= DECAY_AFTER) {
+            slot.state = 'decaying'; slot.decayT = 0;
+            // Capture each letter's real on-screen position right now,
+            // before any decay transform is applied -- the fall target
+            // is the nerve's actual curve at THIS letter's x, not one
+            // shared point for the whole fragment, so letters land
+            // along the wire's shape rather than dropping to one spot.
+            slot.chars.forEach((c, i) => {
+              const r = c.getBoundingClientRect();
+              slot.parts[i] = {
+                vx: (Math.random() - 0.5) * 44,
+                vy: 6 + Math.random() * 18,
+                baseX: r.left + r.width / 2,
+                baseY: r.top,
+              };
             });
+            slot.ref.style.transition = `opacity ${DECAY_TIME}s linear`;
+            slot.ref.style.opacity = '0';
           }
-          const opacity = 0.3 + (1 - f.depth) * 0.15 + (near ? 0.35 : 0);
-          f.el.style.opacity = String(Math.min(0.85, opacity));
-          f.el.style.fontSize = f.size + 'px';
-          f.el.style.color = 'var(--flesh)';
-          f.el.style.transform = `translate3d(${X}px, ${Y}px, 0)`;
-          f.chars.forEach((c) => { c.style.transform = ''; c.style.opacity = '1'; });
-        } else if (f.state === 'decaying') {
-          f.decayT += dt;
-          const nerveTargetY = chainYAt(fx) - Y;
-          const prog = Math.min(1, f.decayT / DECAY_TIME);
-          f.el.style.transform = `translate3d(${X}px, ${Y}px, 0)`;
-          f.chars.forEach((c, i) => {
-            const p = f.parts[i];
-            const localProg = Math.min(1, prog * 1.3);
-            const x = p.vx * f.decayT * 0.4;
-            const y = p.vy * f.decayT * 0.6 + nerveTargetY * Math.min(1, f.decayT / 4) * 0.5;
-            c.style.transform = `translate(${x}px, ${y}px) rotate(${p.vx * localProg}deg)`;
+        } else if (slot.state === 'decaying') {
+          slot.decayT += dt;
+          const prog = Math.min(1, slot.decayT / DECAY_TIME);
+          slot.el.style.opacity = '1';
+          slot.chars.forEach((c, i) => {
+            const p = slot.parts[i];
+            const targetY = chainYAt(p.baseX) - p.baseY;
+            const x = p.vx * slot.decayT * 0.5;
+            const y = p.vy * slot.decayT * 0.7 + targetY * Math.min(1, slot.decayT / 3.5);
+            c.style.transform = `translate(${x}px, ${y}px) rotate(${p.vx * Math.min(1, prog * 1.3)}deg)`;
             c.style.opacity = String(Math.max(0, 1 - prog));
-            // The letters turn gold as they come apart — Eduardo's
+            // The letters turn gold as they come apart -- Eduardo's
             // "small gold particles" image, made literal.
             c.style.color = prog > 0.15 ? 'var(--gold)' : '';
           });
-          if (f.decayT >= DECAY_TIME) {
-            f.state = 'dead';
-            f.respawnDelay = 0.4 + Math.random() * 0.8;
+          if (slot.decayT >= DECAY_TIME) {
+            slot.state = 'dead';
+            slot.respawnDelay = 1 + Math.random() * 2.5;
           }
         } else {
-          f.respawnDelay -= dt;
-          if (f.respawnDelay <= 0) {
-            f.xn = Math.random();
-            f.y = 0.08 + Math.random() * 0.8;
-            f.aloneTime = 0;
-            f.state = 'alive';
-          }
+          // dead -- waiting to respawn as a different fragment
+          slot.el.style.opacity = '0';
+          slot.respawnDelay -= dt;
+          if (slot.respawnDelay <= 0) assignFragment(slot);
         }
       }
-
       // ---- stops ----
       for (const s of stopNodes) {
         const X = wrap(s.xn * WORLD_W - worldX, WORLD_W) - Math.min(520, W * 0.4);
