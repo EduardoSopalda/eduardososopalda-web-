@@ -1,0 +1,569 @@
+---
+// The field itself: the cabinet of curiosities. Specimens and
+// fragments drifting at depth, a nerve running through it, the seven
+// stops riding that nerve. Ported from prototype/field.html's proven
+// drift/decay math (CLAUDE.md: "it already works"), with the nerve
+// upgraded to the spring/tension chain from Landing.astro rather than
+// its original closed-form sine.
+//
+// Fragment text is Eduardo's own, verbatim from fragments/fragments.md
+// (50 real fragments, thread + weight). Specimen images/video are the
+// confirmed assets from this session — see public/specimens/. Three
+// have real "DATA" catalogue tags per the cabinet's thread mapping
+// decided earlier; the rest (seaweed, eyefish) are untagged
+// atmosphere, on purpose — the tag is the scarce thing here, same
+// logic as gold.
+---
+
+<section class="field" id="field-root" aria-hidden="true">
+  <canvas class="nerve" id="nerve"></canvas>
+  <div class="world" id="world"></div>
+</section>
+
+<style is:global>
+  /* is:global, not scoped: every selector below targets elements
+     created dynamically via document.createElement in the script —
+     .spec, .frag, .stop, .spec-tag, and their children. Astro scopes
+     component styles by attaching a data-astro-cid attribute to
+     elements written in the template; JS-created elements never get
+     that attribute, so scoped rules silently never matched them. This
+     was the actual cause of fragments/specimens rendering in normal
+     block flow (stacking downward) instead of at their absolute,
+     transform-driven positions — found by measuring getBoundingClientRect
+     against the inline transform and seeing them disagree by a growing
+     offset per element, not by inspection. */
+  .field {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    background: var(--void);
+    cursor: grab;
+  }
+
+  .field:active {
+    cursor: grabbing;
+  }
+
+  .nerve {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .world {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 2.6s var(--ease);
+    pointer-events: none;
+  }
+
+  body[data-landing='field'] .world {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* ---- specimens ---- */
+  .spec {
+    position: absolute;
+    top: 0;
+    left: 0;
+    line-height: 0;
+    will-change: transform;
+  }
+
+  .spec img,
+  .spec video {
+    display: block;
+    width: 100%;
+    height: auto;
+    filter: brightness(0.6) contrast(1.24) saturate(0.85);
+    transition: filter 1.1s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+
+  .spec[data-awake='1'] img,
+  .spec[data-awake='1'] video {
+    filter: brightness(1) contrast(1.22) saturate(1);
+  }
+
+  .spec-tag {
+    position: absolute;
+    left: 0;
+    bottom: -1.6em;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0;
+    white-space: nowrap;
+    transition: opacity 0.8s var(--ease);
+  }
+
+  .spec[data-awake='1'] .spec-tag {
+    opacity: 0.85;
+  }
+
+  /* ---- fragments ---- */
+  .frag {
+    position: absolute;
+    top: 0;
+    left: 0;
+    white-space: nowrap;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-variation-settings: 'SOFT' 50, 'WONK' 1;
+    color: var(--flesh);
+    will-change: transform;
+  }
+
+  .frag i {
+    display: inline-block;
+    font-style: normal;
+    will-change: transform, opacity;
+  }
+
+  /* ---- nerve stops ---- */
+  .stop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: rgba(243, 235, 224, 0.3);
+    white-space: nowrap;
+    transition: color 0.5s, letter-spacing 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
+    cursor: pointer;
+  }
+
+  .stop[data-near='1'] {
+    color: var(--gold);
+    letter-spacing: 0.52em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spec img,
+    .spec video,
+    .spec-tag,
+    .stop {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  type Specimen = {
+    img?: string;
+    vid?: string;
+    poster?: string;
+    w: number;
+    y: number;
+    d: number;
+    tag?: string;
+  };
+
+  const SPECIMENS: Specimen[] = [
+    { img: '/specimens/chimp.png', w: 460, y: 0.28, d: 1.0, tag: 'No.04 · PROXIMITY · CHIMP' },
+    { img: '/specimens/octopus.png', w: 380, y: 0.64, d: 0.86, tag: 'No.02 · GOVERNANCE · OCTOPUS' },
+    { vid: '/specimens/jellyfish.mp4', poster: '/specimens/jellyfish.png', w: 300, y: 0.2, d: 0.66, tag: 'No.03 · TRUST · JELLYFISH' },
+    { vid: '/specimens/goldfish.mp4', poster: '/specimens/goldfish.png', w: 400, y: 0.7, d: 0.94, tag: 'No.01 · MEMORY · GOLDFISH' },
+    { img: '/specimens/pig.png', w: 300, y: 0.42, d: 0.74, tag: 'No.05 · MEANING · PIGLET' },
+    { img: '/specimens/eyefish.png', w: 260, y: 0.54, d: 0.58 },
+    { vid: '/specimens/seaweed.mp4', w: 300, y: 0.34, d: 0.5 },
+  ];
+
+  const FRAGS: { text: string; thread: string; weight: 'short' | 'long' }[] = [
+    { text: 'Governance without proximity is just opinion with a logo.', thread: 'MEANING', weight: 'short' },
+    { text: 'That, my friends, is semantic chaos.', thread: 'MEANING', weight: 'short' },
+    { text: 'Spoiler: nobody ever finds them.', thread: 'MEANING', weight: 'short' },
+    { text: 'You cannot build a data-quality penthouse on semantic quicksand.', thread: 'MEANING', weight: 'short' },
+    { text: 'Ask five people across one company what "revenue" means and you will get eight answers.', thread: 'MEANING', weight: 'long' },
+    { text: 'Everyone guards their terminology like national heritage.', thread: 'MEANING', weight: 'short' },
+    { text: 'That is archaeology, not governance.', thread: 'MEANING', weight: 'short' },
+    { text: 'Wittgenstein is still making data people uncomfortable. Good. We deserve it.', thread: 'MEANING', weight: 'long' },
+    { text: 'A document waiting to be ignored.', thread: 'MEANING', weight: 'short' },
+    { text: 'Asking the right question is key to getting the right results.', thread: 'MEANING', weight: 'short' },
+    { text: 'Governance becomes a narrative, not a reflex.', thread: 'GOVERNANCE', weight: 'short' },
+    { text: 'Most organizations already have governance. What they lack is practice.', thread: 'GOVERNANCE', weight: 'short' },
+    { text: 'That is the day governance stops being memory. And starts being muscle.', thread: 'GOVERNANCE', weight: 'long' },
+    { text: 'Tools do not replace culture. But they prevent culture from breaking at the first tight deadline.', thread: 'GOVERNANCE', weight: 'long' },
+    { text: 'No se puede empezar la casa por el tejado.', thread: 'GOVERNANCE', weight: 'short' },
+    { text: 'Human override exists only on paper.', thread: 'GOVERNANCE', weight: 'short' },
+    { text: 'AI is a hammer.', thread: 'GOVERNANCE', weight: 'short' },
+    { text: 'I do not trust evangelists.', thread: 'TRUST', weight: 'short' },
+    { text: 'AI does not hesitate. It does not say, "That depends." It simply responds.', thread: 'TRUST', weight: 'long' },
+    { text: 'Agents do not own risk. They do not carry accountability. Humans do… always.', thread: 'TRUST', weight: 'long' },
+    { text: "In times of chaos, the absence of friction is not efficiency. It's a warning sign.", thread: 'TRUST', weight: 'long' },
+    { text: 'Speed is mistaken for correctness.', thread: 'TRUST', weight: 'short' },
+    { text: 'There is nothing more human than that.', thread: 'TRUST', weight: 'short' },
+    { text: "It didn't replace the rep. It amplified their judgment.", thread: 'TRUST', weight: 'short' },
+    { text: 'Nothing here is for sale, including the optimism.', thread: 'TRUST', weight: 'short' },
+    { text: 'Come down from the tower. The coffee is better down here.', thread: 'PROXIMITY', weight: 'long' },
+    { text: 'Data is love.', thread: 'PROXIMITY', weight: 'short' },
+    { text: 'They didn’t want promises. They wanted presence.', thread: 'PROXIMITY', weight: 'short' },
+    { text: 'Everyone is a country.', thread: 'PROXIMITY', weight: 'short' },
+    { text: "Don't stop learning.", thread: 'PROXIMITY', weight: 'short' },
+    { text: "Sometimes it's a sentence. Sometimes it's silence.", thread: 'PROXIMITY', weight: 'short' },
+    { text: 'But I switched them. The wrong envelopes went to the wrong places.', thread: 'PROXIMITY', weight: 'long' },
+    { text: "Not every Monday starts right.", thread: 'PROXIMITY', weight: 'short' },
+    { text: 'Roughly two thousand of them are relevant.', thread: 'MEMORY', weight: 'short' },
+    { text: 'It is like guarding the vault while the library burns down.', thread: 'MEMORY', weight: 'long' },
+    { text: 'Data is perishable.', thread: 'MEMORY', weight: 'short' },
+    { text: 'Nobody was going to read that folder.', thread: 'MEMORY', weight: 'short' },
+    { text: "Raw data doesn't scream; it whispers.", thread: 'MEMORY', weight: 'short' },
+    { text: 'You do not reach 1,000 without doing 1.', thread: 'CURIOSITY', weight: 'short' },
+    { text: 'Most people never start because they wait to feel "ready."', thread: 'CURIOSITY', weight: 'long' },
+    { text: 'Knowing the ingredients is not the same as understanding the process.', thread: 'CURIOSITY', weight: 'long' },
+    { text: 'Three ingredients. How hard could it be?', thread: 'CURIOSITY', weight: 'short' },
+    { text: 'Spoiler: it was a disaster.', thread: 'CURIOSITY', weight: 'short' },
+    { text: 'Lime is the green one.', thread: 'CURIOSITY', weight: 'short' },
+    { text: 'Honk before the curve.', thread: 'CURIOSITY', weight: 'short' },
+    { text: 'And yes, there was a goat.', thread: 'CURIOSITY', weight: 'short' },
+    { text: 'Claude: Therapy-energy, brings herbal tea and listening skills.', thread: 'CURIOSITY', weight: 'long' },
+    { text: 'Bring holy water and a firewall.', thread: 'CURIOSITY', weight: 'short' },
+    { text: "You know you won't find \"the one\" if you don't shop around.", thread: 'CURIOSITY', weight: 'long' },
+    { text: 'Also, ducks. Always ducks.', thread: 'CURIOSITY', weight: 'short' },
+  ];
+
+  const STOPS: [string, string][] = [
+    ['Manifesto', 'the argument, stated once'],
+    ['Writing', 'twenty five signals'],
+    ['Lexicon', 'contested words, defined in public'],
+    ['Out Loud', 'talks, panels, DAMA, the white paper'],
+    ['First Dates', 'speed dating the machines'],
+    ['Who', 'Panama, Finland, Barcelona, a goat'],
+    ['Contact', 'a question, answerable'],
+  ];
+
+  function initField() {
+    const root = document.getElementById('field-root');
+    const world = document.getElementById('world');
+    const canvas = document.getElementById('nerve') as HTMLCanvasElement | null;
+    if (!root || !world || !canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let W = 0, H = 0, DPR = Math.min(devicePixelRatio || 1, 2);
+    let WORLD_W = 4200;
+    let px = -9999, py = -9999, hasPointer = false, t = 0;
+    let worldX = 0, targetX = 0, worldYoff = 0, dragY = 0;
+    let drag = false, lastX = 0, lastY = 0;
+
+    const wrap = (v: number, m: number) => ((v % m) + m) % m;
+
+    function resize() {
+      W = innerWidth; H = innerHeight;
+      DPR = Math.min(devicePixelRatio || 1, 2);
+      WORLD_W = Math.max(1600, Math.min(4600, W * 3.2));
+      canvas!.width = W * DPR;
+      canvas!.height = H * DPR;
+      canvas!.style.width = W + 'px';
+      canvas!.style.height = H + 'px';
+      ctx!.setTransform(DPR, 0, 0, DPR, 0, 0);
+      buildChain();
+    }
+
+    // ---- input: drag horizontal (infinite) + vertical (bounded), wheel scrolls horizontal ----
+    addEventListener('pointermove', (e) => {
+      px = e.clientX; py = e.clientY; hasPointer = true;
+      if (drag) {
+        targetX -= (e.clientX - lastX) * 1.7;
+        dragY = Math.max(-H * 0.34, Math.min(H * 0.34, dragY + (e.clientY - lastY) * 0.9));
+        lastX = e.clientX; lastY = e.clientY;
+      }
+    });
+    addEventListener('pointerleave', () => { hasPointer = false; px = -9999; py = -9999; });
+    root.addEventListener('pointerdown', (e) => {
+      if ((e.target as HTMLElement).closest('.stop')) return;
+      drag = true; lastX = e.clientX; lastY = e.clientY;
+    });
+    addEventListener('pointerup', () => { drag = false; });
+    addEventListener('wheel', (e) => {
+      targetX += (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) * 1.1;
+    }, { passive: true });
+
+    // ================= nerve: spring/tension chain (see Landing.astro) =================
+    const N = 42, MARGIN = 240;
+    type Pt = { x: number; y: number; vy: number; seed: number };
+    let chain: Pt[] = [];
+    function buildChain() {
+      chain = [];
+      for (let i = 0; i < N; i++) {
+        const x = (i / (N - 1)) * (W + MARGIN * 2) - MARGIN;
+        chain.push({ x, y: H * 0.55, vy: 0, seed: Math.random() * 1000 });
+      }
+    }
+
+    function stepChain(dt: number) {
+      const base = H * 0.55 + worldYoff * 0.4;
+      for (const p of chain) {
+        let target = base + Math.sin(t * 0.05 + p.seed) * H * 0.03 + Math.sin(t * 0.017 + p.seed * 1.7) * H * 0.055;
+        if (hasPointer) {
+          const d = Math.abs(p.x - px);
+          if (d < 420) {
+            const f = 1 - d / 420;
+            target += (py - target) * f * f * 0.6;
+          }
+        }
+        p.vy += (target - p.y) * 0.02 * dt;
+        p.vy *= 0.9;
+        p.y += p.vy * dt;
+      }
+      for (let pass = 0; pass < 2; pass++) {
+        for (let i = 1; i < chain.length - 1; i++) {
+          const avg = (chain[i - 1].y + chain[i + 1].y) / 2;
+          chain[i].y += (avg - chain[i].y) * 0.18;
+        }
+      }
+    }
+
+    function chainYAt(x: number): number {
+      for (let i = 0; i < chain.length - 1; i++) {
+        const a = chain[i], b = chain[i + 1];
+        if (x >= a.x && x <= b.x) return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
+      }
+      return chain[chain.length - 1].y;
+    }
+
+    const pulses = [
+      { speed: 0.055, phase: 0.1 }, { speed: 0.08, phase: 0.62 }, { speed: 0.038, phase: 0.35 },
+    ];
+
+    // ================= specimens =================
+    const specNodes = SPECIMENS.map((s, i) => {
+      const el = document.createElement('div');
+      el.className = 'spec';
+      if (s.img) {
+        el.innerHTML = `<img src="${s.img}" alt="" loading="lazy" />`;
+      } else if (s.vid) {
+        const posterAttr = s.poster ? ` poster="${s.poster}"` : '';
+        el.innerHTML = `<video src="${s.vid}" muted loop playsinline preload="metadata"${posterAttr}></video>`;
+      }
+      if (s.tag) {
+        const tag = document.createElement('span');
+        tag.className = 'spec-tag';
+        tag.textContent = s.tag;
+        el.appendChild(tag);
+      }
+      world!.appendChild(el);
+      const video = el.querySelector('video') as HTMLVideoElement | null;
+      if (video) video.playbackRate = 0.45; // slowed for drama, per Eduardo's note
+      return {
+        el, s, video,
+        xn: (i + 0.5) / SPECIMENS.length + (((i * 67) % 140) - 70) / 4200,
+        awake: 0, playing: false,
+      };
+    });
+
+    // ================= fragments =================
+    const fragNodes = FRAGS.map((f, i) => {
+      const el = document.createElement('div');
+      el.className = 'frag';
+      const chars = [...f.text].map((ch) => {
+        const s = document.createElement('i');
+        s.textContent = ch === ' ' ? ' ' : ch;
+        el.appendChild(s);
+        return s;
+      });
+      world!.appendChild(el);
+      const depth = f.weight === 'long' ? 0.62 + ((i * 13) % 5) * 0.05 : 0.32 + ((i * 17) % 6) * 0.06;
+      return {
+        el, chars, text: f.text, thread: f.thread, weight: f.weight, depth,
+        size: 13 + (1 - Math.abs(depth - 0.7)) * 15,
+        xn: (i + 0.5) / FRAGS.length + (((i * 91) % 260) - 130) / 4200,
+        y: 0.08 + ((i * 37) % 100) / 100 * 0.8,
+        aloneTime: (i * 7919) % 4000 / 100, // stagger starting decay clocks so they don't all fall at once
+        state: 'alive' as 'alive' | 'decaying' | 'dead',
+        decayT: 0,
+        parts: chars.map(() => ({ x: 0, y: 0, vx: 0, vy: 0 })),
+        respawnDelay: 0,
+      };
+    });
+
+    // ================= stops =================
+    const stopNodes = STOPS.map((s, i) => {
+      const el = document.createElement('div');
+      el.className = 'stop';
+      el.textContent = s[0];
+      world!.appendChild(el);
+      el.addEventListener('click', () => {
+        // Rooms aren't built yet — quiet no-op stub, matching the
+        // working prototype's own "not built yet" placeholder rather
+        // than a dead link or a fake destination.
+        el.dataset.justClicked = '1';
+        setTimeout(() => delete el.dataset.justClicked, 400);
+      });
+      return { el, name: s[0], xn: (i + 0.5) / STOPS.length, near: 0 };
+    });
+
+    const DECAY_AFTER = 40, DECAY_TIME = 10;
+
+    function frame() {
+      const dt = reduced ? 0 : 1 / 60;
+      t += dt;
+
+      if (!drag) targetX += reduced ? 0 : 0.34;
+      worldX += (targetX - worldX) * 0.06;
+      worldYoff = dragY + (reduced ? 0 : Math.sin(t * 0.0817) * H * 0.16);
+
+      stepChain(dt);
+      ctx!.clearRect(0, 0, W, H);
+
+      function strokePath() {
+        ctx!.beginPath();
+        ctx!.moveTo(chain[0].x, chain[0].y);
+        for (let i = 1; i < chain.length - 1; i++) {
+          const midX = (chain[i].x + chain[i + 1].x) / 2;
+          const midY = (chain[i].y + chain[i + 1].y) / 2;
+          ctx!.quadraticCurveTo(chain[i].x, chain[i].y, midX, midY);
+        }
+        const last = chain[chain.length - 1];
+        ctx!.lineTo(last.x, last.y);
+      }
+
+      ctx!.shadowColor = 'rgba(247, 197, 106, 0.5)';
+      ctx!.shadowBlur = 10;
+      strokePath();
+      ctx!.strokeStyle = 'rgba(198, 145, 68, 0.4)';
+      ctx!.lineWidth = 3;
+      ctx!.stroke();
+
+      ctx!.shadowBlur = 4;
+      strokePath();
+      ctx!.strokeStyle = 'rgba(247, 197, 106, 0.9)';
+      ctx!.lineWidth = 1;
+      ctx!.stroke();
+
+      ctx!.shadowBlur = 8;
+      ctx!.shadowColor = 'rgba(255, 226, 160, 0.9)';
+      for (const p of pulses) {
+        const u = (t * p.speed + p.phase) % 1;
+        const x = u * W;
+        const y = chainYAt(x);
+        const edge = Math.min(u, 1 - u);
+        const o = Math.min(1, edge * 9);
+        ctx!.beginPath();
+        ctx!.arc(x, y, 2.4, 0, Math.PI * 2);
+        ctx!.fillStyle = `rgba(255, 232, 176, ${o})`;
+        ctx!.fill();
+      }
+      ctx!.shadowBlur = 0;
+
+      // ---- specimens: position by depth, wake near cursor, play video on approach ----
+      for (const n of specNodes) {
+        const w = n.s.w * Math.min(1, Math.max(0.48, W / 1300));
+        const X = wrap(n.xn * WORLD_W - worldX * n.s.d, WORLD_W) - Math.min(520, W * 0.4);
+        const Y = n.s.y * H - w * 0.3 + worldYoff * n.s.d;
+        const sx = X + w * 0.5, sy = Y + w * 0.28;
+        const on = X > -(w + 300) && X < W + 300 && Y > -w && Y < H + w;
+        n.el.style.visibility = on ? 'visible' : 'hidden';
+        if (!on) continue;
+        n.el.style.transform = `translate3d(${X}px, ${Y}px, 0)`;
+        n.el.style.width = w + 'px';
+
+        let want = 0;
+        if (hasPointer) {
+          const d = Math.hypot(px - sx, py - sy);
+          want = d < w * 0.62 ? 1 : 0;
+        }
+        n.awake += (want - n.awake) * 0.1;
+        n.el.dataset.awake = n.awake > 0.5 ? '1' : '0';
+
+        if (n.video) {
+          const shouldPlay = n.awake > 0.4;
+          if (shouldPlay && !n.playing) { n.video.play().catch(() => {}); n.playing = true; }
+          if (!shouldPlay && n.playing) { n.video.pause(); n.playing = false; }
+        }
+      }
+
+      // ---- fragments: drift + decay ----
+      for (const f of fragNodes) {
+        const w = 1; // fragments don't scale by viewport the way specimens do
+        const X = wrap(f.xn * WORLD_W - worldX * (0.3 + f.depth * 0.7), WORLD_W) - Math.min(520, W * 0.4);
+        const Y = f.y * H + worldYoff * (0.3 + f.depth * 0.7);
+        const on = X > -600 && X < W + 600 && Y > -60 && Y < H + 60;
+        f.el.style.visibility = on ? 'visible' : 'hidden';
+        if (!on) continue;
+
+        const fx = X + 200, fy = Y;
+        let near = false;
+        if (hasPointer) near = Math.hypot(px - fx, py - fy) < 220;
+
+        if (f.state === 'alive') {
+          f.aloneTime += near ? -dt * 2.5 : dt;
+          if (f.aloneTime < 0) f.aloneTime = 0;
+          if (f.aloneTime >= DECAY_AFTER) {
+            f.state = 'decaying'; f.decayT = 0;
+            f.parts.forEach((p) => {
+              p.vx = (Math.random() - 0.5) * 40;
+              p.vy = 10 + Math.random() * 20;
+            });
+          }
+          const opacity = 0.3 + (1 - f.depth) * 0.15 + (near ? 0.35 : 0);
+          f.el.style.opacity = String(Math.min(0.85, opacity));
+          f.el.style.fontSize = f.size + 'px';
+          f.el.style.color = 'var(--flesh)';
+          f.el.style.transform = `translate3d(${X}px, ${Y}px, 0)`;
+          f.chars.forEach((c) => { c.style.transform = ''; c.style.opacity = '1'; });
+        } else if (f.state === 'decaying') {
+          f.decayT += dt;
+          const nerveTargetY = chainYAt(fx) - Y;
+          const prog = Math.min(1, f.decayT / DECAY_TIME);
+          f.el.style.transform = `translate3d(${X}px, ${Y}px, 0)`;
+          f.chars.forEach((c, i) => {
+            const p = f.parts[i];
+            const localProg = Math.min(1, prog * 1.3);
+            const x = p.vx * f.decayT * 0.4;
+            const y = p.vy * f.decayT * 0.6 + nerveTargetY * Math.min(1, f.decayT / 4) * 0.5;
+            c.style.transform = `translate(${x}px, ${y}px) rotate(${p.vx * localProg}deg)`;
+            c.style.opacity = String(Math.max(0, 1 - prog));
+            // The letters turn gold as they come apart — Eduardo's
+            // "small gold particles" image, made literal.
+            c.style.color = prog > 0.15 ? 'var(--gold)' : '';
+          });
+          if (f.decayT >= DECAY_TIME) {
+            f.state = 'dead';
+            f.respawnDelay = 0.4 + Math.random() * 0.8;
+          }
+        } else {
+          f.respawnDelay -= dt;
+          if (f.respawnDelay <= 0) {
+            f.xn = Math.random();
+            f.y = 0.08 + Math.random() * 0.8;
+            f.aloneTime = 0;
+            f.state = 'alive';
+          }
+        }
+      }
+
+      // ---- stops ----
+      for (const s of stopNodes) {
+        const X = wrap(s.xn * WORLD_W - worldX, WORLD_W) - Math.min(520, W * 0.4);
+        const y = chainYAt(X) + worldYoff * 0.02;
+        const on = X > -200 && X < W + 200;
+        s.el.style.visibility = on ? 'visible' : 'hidden';
+        if (!on) continue;
+        s.el.style.transform = `translate3d(${X}px, ${y - 22}px, 0)`;
+        let near = 0;
+        if (hasPointer) {
+          const d = Math.hypot(px - X, py - y);
+          near = d < 140 ? 1 : 0;
+        }
+        s.el.dataset.near = String(near);
+      }
+
+      requestAnimationFrame(frame);
+    }
+
+    resize();
+    addEventListener('resize', resize);
+    frame();
+  }
+
+  initField();
+</script>
