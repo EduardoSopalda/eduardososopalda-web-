@@ -9,8 +9,11 @@
 // fades to nothing; everything just gets quieter, per prototype/field.html
 // (#mark, #purpose, #meta), the working reference this ports faithfully.
 //
-// Copy below (tagline, purpose line, meta) is Eduardo's own, taken
-// verbatim from that prototype — not invented here.
+// Meta is Eduardo's own copy, taken verbatim from that prototype. The
+// tagline and purpose line below were both revised directly by Eduardo
+// in this session, replacing the prototype's originals ("data · AI ·
+// the human experience" and "Understand it first. Then decide whether
+// to trust it.").
 ---
 
 <section class="landing" id="landing" aria-label="Eduardo Sopalda">
@@ -18,12 +21,12 @@
 
   <div class="mark">
     <h1 class="wordmark">
-      <span class="wordmark-eduardo">Eduardo</span> <span class="wordmark-sopalda">Sopalda</span>
+      <span class="wordmark-eduardo">EDUARDO</span> <span class="wordmark-sopalda">sopalda</span>
     </h1>
-    <p class="tagline">data &middot; AI &middot; the human experience</p>
+    <p class="tagline">DATA | AI &amp; The human experience</p>
   </div>
 
-  <p class="purpose">Understand it first. Then decide whether to trust it.</p>
+  <p class="purpose">Understand it first&hellip; then you decide if you trust it.</p>
 
   <p class="meta">Barcelona<br /><a href="#" id="li">LinkedIn</a></p>
 </section>
@@ -93,12 +96,10 @@
   }
 
   .wordmark-eduardo {
-    font-family: var(--font-display);
-    font-variation-settings: 'SOFT' 50, 'WONK' 1;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    font-size: clamp(1.3rem, 3.6vw, 2.4rem);
+    font-family: var(--font-wordmark-given);
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    font-size: clamp(1.4rem, 3.8vw, 2.5rem);
     background-image: linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 45%, var(--flesh) 55%, var(--bronze) 65%, var(--bronze-deep) 100%);
     animation-delay: 0.2s;
     transition: font-size 2.2s var(--ease);
@@ -128,13 +129,23 @@
     }
   }
 
+  /* Stretched to the exact width of the wordmark above it — from the
+     "E" of EDUARDO to the final "a" of sopalda — via text-align-last:
+     justify, rather than a guessed letter-spacing or font-size. .mark
+     has no explicit width, so it shrink-wraps to its widest child
+     (the wordmark); width:100% here inherits that same measure. */
   .tagline {
+    display: block;
+    width: 100%;
     margin: 0.55rem 0 0;
     font-family: var(--font-display);
     font-style: italic;
-    font-size: clamp(0.9rem, 1.7vw, 1.4rem);
-    color: var(--flesh);
+    font-size: clamp(0.8rem, 1.5vw, 1.15rem);
+    color: var(--nacar);
     letter-spacing: 0.02em;
+    text-align: justify;
+    text-align-last: justify;
+    text-justify: inter-word;
     opacity: 0;
     animation: resolve-quiet 1.6s var(--ease) forwards;
     animation-delay: 1.6s;
@@ -153,15 +164,22 @@
     transform: translateX(-50%);
     margin: 0;
     font-family: var(--font-display);
+    font-style: italic;
     font-size: clamp(0.9rem, 1.5vw, 1.25rem);
-    color: var(--bone);
+    /* Same treatment as the wordmark — bronze/gold gradient text,
+       not a flat color, per Eduardo's note that this line should
+       read as one with "Eduardo Sopalda" above it. */
+    background-image: linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 40%, var(--gold) 50%, var(--bronze) 60%, var(--bronze-deep) 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
     text-align: center;
     white-space: nowrap;
     opacity: 0;
     z-index: 1;
     animation: resolve-quiet 1.6s var(--ease) forwards;
     animation-delay: 2s;
-    transition: left 2.2s var(--ease), top 2.2s var(--ease), transform 2.2s var(--ease), font-size 2.2s var(--ease), color 2.2s var(--ease);
+    transition: left 2.2s var(--ease), top 2.2s var(--ease), transform 2.2s var(--ease), font-size 2.2s var(--ease), opacity 2.2s var(--ease);
   }
 
   body[data-landing='field'] .purpose {
@@ -169,7 +187,7 @@
     top: calc(100% - clamp(1.5rem, 4.5vh, 3rem));
     transform: translateX(0);
     font-size: clamp(0.7rem, 1vw, 0.85rem);
-    color: rgba(243, 235, 224, 0.62);
+    opacity: 0.7;
   }
 
   @keyframes resolve-quiet {
@@ -242,7 +260,7 @@
     if (reduced) {
       enterField();
     } else {
-      setTimeout(enterField, 3000);
+      setTimeout(enterField, 5000);
       addEventListener('pointermove', enterField, { once: true });
       addEventListener('wheel', enterField, { once: true, passive: true });
       addEventListener('touchstart', enterField, { once: true, passive: true });

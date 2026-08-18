@@ -21,6 +21,13 @@
   --bronze: #A6613A;
   --bronze-deep: #5E3018;
 
+  /* Nácar — mother-of-pearl, the other classic Wunderkammer material
+     alongside bronze and glass. A cool, faintly iridescent white,
+     distinct from --bone's warmer paper tone. Used sparingly, for
+     text that should read as shell rather than ink. */
+  --nacar: #F1EDE6;
+  --nacar-sheen: #FDFBF6;
+
   --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
 
   /* Type */
@@ -28,10 +35,13 @@
   --font-reading: 'Newsreader Variable', 'Newsreader', serif;
   --font-mono: 'IBM Plex Mono', monospace;
 
-  /* The surname half of the wordmark: Glacial Indifference, chosen
-     because "Sopalda" is round-letter-heavy and reads easiest in a
-     face that leans into that rather than fighting it. Deliberately
-     not Fraunces — the one exception to the display system, reserved
-     for the name-mark alone. "Eduardo" stays in Fraunces (--font-display). */
+  /* The wordmark is the one deliberate exception to the display
+     system — two bespoke faces reserved for the name-mark alone, not
+     used anywhere else on the site:
+     EDUARDO — Italiana, tall/elongated serif capitals, structured.
+     sopalda — Glacial Indifference, round and modern, because the
+       surname is round-letter-heavy and reads easiest leaning into
+       that rather than fighting it. */
+  --font-wordmark-given: 'Italiana', serif;
   --font-wordmark: 'Glacial Indifference', sans-serif;
 }
