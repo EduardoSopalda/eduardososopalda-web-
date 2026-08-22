@@ -298,6 +298,12 @@
     { img: '/specimens/pig.png', w: 300, y: 0.42, d: 0.74, tag: 'No.05 · MEANING · PIGLET' },
     { img: '/specimens/eyefish.png', w: 260, y: 0.54, d: 0.58, boost: 1.15 },
     { vid: '/specimens/seaweed.mp4', w: 300, y: 0.34, d: 0.5 },
+    // Both genuinely alpha-cut (verified same as the others: canvas
+    // pixel sampling and a real <video> tag against a red test
+    // background), appended rather than reordered so they don't shift
+    // the octopus/chimp's tuned load-time positions.
+    { vid: '/specimens/brain.webm', w: 480, y: 0.46, d: 0.9, tag: 'No.06 · CURIOSITY · BRAIN', cutout: true },
+    { vid: '/specimens/bluefish.webm', w: 420, y: 0.58, d: 0.62, tag: 'No.07 · GOVERNANCE · BLUE FISH', cutout: true },
   ];
 
   // "source" is the real article title each fragment was lifted from
