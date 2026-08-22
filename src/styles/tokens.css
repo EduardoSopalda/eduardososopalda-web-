@@ -37,6 +37,14 @@
   --champagne: #E6CB9B;
 
   --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  /* The wordmark's landing-to-corner metamorphosis specifically: slower
+     and gentler than --ease, so the shrink/move reads as an unhurried
+     transformation rather than a UI snap into place. A true ease-in-out
+     (not an ease-out-expo) on purpose -- ease-out curves front-load
+     nearly all their visible motion into the first third of the
+     duration, so even a long one reads as "snap, then coast" rather
+     than unhurried the whole way through. */
+  --ease-slow: cubic-bezier(0.83, 0, 0.17, 1);
 
   /* Type */
   --font-display: 'Fraunces Variable', 'Fraunces', serif;

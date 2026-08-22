@@ -74,7 +74,9 @@
     transform: translate(-50%, -50%);
     text-align: center;
     z-index: 1;
-    transition: left 2.2s var(--ease), top 2.2s var(--ease), transform 2.2s var(--ease);
+    /* The walk to the corner is the metamorphosis, not a UI snap --
+       slow and unhurried on purpose, per Eduardo's note. */
+    transition: left 4.2s var(--ease-slow), top 4.2s var(--ease-slow), transform 4.2s var(--ease-slow);
   }
 
   body[data-landing='field'] .mark {
@@ -109,19 +111,21 @@
     font-family: var(--font-wordmark-given);
     font-weight: 400;
     letter-spacing: 0.06em;
-    font-size: clamp(1.8rem, 4.6vw, 3.4rem);
+    /* A lot bigger, per Eduardo's note -- the name should arrive at
+       full weight before the metamorphosis shrinks it to a mark. */
+    font-size: clamp(2.4rem, 7.5vw, 6.5rem);
     background-image: linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 45%, var(--flesh) 55%, var(--bronze) 65%, var(--bronze-deep) 100%);
     animation-delay: 0.2s;
-    transition: font-size 2.2s var(--ease);
+    transition: font-size 4.2s var(--ease-slow);
   }
 
   .wordmark-sopalda {
     font-family: var(--font-wordmark);
     font-weight: 700;
-    font-size: clamp(2.8rem, 7vw, 5rem);
+    font-size: clamp(3.6rem, 11.5vw, 10rem);
     background-image: linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 35%, var(--gold) 50%, var(--bronze) 65%, var(--bronze-deep) 100%);
     animation-delay: 0.9s;
-    transition: font-size 2.2s var(--ease);
+    transition: font-size 4.2s var(--ease-slow);
   }
 
   body[data-landing='field'] .wordmark-eduardo {
@@ -160,7 +164,7 @@
     opacity: 0;
     animation: resolve-quiet 1.6s var(--ease) forwards;
     animation-delay: 1.6s;
-    transition: font-size 2.2s var(--ease), margin-top 2.2s var(--ease), letter-spacing 2.2s var(--ease);
+    transition: font-size 4.2s var(--ease-slow), margin-top 4.2s var(--ease-slow), letter-spacing 4.2s var(--ease-slow);
   }
 
   body[data-landing='field'] .tagline {
@@ -202,7 +206,7 @@
     z-index: 1;
     animation: resolve-quiet 1.6s var(--ease) forwards;
     animation-delay: 2s;
-    transition: left 2.2s var(--ease), top 2.2s var(--ease), transform 2.2s var(--ease), font-size 2.2s var(--ease), opacity 2.2s var(--ease);
+    transition: left 4.2s var(--ease-slow), top 4.2s var(--ease-slow), transform 4.2s var(--ease-slow), font-size 4.2s var(--ease-slow), opacity 2.2s var(--ease);
   }
 
   body[data-landing='field'] .purpose {

@@ -45,6 +45,18 @@
     cursor: grabbing;
   }
 
+  /* The mouse itself becomes a point of light, not an arrow -- the OS
+     cursor is hidden and a glowing dot (drawn on the nerve canvas, at
+     the same px/py already tracked for bending the nerve) takes its
+     place. Touch devices keep default behaviour: there's no persistent
+     pointer to replace, and grab/grabbing already meant nothing there. */
+  @media (hover: hover) and (pointer: fine) {
+    .field,
+    .field:active {
+      cursor: none;
+    }
+  }
+
   .nerve {
     position: absolute;
     inset: 0;
@@ -249,7 +261,12 @@
 
   const SPECIMENS: Specimen[] = [
     { img: '/specimens/chimp.png', w: 460, y: 0.28, d: 1.0, tag: 'No.04 · PROXIMITY · CHIMP', vignette: true, cutout: true },
-    { img: '/specimens/octopus.png', w: 380, y: 0.64, d: 0.86, tag: 'No.02 · GOVERNANCE · OCTOPUS', vignette: true, cutout: true },
+    // Big and near the top on purpose: at xn≈0.21 this specimen resolves
+    // near the left-center of the screen at load (worldX starts at 0),
+    // and y now matches the first fragment slot's own band -- so the
+    // octopus is already part of the first thing a visitor sees, resting
+    // over the first quote rather than waiting to drift into view.
+    { img: '/specimens/octopus.png', w: 640, y: 0.2, d: 0.97, tag: 'No.02 · GOVERNANCE · OCTOPUS', vignette: true, cutout: true },
     { vid: '/specimens/jellyfish.webm', w: 560, y: 0.2, d: 0.66, tag: 'No.03 · TRUST · JELLYFISH', cutout: true },
     { vid: '/specimens/goldfish.mp4', poster: '/specimens/goldfish.png', w: 400, y: 0.7, d: 0.94, tag: 'No.01 · MEMORY · GOLDFISH' },
     { img: '/specimens/pig.png', w: 300, y: 0.42, d: 0.74, tag: 'No.05 · MEANING · PIGLET' },
@@ -409,9 +426,9 @@
           Math.sin(t * 0.02 + p.seed * 0.42 + 2.1) * H * 0.045;
         if (hasPointer) {
           const d = Math.abs(p.x - px);
-          if (d < 420) {
-            const f = 1 - d / 420;
-            target += (py - target) * f * f * 0.6;
+          if (d < 560) {
+            const f = 1 - d / 560;
+            target += (py - target) * f * f * 0.8;
           }
         }
         // Per-frame spring, not per-second: dt is a fixed 1/60 constant
@@ -419,8 +436,11 @@
         // so scaling only the gain by dt while damping stayed at a flat
         // 0.9 every frame made the spring ~3600x too weak to ever reach
         // its target -- the chain sat frozen at its initial resting y.
-        p.vy += (target - p.y) * 0.02;
-        p.vy *= 0.9;
+        // Gain/damping loosened from 0.02/0.9 for a more flexible, live
+        // reaction to the cursor -- "very flexible" per Eduardo's note --
+        // while staying inside stable range.
+        p.vy += (target - p.y) * 0.032;
+        p.vy *= 0.87;
         p.y += p.vy;
       }
       for (let pass = 0; pass < 2; pass++) {
@@ -441,6 +461,7 @@
 
     const pulses = [
       { speed: 0.055, phase: 0.1 }, { speed: 0.08, phase: 0.62 }, { speed: 0.038, phase: 0.35 },
+      { speed: 0.067, phase: 0.82 }, { speed: 0.046, phase: 0.5 },
     ];
 
     // ================= specimens =================
@@ -658,20 +679,61 @@
       ctx!.lineWidth = 1;
       ctx!.stroke();
 
-      ctx!.shadowBlur = 8;
-      ctx!.shadowColor = 'rgba(255, 226, 160, 0.9)';
+      // Electricity, not just moving dots: each pulse is a short comet
+      // trailing gold along the actual curve (sampled via chainYAt, so
+      // the trail bends with the wire itself), fading tail-to-head
+      // through a gradient rather than one flat colour.
+      // Near-white, not gold -- the base line is already a warm gold at
+      // 0.9 alpha, so a same-hue pulse barely reads against it. Contrast
+      // (white-hot core against warm wire), not just motion, is what
+      // makes this look like electricity running through the line
+      // rather than a slightly-brighter bead sliding along it.
+      ctx!.shadowBlur = 14;
+      ctx!.shadowColor = 'rgba(255, 255, 235, 1)';
+      const TRAIL = 130, STEPS = 16;
       for (const p of pulses) {
         const u = (t * p.speed + p.phase) % 1;
-        const x = u * W;
-        const y = chainYAt(x);
+        const headX = u * W;
         const edge = Math.min(u, 1 - u);
         const o = Math.min(1, edge * 9);
+        if (o <= 0.01) continue;
         ctx!.beginPath();
-        ctx!.arc(x, y, 2.4, 0, Math.PI * 2);
-        ctx!.fillStyle = `rgba(255, 232, 176, ${o})`;
+        for (let k = STEPS; k >= 0; k--) {
+          const x = headX - (k / STEPS) * TRAIL;
+          const y = chainYAt(x);
+          if (k === STEPS) ctx!.moveTo(x, y); else ctx!.lineTo(x, y);
+        }
+        const grad = ctx!.createLinearGradient(headX - TRAIL, chainYAt(headX - TRAIL), headX, chainYAt(headX));
+        grad.addColorStop(0, 'rgba(255, 255, 240, 0)');
+        grad.addColorStop(0.6, `rgba(255, 250, 220, ${o * 0.5})`);
+        grad.addColorStop(1, `rgba(255, 255, 245, ${o})`);
+        ctx!.strokeStyle = grad;
+        ctx!.lineWidth = 3.4;
+        ctx!.stroke();
+        ctx!.beginPath();
+        ctx!.arc(headX, chainYAt(headX), 3.4, 0, Math.PI * 2);
+        ctx!.fillStyle = `rgba(255, 255, 250, ${o})`;
         ctx!.fill();
       }
       ctx!.shadowBlur = 0;
+
+      // ---- the point of light: the cursor itself, replaced. Drawn at
+      // the same px/py already tracked for bending the nerve, so the
+      // one glow the visitor moves IS the thing moving the wire. ----
+      if (hasPointer && !isTouch) {
+        const glow = ctx!.createRadialGradient(px, py, 0, px, py, 16);
+        glow.addColorStop(0, 'rgba(255, 244, 214, 0.95)');
+        glow.addColorStop(0.4, 'rgba(247, 197, 106, 0.45)');
+        glow.addColorStop(1, 'rgba(247, 197, 106, 0)');
+        ctx!.fillStyle = glow;
+        ctx!.beginPath();
+        ctx!.arc(px, py, 16, 0, Math.PI * 2);
+        ctx!.fill();
+        ctx!.beginPath();
+        ctx!.arc(px, py, 2, 0, Math.PI * 2);
+        ctx!.fillStyle = 'rgba(255, 250, 235, 0.95)';
+        ctx!.fill();
+      }
 
       // ---- specimens: position by depth, wake near cursor, play video on approach ----
       const flareLines: { x: number; y1: number; y2: number; o: number }[] = [];
