@@ -199,6 +199,14 @@
     will-change: transform, opacity;
   }
 
+  /* One word, one atomic unit for line-breaking -- see the comment in
+     assignFragment(). Without this wrapper, bare sibling <i> letters
+     can wrap mid-word since each is its own inline-block. */
+  .frag-word {
+    display: inline-block;
+    white-space: nowrap;
+  }
+
   .frag-ref {
     margin: 0.5em 0 0 0.85em;
     font-family: var(--font-mono);
@@ -228,7 +236,15 @@
        out of the way aesthetically) keeps navigation readable no
        matter what a fragment happens to be drifting through at the
        same spot. */
-    text-shadow: 0 0 4px var(--void), 0 0 8px var(--void), 0 0 14px var(--void);
+    /* Strengthened after seeing a stop tangle with both a fragment AND
+       a specimen at once (a lit chimp portrait, not just flat black) --
+       the original three-layer halo wasn't dense enough to hold up
+       against a detailed, bright background. More layers, tighter at
+       the core, for real coverage right at the glyph edges rather than
+       just a wider blur. */
+    text-shadow:
+      0 0 1px var(--void), 0 0 2px var(--void), 0 0 4px var(--void),
+      0 0 8px var(--void), 0 0 14px var(--void), 0 0 20px var(--void);
   }
 
   .stop[data-near='1'] {
@@ -573,16 +589,33 @@
       const f = FRAGS[idx];
       slot.fragIndex = idx;
       slot.quote.textContent = '';
-      slot.chars = [...f.text].map((ch) => {
-        const s = document.createElement('i');
-        // A plain space as the sole content of an inline-block collapses
-        // to zero width -- browsers trim it as leading/trailing
-        // whitespace in the inline formatting context. A non-breaking
-        // space renders as a real, breakable-adjacent gap instead.
-        s.textContent = ch === ' ' ? ' ' : ch;
-        slot.quote.appendChild(s);
-        return s;
-      });
+      // Each letter is its own inline-block <i> so the decay physics can
+      // move it independently -- but adjacent inline-blocks each carry
+      // their own implicit line-break opportunity regardless of word
+      // boundaries, so a word rendered as bare sibling <i>s can wrap
+      // mid-letter ("penthouse" -> "penthous" / "e"), found by actually
+      // screenshotting a fragment and seeing it happen. Fixed by
+      // grouping each word's letters inside a nowrap wrapper, so the
+      // wrapper -- not each letter -- is the atomic breakable unit;
+      // breaks can then only fall where a real space does.
+      slot.chars = [];
+      const tokens = f.text.match(/\S+|\s+/g) || [];
+      for (const token of tokens) {
+        const isSpace = token[0] === ' ';
+        const container = isSpace ? slot.quote : document.createElement('span');
+        if (!isSpace) container.className = 'frag-word';
+        for (const ch of token) {
+          const s = document.createElement('i');
+          // A plain space as the sole content of an inline-block collapses
+          // to zero width -- browsers trim it as leading/trailing
+          // whitespace in the inline formatting context. A non-breaking
+          // space renders as a real, breakable-adjacent gap instead.
+          s.textContent = ch === ' ' ? ' ' : ch;
+          container.appendChild(s);
+          slot.chars.push(s);
+        }
+        if (!isSpace) slot.quote.appendChild(container);
+      }
       slot.parts = slot.chars.map(() => ({ vx: 0, vy: 0, baseX: 0, baseY: 0 }));
       slot.ref.textContent = f.source ? `— ${f.source}` : '';
       slot.ref.style.display = f.source ? '' : 'none';
@@ -611,7 +644,20 @@
       // visible on short mobile viewports where the usable range is
       // small to begin with. One slot, one shelf.
       const bandH = 0.55 / SLOT_COUNT;
-      slot.y = 0.08 + slot.slotI * bandH + Math.random() * bandH * 0.5;
+      // Slot 0's band starts at the same corner as the permanent
+      // wordmark -- found by screenshotting it and seeing a quote
+      // rendered directly on top of "EDUARDO sopalda," both illegible.
+      // An X-only push (tried first) doesn't work on narrow viewports,
+      // where the mark can span most of the width and there's no safe
+      // column to its right at all -- so this measures the mark's own
+      // rendered bottom edge and pushes the top band BELOW it instead,
+      // which holds regardless of viewport width.
+      let topBandStart = 0.08;
+      if (slot.slotI === 0) {
+        const markEl = document.querySelector('.mark');
+        if (markEl) topBandStart = Math.max(topBandStart, (markEl.getBoundingClientRect().bottom + 20) / H);
+      }
+      slot.y = slot.slotI === 0 ? topBandStart + Math.random() * bandH * 0.5 : 0.08 + slot.slotI * bandH + Math.random() * bandH * 0.5;
       slot.entryDir = DIRS[Math.floor(Math.random() * DIRS.length)];
       slot.entryAmt = 1;
       slot.aloneTime = 0;
