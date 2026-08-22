@@ -9,7 +9,15 @@ body {
   margin: 0;
   padding: 0;
   background: var(--void);
-  overflow-x: hidden;
+  /* Both axes, not just x -- body's safe-area padding below can push
+     its total height past one viewport on a notched phone, and only
+     blocking horizontal scroll left real vertical page-scroll possible.
+     Nothing on this site is meant to page-scroll; the field is a fixed
+     viewport-height canvas that scrolls its own world internally. A
+     drag gesture on the nerve on such a phone could trigger that real
+     scroll and carry the corner mark and purpose line away with it,
+     since they sit in normal document flow, not fixed to the viewport. */
+  overflow: hidden;
 }
 
 body {

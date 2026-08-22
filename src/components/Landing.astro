@@ -68,7 +68,12 @@
      is what prototype/field.html's #mark does (one block, one
      transform), not two independently-animated lines. */
   .mark {
-    position: absolute;
+    /* Fixed, not absolute -- pinned to the viewport itself rather than
+       .landing's document-flow box, so it holds its position (a frozen
+       bar, per Eduardo's note) no matter what: dragging the nerve on a
+       touch device shouldn't be able to carry it away even if that
+       gesture ever triggers real page scroll. */
+    position: fixed;
     left: 50%;
     top: 38%;
     transform: translate(-50%, -50%);
@@ -185,7 +190,10 @@
   }
 
   .purpose {
-    position: absolute;
+    /* Fixed for the same reason as .mark above -- the permanent
+       bottom-left message shouldn't be able to drift with a page
+       scroll a nerve-drag might trigger. */
+    position: fixed;
     left: 50%;
     top: 56%;
     transform: translateX(-50%);
@@ -273,7 +281,7 @@
      still work too, as a low-friction fallback for anyone who starts
      exploring before noticing it. */
   .cue {
-    position: absolute;
+    position: fixed;
     left: 50%;
     bottom: clamp(2.25rem, 8vh, 4rem);
     transform: translateX(-50%);
