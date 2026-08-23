@@ -80,8 +80,17 @@
     text-align: center;
     z-index: 1;
     /* The walk to the corner is the metamorphosis, not a UI snap --
-       slow and unhurried on purpose, per Eduardo's note. */
-    transition: left 4.2s var(--ease-slow), top 4.2s var(--ease-slow), transform 4.2s var(--ease-slow);
+       slow and unhurried on purpose, per Eduardo's note.
+       text-align can't be smoothly interpolated at all -- it was
+       switching center -> left the instant the field-state class
+       applied, at t=0, while the block was still centre-screen and
+       full size. That snap read as a "bump" partway through what
+       should have been one continuous motion. transition-delay can't
+       smooth a non-animatable property, but it CAN defer the jump: set
+       to fire only once the position/size transition has actually
+       finished, so the snap lands after the block is already small and
+       in the corner, where it's imperceptible. */
+    transition: left 4.2s var(--ease-slow), top 4.2s var(--ease-slow), transform 4.2s var(--ease-slow), text-align 0s 4.2s;
   }
 
   body[data-landing='field'] .mark {
@@ -134,11 +143,16 @@
   }
 
   body[data-landing='field'] .wordmark-eduardo {
-    font-size: clamp(0.7rem, 1.05vw, 0.85rem);
+    /* Was 0.7-0.85rem -- reasonable next to the old, smaller hero size,
+       but the hero got "a lot bigger" per Eduardo's earlier note and
+       this didn't scale with it, so the shrink ended up far more
+       extreme than intended and the corner mark read as too small to
+       work as a persistent header. */
+    font-size: clamp(0.9rem, 1.3vw, 1.05rem);
   }
 
   body[data-landing='field'] .wordmark-sopalda {
-    font-size: clamp(1rem, 1.5vw, 1.25rem);
+    font-size: clamp(1.3rem, 1.9vw, 1.5rem);
   }
 
   @keyframes resolve-focus {
@@ -165,11 +179,28 @@
     letter-spacing: 0.32em;
     text-transform: uppercase;
     text-align: center;
-    text-wrap: balance;
+    /* text-wrap: balance was the real second source of the "bump" --
+       found by sampling position every 200ms through the transition
+       and seeing a real reflow (width dropping ~70px in one step,
+       position briefly reversing direction) right around the
+       midpoint, unrelated to the text-align fix above. As font-size
+       shrinks continuously, this line crosses the width where the
+       browser's line-balancing algorithm picks a different break point
+       -- a discrete layout event in the middle of what should be
+       continuous motion. The narrow-viewport letter-spacing reduction
+       just below was already tuned to keep this on one line, so
+       nowrap just makes that explicit and removes the wrap entirely. */
+    white-space: nowrap;
     opacity: 0;
     animation: resolve-quiet 1.6s var(--ease) forwards;
     animation-delay: 1.6s;
-    transition: font-size 4.2s var(--ease-slow), margin-top 4.2s var(--ease-slow), letter-spacing 4.2s var(--ease-slow);
+    /* Same text-align issue as .mark above, and more visible here since
+       this element has width: 100% -- a real box wider than its own
+       text, not just a shrink-wrapped one -- so the center -> left snap
+       produced a genuine, noticeable horizontal jump instead of a
+       subtle one. Deferred the same way, to land only once the block
+       has finished moving. */
+    transition: font-size 4.2s var(--ease-slow), margin-top 4.2s var(--ease-slow), letter-spacing 4.2s var(--ease-slow), text-align 0s 4.2s;
   }
 
   body[data-landing='field'] .tagline {
