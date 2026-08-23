@@ -22,6 +22,8 @@
 ---
 
 <section class="landing" id="landing" aria-label="Eduardo Sopalda">
+  <div class="top-bar" aria-hidden="true"></div>
+
   <div class="mark">
     <h1 class="wordmark">
       <span class="wordmark-eduardo">EDUARDO</span> <span class="wordmark-sopalda">sopalda</span>
@@ -64,19 +66,66 @@
      earlier bug: the whole group shot off-screen because the math
      assumed a center-pinned parent that didn't exist. */
 
+  /* A frozen bar across the top, per Eduardo's note, to give the
+     corner mark a persistent home rather than floating text -- room
+     for whatever else lands up there later, too. Champagne, not the
+     nerve's actual --gold: the design system reserves --gold as one
+     scarce accent ("nowhere else"), so a loud gold bar would compete
+     with the nerve itself. This reads as light gold without spending
+     that scarcity -- an ambient wash, fading out by 70% of its own
+     height, not a hard-edged colored block. Only visible in the field
+     state; behind .mark, not part of it, so it doesn't inherit the
+     mark's own position/size transition. */
+  .top-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: clamp(4.5rem, 12vh, 7rem);
+    background: linear-gradient(180deg, rgba(230, 203, 155, 0.14) 0%, rgba(230, 203, 155, 0.05) 55%, transparent 100%);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 0;
+    transition: opacity 2.4s var(--ease);
+  }
+
+  body[data-landing='field'] .top-bar {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .top-bar {
+      transition: none;
+    }
+  }
+
   /* The mark: name + tagline, travelling together as one unit — this
      is what prototype/field.html's #mark does (one block, one
      transform), not two independently-animated lines. */
   .mark {
-    position: absolute;
+    /* Fixed, not absolute -- pinned to the viewport itself rather than
+       .landing's document-flow box, so it holds its position (a frozen
+       bar, per Eduardo's note) no matter what: dragging the nerve on a
+       touch device shouldn't be able to carry it away even if that
+       gesture ever triggers real page scroll. */
+    position: fixed;
     left: 50%;
     top: 38%;
     transform: translate(-50%, -50%);
     text-align: center;
     z-index: 1;
     /* The walk to the corner is the metamorphosis, not a UI snap --
-       slow and unhurried on purpose, per Eduardo's note. */
-    transition: left 4.2s var(--ease-slow), top 4.2s var(--ease-slow), transform 4.2s var(--ease-slow);
+       slow and unhurried on purpose, per Eduardo's note.
+       text-align can't be smoothly interpolated at all -- it was
+       switching center -> left the instant the field-state class
+       applied, at t=0, while the block was still centre-screen and
+       full size. That snap read as a "bump" partway through what
+       should have been one continuous motion. transition-delay can't
+       smooth a non-animatable property, but it CAN defer the jump: set
+       to fire only once the position/size transition has actually
+       finished, so the snap lands after the block is already small and
+       in the corner, where it's imperceptible. */
+    transition: left 4.2s var(--ease-slow), top 4.2s var(--ease-slow), transform 4.2s var(--ease-slow), text-align 0s 4.2s;
   }
 
   body[data-landing='field'] .mark {
@@ -129,11 +178,16 @@
   }
 
   body[data-landing='field'] .wordmark-eduardo {
-    font-size: clamp(0.7rem, 1.05vw, 0.85rem);
+    /* Was 0.7-0.85rem -- reasonable next to the old, smaller hero size,
+       but the hero got "a lot bigger" per Eduardo's earlier note and
+       this didn't scale with it, so the shrink ended up far more
+       extreme than intended and the corner mark read as too small to
+       work as a persistent header. */
+    font-size: clamp(0.9rem, 1.3vw, 1.05rem);
   }
 
   body[data-landing='field'] .wordmark-sopalda {
-    font-size: clamp(1rem, 1.5vw, 1.25rem);
+    font-size: clamp(1.3rem, 1.9vw, 1.5rem);
   }
 
   @keyframes resolve-focus {
@@ -160,11 +214,28 @@
     letter-spacing: 0.32em;
     text-transform: uppercase;
     text-align: center;
-    text-wrap: balance;
+    /* text-wrap: balance was the real second source of the "bump" --
+       found by sampling position every 200ms through the transition
+       and seeing a real reflow (width dropping ~70px in one step,
+       position briefly reversing direction) right around the
+       midpoint, unrelated to the text-align fix above. As font-size
+       shrinks continuously, this line crosses the width where the
+       browser's line-balancing algorithm picks a different break point
+       -- a discrete layout event in the middle of what should be
+       continuous motion. The narrow-viewport letter-spacing reduction
+       just below was already tuned to keep this on one line, so
+       nowrap just makes that explicit and removes the wrap entirely. */
+    white-space: nowrap;
     opacity: 0;
     animation: resolve-quiet 1.6s var(--ease) forwards;
     animation-delay: 1.6s;
-    transition: font-size 4.2s var(--ease-slow), margin-top 4.2s var(--ease-slow), letter-spacing 4.2s var(--ease-slow);
+    /* Same text-align issue as .mark above, and more visible here since
+       this element has width: 100% -- a real box wider than its own
+       text, not just a shrink-wrapped one -- so the center -> left snap
+       produced a genuine, noticeable horizontal jump instead of a
+       subtle one. Deferred the same way, to land only once the block
+       has finished moving. */
+    transition: font-size 4.2s var(--ease-slow), margin-top 4.2s var(--ease-slow), letter-spacing 4.2s var(--ease-slow), text-align 0s 4.2s;
   }
 
   body[data-landing='field'] .tagline {
@@ -185,7 +256,10 @@
   }
 
   .purpose {
-    position: absolute;
+    /* Fixed for the same reason as .mark above -- the permanent
+       bottom-left message shouldn't be able to drift with a page
+       scroll a nerve-drag might trigger. */
+    position: fixed;
     left: 50%;
     top: 56%;
     transform: translateX(-50%);
@@ -273,7 +347,7 @@
      still work too, as a low-friction fallback for anyone who starts
      exploring before noticing it. */
   .cue {
-    position: absolute;
+    position: fixed;
     left: 50%;
     bottom: clamp(2.25rem, 8vh, 4rem);
     transform: translateX(-50%);
