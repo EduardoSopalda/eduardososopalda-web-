@@ -472,6 +472,18 @@
             target += (py - target) * f * f * 0.8;
           }
         }
+        // The corner mark, top bar, purpose line, and meta live in
+        // Landing.astro's own stacking context, which paints above this
+        // whole canvas regardless of the nerve's z-index -- that only
+        // wins comparisons against other things inside Field.astro
+        // (specimens, fragments, stops), not against a sibling section
+        // entirely. Moving the mouse near the top let the pointer-bend
+        // pull the chain up behind the wordmark, where it vanished
+        // completely -- reproduced directly, not assumed. Clamping the
+        // target keeps the chain's actual geometry out of both text
+        // zones so it can't happen, rather than trying to out-stack a
+        // separate section.
+        target = Math.max(H * 0.16, Math.min(H * 0.86, target));
         // Per-frame spring, not per-second: dt is a fixed 1/60 constant
         // everywhere else in this file (worldX, the tension pass below),
         // so scaling only the gain by dt while damping stayed at a flat
