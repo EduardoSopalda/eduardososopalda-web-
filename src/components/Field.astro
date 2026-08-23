@@ -576,13 +576,12 @@
     // range a short mobile viewport leaves once the bottom marks are
     // excluded -- window.innerWidth here, not the closure W, since W
     // isn't set until the first resize() call, which happens after this.
-    // 6 concurrent quotes plus up to 7 independently-drifting specimens
-    // and 7 stops in the same vertical range read as clutter, not chaos,
-    // in a design audit -- caught a moment with three quotes and three
-    // specimens all in one horizontal band, competing rather than
-    // composing. Fewer concurrent fragments gives everything else more
-    // room to be seen on its own.
-    const SLOT_COUNT = window.innerWidth < 500 ? 3 : 4;
+    // Was 6, then 4 -- reduced again after the menagerie grew to 9
+    // specimens (brain, blue fish added since) and a friend's screenshot
+    // still showed a quote, a specimen, and a stop all crammed into one
+    // spot, illegible. Fewer concurrent fragments gives the rest of the
+    // field -- now genuinely dense on its own -- more room to be seen.
+    const SLOT_COUNT = window.innerWidth < 500 ? 2 : 3;
     type Dir = 'left' | 'right' | 'top' | 'bottom';
     const DIRS: Dir[] = ['left', 'right', 'top', 'bottom'];
 
@@ -672,12 +671,6 @@
       // world wider than the screen, would spawn most fragments
       // somewhere nobody will ever scroll to before they decay unseen).
       const depthFactor = 0.3 + slot.depth * 0.7;
-      // Leaves room on the right for the quote block's own width (up to
-      // 24em) so it doesn't spawn overflowing off the viewport edge —
-      // the first version placed it anywhere up to 0.84W and clipped.
-      const targetScreenX = W * 0.06 + Math.random() * W * 0.5;
-      const offset = Math.min(520, W * 0.4);
-      slot.xn = wrap(targetScreenX + offset + worldX * depthFactor, WORLD_W) / WORLD_W;
       // Kept out of the bottom ~35% of the viewport on purpose -- the
       // purpose line and the Barcelona/LinkedIn mark both live down
       // there and are permanent fixtures, not other field objects a
@@ -707,6 +700,34 @@
       // each other despite having separate band assignments. Tightened
       // so fragments sit closer to the center of their own shelf.
       slot.y = slot.slotI === 0 ? topBandStart + Math.random() * bandH * 0.25 : 0.08 + slot.slotI * bandH + Math.random() * bandH * 0.25;
+      // Bands only ever kept fragments from piling on EACH OTHER --
+      // nothing kept a fragment from spawning right on top of a
+      // specimen that happened to be drifting through that same screen
+      // area, which a friend's screenshot caught directly (a quote
+      // rendered right across a specimen's face, both unreadable). Since
+      // specimens keep drifting independently after a fragment spawns,
+      // this can't be fully solved, but retrying the X position a few
+      // times against every specimen's ACTUAL current on-screen rect
+      // avoids spawning directly into a collision at least.
+      const candidateY = slot.y * H;
+      function collidesWithSpecimen(x: number) {
+        for (const n of specNodes) {
+          const r = n.el.getBoundingClientRect();
+          if (r.width < 10) continue;
+          const pad = 24;
+          if (x > r.left - pad && x < r.right + pad && candidateY > r.top - pad && candidateY < r.bottom + pad) return true;
+        }
+        return false;
+      }
+      // Leaves room on the right for the quote block's own width (up to
+      // 24em) so it doesn't spawn overflowing off the viewport edge —
+      // the first version placed it anywhere up to 0.84W and clipped.
+      let targetScreenX = W * 0.06 + Math.random() * W * 0.5;
+      for (let attempt = 0; attempt < 6 && collidesWithSpecimen(targetScreenX); attempt++) {
+        targetScreenX = W * 0.06 + Math.random() * W * 0.5;
+      }
+      const offset = Math.min(520, W * 0.4);
+      slot.xn = wrap(targetScreenX + offset + worldX * depthFactor, WORLD_W) / WORLD_W;
       slot.entryDir = DIRS[Math.floor(Math.random() * DIRS.length)];
       slot.entryAmt = 1;
       slot.aloneTime = 0;
