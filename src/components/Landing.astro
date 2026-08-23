@@ -22,6 +22,8 @@
 ---
 
 <section class="landing" id="landing" aria-label="Eduardo Sopalda">
+  <div class="top-bar" aria-hidden="true"></div>
+
   <div class="mark">
     <h1 class="wordmark">
       <span class="wordmark-eduardo">EDUARDO</span> <span class="wordmark-sopalda">sopalda</span>
@@ -63,6 +65,39 @@
      Compounding a parent transform with child transforms was an
      earlier bug: the whole group shot off-screen because the math
      assumed a center-pinned parent that didn't exist. */
+
+  /* A frozen bar across the top, per Eduardo's note, to give the
+     corner mark a persistent home rather than floating text -- room
+     for whatever else lands up there later, too. Champagne, not the
+     nerve's actual --gold: the design system reserves --gold as one
+     scarce accent ("nowhere else"), so a loud gold bar would compete
+     with the nerve itself. This reads as light gold without spending
+     that scarcity -- an ambient wash, fading out by 70% of its own
+     height, not a hard-edged colored block. Only visible in the field
+     state; behind .mark, not part of it, so it doesn't inherit the
+     mark's own position/size transition. */
+  .top-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: clamp(4.5rem, 12vh, 7rem);
+    background: linear-gradient(180deg, rgba(230, 203, 155, 0.14) 0%, rgba(230, 203, 155, 0.05) 55%, transparent 100%);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 0;
+    transition: opacity 2.4s var(--ease);
+  }
+
+  body[data-landing='field'] .top-bar {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .top-bar {
+      transition: none;
+    }
+  }
 
   /* The mark: name + tagline, travelling together as one unit — this
      is what prototype/field.html's #mark does (one block, one
