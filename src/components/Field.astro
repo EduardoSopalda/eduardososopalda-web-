@@ -292,6 +292,7 @@
     vignette?: boolean; // true = source has a soft dark edge, not flat black — fade it via mask instead of showing a rectangle
     cutout?: boolean; // true = source has a genuine alpha-cut background — safe to brighten/glow on wake without lighting up a visible rectangle
     boost?: number; // static brightness multiplier on top of the base 0.82 -- compensates for a source that's inherently pale/low-contrast (not a real fix; that's a re-shoot), default 1
+    pulse?: boolean; // true = fades slowly in and out on its own, independent of awake/flare -- per Eduardo's note for the second jellyfish
   };
 
   const SPECIMENS: Specimen[] = [
@@ -304,7 +305,12 @@
     { img: '/specimens/octopus.png', w: 640, y: 0.2, d: 0.97, tag: 'No.02 · GOVERNANCE · OCTOPUS', vignette: true, cutout: true },
     { vid: '/specimens/jellyfish.webm', w: 560, y: 0.2, d: 0.66, tag: 'No.03 · TRUST · JELLYFISH', cutout: true },
     { vid: '/specimens/goldfish.mp4', poster: '/specimens/goldfish.png', w: 400, y: 0.7, d: 0.94, tag: 'No.01 · MEMORY · GOLDFISH', boost: 1.2 },
-    { img: '/specimens/pig.png', w: 300, y: 0.42, d: 0.74, tag: 'No.05 · MEANING · PIGLET' },
+    // Replaces the old static pig.png -- an animated piglet (turns to
+    // face camera, sits) with the same "DATA" motif as the other
+    // specimens. Not a cutout (plain mp4, opaque, near-black background
+    // matching the old still almost pixel-for-pixel), so it gets the
+    // standard static treatment, same as goldfish/seaweed.
+    { vid: '/specimens/piglet.mp4', poster: '/specimens/piglet-poster.png', w: 300, y: 0.42, d: 0.74, tag: 'No.05 · MEANING · PIGLET' },
     { img: '/specimens/eyefish.png', w: 260, y: 0.54, d: 0.58, boost: 1.15 },
     { vid: '/specimens/seaweed.mp4', w: 300, y: 0.34, d: 0.5 },
     // Both genuinely alpha-cut (verified same as the others: canvas
@@ -313,6 +319,14 @@
     // the octopus/chimp's tuned load-time positions.
     { vid: '/specimens/brain.webm', w: 480, y: 0.46, d: 0.9, tag: 'No.06 · CURIOSITY · BRAIN', cutout: true },
     { vid: '/specimens/bluefish.webm', w: 420, y: 0.58, d: 0.62, tag: 'No.07 · GOVERNANCE · BLUE FISH', cutout: true },
+    // Second jellyfish -- a still, not the webm. Genuinely pure black
+    // background (checked: corners sample at 0,0,0, no alpha channel
+    // needed at all), so it's a plain void-family specimen, not a
+    // cutout. Fades in and out on its own, very slowly, per Eduardo's
+    // note -- pulse: true, independent of the awake/flare mechanics
+    // every other specimen uses. Different y/d from the existing
+    // jellyfish so the two don't habitually overlap.
+    { img: '/specimens/jellyfish2.png', w: 460, y: 0.62, d: 0.42, tag: 'No.08 · TRUST · JELLYFISH', pulse: true },
   ];
 
   // "source" is the real article title each fragment was lifted from
@@ -553,6 +567,7 @@
         // reacts to the visitor; this one doesn't wait to be found.
         flareIn: 6 + Math.random() * 14,
         flareT: -1, // -1 = not currently flaring
+        pulsePhase: Math.random() * Math.PI * 2,
       };
       if (isTouch) {
         el.style.pointerEvents = 'auto';
@@ -908,6 +923,17 @@
         if (!on) continue;
         n.el.style.transform = `translate3d(${X}px, ${Y}px, 0)`;
         n.el.style.width = w + 'px';
+
+        // Slow, independent breathing -- 18s period, phase-offset per
+        // specimen so two pulsing specimens (if there ever are more
+        // than one) wouldn't sync up. Separate from --awake/--flare
+        // entirely: this one dims all the way toward transparent, not
+        // just less bright, since the ask was specifically to fade in
+        // and out rather than dim and brighten.
+        if (n.s.pulse) {
+          const cyc = 0.5 + 0.5 * Math.sin((t * Math.PI * 2) / 18 + n.pulsePhase);
+          n.el.style.opacity = (0.06 + cyc * 0.94).toFixed(3);
+        }
 
         if (flareEnv > 0.02) {
           flareLines.push({ x: sx, y1: sy, y2: chainYAt(sx), o: flareEnv * 0.7 });
