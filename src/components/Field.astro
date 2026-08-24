@@ -310,7 +310,13 @@
     // field regardless of what's behind it, so the text stays fully
     // legible either way. A specimen drifting near it is the same
     // "chaos" every other specimen already has.
-    { img: '/specimens/octopus.png', w: 640, y: 0.66, d: 0.97, tag: 'No.02 · GOVERNANCE · OCTOPUS', vignette: true, cutout: true },
+    // Replaced the static PNG with a looping animation Eduardo sent --
+    // genuinely alpha-cut this time (verified the same way as the
+    // others: canvas pixel sampling and a real <video> tag against
+    // both red and true-black test backgrounds), so vignette is
+    // dropped -- the old PNG's soft dark edge needed that mask, this
+    // one blends into true black cleanly on its own.
+    { vid: '/specimens/octopus.webm', w: 640, y: 0.66, d: 0.97, tag: 'No.02 · GOVERNANCE · OCTOPUS', cutout: true },
     { vid: '/specimens/jellyfish.webm', w: 560, y: 0.2, d: 0.66, tag: 'No.03 · TRUST · JELLYFISH', cutout: true },
     { vid: '/specimens/goldfish.mp4', poster: '/specimens/goldfish.png', w: 400, y: 0.7, d: 0.94, tag: 'No.01 · MEMORY · GOLDFISH', boost: 1.2 },
     // Replaces the old static pig.png -- an animated piglet (turns to
@@ -327,14 +333,15 @@
     // the octopus/chimp's tuned load-time positions.
     { vid: '/specimens/brain.webm', w: 480, y: 0.46, d: 0.9, tag: 'No.06 · CURIOSITY · BRAIN', cutout: true },
     { vid: '/specimens/bluefish.webm', w: 420, y: 0.58, d: 0.62, tag: 'No.07 · GOVERNANCE · BLUE FISH', cutout: true },
-    // Second jellyfish -- a still, not the webm. Genuinely pure black
-    // background (checked: corners sample at 0,0,0, no alpha channel
-    // needed at all), so it's a plain void-family specimen, not a
-    // cutout. Fades in and out on its own, very slowly, per Eduardo's
-    // note -- pulse: true, independent of the awake/flare mechanics
-    // every other specimen uses. Different y/d from the existing
-    // jellyfish so the two don't habitually overlap.
-    { img: '/specimens/jellyfish2.png', w: 460, y: 0.62, d: 0.42, tag: 'No.08 · TRUST · JELLYFISH', pulse: true },
+    // Second jellyfish -- was a still, now a looping animation Eduardo
+    // sent, genuinely alpha-cut (verified against both red and true-
+    // black test backgrounds, same as the octopus above), so cutout:
+    // true now too. Still fades in and out very slowly on its own
+    // (pulse: true) on top of that -- the two are independent, so it
+    // both swims in its own loop and breathes in and out at the same
+    // time. Different y/d from the existing jellyfish so the two don't
+    // habitually overlap.
+    { vid: '/specimens/jellyfish2.webm', w: 460, y: 0.62, d: 0.42, tag: 'No.08 · TRUST · JELLYFISH', pulse: true, cutout: true },
   ];
 
   // "source" is the real article title each fragment was lifted from
