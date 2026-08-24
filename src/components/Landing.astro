@@ -82,7 +82,12 @@
     left: 0;
     width: 100%;
     height: clamp(4.5rem, 12vh, 7rem);
-    background: linear-gradient(180deg, rgba(230, 203, 155, 0.14) 0%, rgba(230, 203, 155, 0.05) 55%, transparent 100%);
+    /* Confirmed rendering correctly (verified in a screenshot -- it's
+       there), but Eduardo still couldn't see it, which means "technically
+       present" isn't good enough at 0.14 peak opacity -- raised
+       meaningfully so it's unmistakable rather than something you have
+       to know to look for. */
+    background: linear-gradient(180deg, rgba(230, 203, 155, 0.32) 0%, rgba(230, 203, 155, 0.12) 55%, transparent 100%);
     opacity: 0;
     pointer-events: none;
     z-index: 0;
@@ -144,6 +149,18 @@
   .wordmark {
     margin: 0;
     line-height: 1;
+    /* "EDUARDO" and "sopalda" are two spans with a plain space between
+       them -- normal wrap applies by default, and at the hero size the
+       combined width doesn't fit one line, so it starts wrapped and
+       only becomes one line once shrunk enough mid-transition. Traced
+       it directly (measuring each span's left edge across the whole
+       transition, not guessing): wrapped the entire hero phase, single
+       line from partway through onward -- a real reflow, the same
+       family of bug as the tagline's text-wrap: balance fix. Forcing
+       one line here instead; the responsive clamp()s already bring the
+       hero size down substantially on narrow viewports specifically so
+       this fits without needing to wrap. */
+    white-space: nowrap;
   }
 
   .wordmark-eduardo,
