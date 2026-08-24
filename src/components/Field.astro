@@ -297,12 +297,20 @@
 
   const SPECIMENS: Specimen[] = [
     { img: '/specimens/chimp.png', w: 460, y: 0.28, d: 1.0, tag: 'No.04 · PROXIMITY · CHIMP', vignette: true, cutout: true },
-    // Big and near the top on purpose: at xn≈0.21 this specimen resolves
-    // near the left-center of the screen at load (worldX starts at 0),
-    // and y now matches the first fragment slot's own band -- so the
-    // octopus is already part of the first thing a visitor sees, resting
-    // over the first quote rather than waiting to drift into view.
-    { img: '/specimens/octopus.png', w: 640, y: 0.2, d: 0.97, tag: 'No.02 · GOVERNANCE · OCTOPUS', vignette: true, cutout: true },
+    // Still big and near-load-visible (xn≈0.21 resolves near the
+    // left-center of the screen at load), but moved to the lower half --
+    // y was 0.2, same band as the chimp (0.28) and the first jellyfish
+    // (0.2), leaving three of ten specimens stacked in the top quarter
+    // of the screen and almost nothing below center besides the
+    // goldfish. At this y and size the tentacles can drift close to the
+    // permanent purpose-line text (worked out: the existing vertical
+    // sine drift, worldYoff, moves every specimen by up to ±144px*d --
+    // not unique to this one), but that's not the corner-mark bug from
+    // earlier: Landing.astro's content always paints above the whole
+    // field regardless of what's behind it, so the text stays fully
+    // legible either way. A specimen drifting near it is the same
+    // "chaos" every other specimen already has.
+    { img: '/specimens/octopus.png', w: 640, y: 0.66, d: 0.97, tag: 'No.02 · GOVERNANCE · OCTOPUS', vignette: true, cutout: true },
     { vid: '/specimens/jellyfish.webm', w: 560, y: 0.2, d: 0.66, tag: 'No.03 · TRUST · JELLYFISH', cutout: true },
     { vid: '/specimens/goldfish.mp4', poster: '/specimens/goldfish.png', w: 400, y: 0.7, d: 0.94, tag: 'No.01 · MEMORY · GOLDFISH', boost: 1.2 },
     // Replaces the old static pig.png -- an animated piglet (turns to
