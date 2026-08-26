@@ -270,6 +270,28 @@
     .tagline {
       letter-spacing: 0.14em;
     }
+
+    /* The hero wordmark's clamp() floor (2.4rem / 3.6rem) is a fixed
+       size that the 7.5vw/11.5vw term never actually reaches below
+       roughly a 500px viewport -- so on every real phone the combined
+       "EDUARDO sopalda" rendered at a constant ~408px wide, wider than
+       the phone itself. white-space: nowrap (needed to stop the
+       2-line/1-line reflow bug above) then meant that overflow was
+       silently clipped by .landing's overflow: hidden instead of
+       wrapping -- the first/last letters were never actually there to
+       animate, just cut off outside the viewport the whole time.
+       Confirmed by measuring the rendered rects directly at a 390px
+       viewport: eduardo started at x:-9px, mark ended at right:399px,
+       both outside the 390px frame. Lowering the floor here lets the
+       vw term do its job and scale the hero size down to actually fit
+       narrow phones instead of fighting the viewport. */
+    .wordmark-eduardo {
+      font-size: clamp(1.6rem, 7.5vw, 6.5rem);
+    }
+
+    .wordmark-sopalda {
+      font-size: clamp(2.4rem, 11.5vw, 10rem);
+    }
   }
 
   .purpose {
