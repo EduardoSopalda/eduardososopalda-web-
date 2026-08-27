@@ -167,6 +167,20 @@
        hero size down substantially on narrow viewports specifically so
        this fits without needing to wrap. */
     white-space: nowrap;
+    /* The literal space between the two spans is a bare text node, so
+       it renders at the H1'S OWN font-size -- which was never set, so
+       it fell back to the browser default (~16px) regardless of how
+       enormous the two words next to it were. That's why the gap
+       read as an accident rather than a designed lockup: a fixed
+       ~8px gap next to letters 60-160px tall. Shrinking the h1's own
+       font-size to near-zero makes that stray space negligible, so
+       the real gap below (margin-left on sopalda, in ITS OWN em
+       units) is the only thing controlling it -- and now scales
+       proportionally as the whole mark shrinks into the corner. Kept
+       the actual space character in markup rather than deleting it,
+       so the accessible name still reads as two words, not one
+       concatenated string. */
+    font-size: 1px;
   }
 
   .wordmark-eduardo,
@@ -186,7 +200,17 @@
     /* A lot bigger, per Eduardo's note -- the name should arrive at
        full weight before the metamorphosis shrinks it to a mark. */
     font-size: clamp(2.4rem, 7.5vw, 6.5rem);
-    background-image: linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 45%, var(--flesh) 55%, var(--bronze) 65%, var(--bronze-deep) 100%);
+    /* Was a bronze-to-flesh sheen -- flesh is a skin tone, not a
+       metal, so EDUARDO never joined the same "precious metal"
+       family sopalda's gold peak belongs to; a design critique
+       called this out directly ("gold sheen only on sopalda... the
+       given name becomes a caption"). Champagne instead: still a
+       visibly quieter shine than sopalda's gold (per the same
+       critique's "weaker on EDUARDO"), but from the same warm-metal
+       family rather than a different material entirely. Peak band
+       narrowed (45-65% to 44-56%) so the shine reads as a crisper
+       highlight, not a slow, muddy fade. */
+    background-image: linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 44%, var(--champagne) 50%, var(--bronze) 56%, var(--bronze-deep) 100%);
     animation-delay: 0.2s;
     transition: font-size 4.2s var(--ease-slow);
   }
@@ -195,9 +219,31 @@
     font-family: var(--font-wordmark);
     font-weight: 700;
     font-size: clamp(3.6rem, 11.5vw, 10rem);
-    background-image: linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 35%, var(--gold) 50%, var(--bronze) 65%, var(--bronze-deep) 100%);
+    /* Was a flat bronze -> gold -> bronze fade -- a wide, soft blend
+       with no true highlight, which is what the critique meant by
+       "muddy... reads as a mid-tone smear, not metal." Real brushed
+       metal has a narrow, bright specular flash, not a slow tonal
+       drift: added a thin near-white flash (nacar-sheen) right at the
+       peak, between two gold shoulders, so the eye reads an actual
+       point of light hitting the surface. */
+    background-image: linear-gradient(
+      100deg,
+      var(--bronze-deep) 0%,
+      var(--bronze) 40%,
+      var(--gold) 48%,
+      var(--nacar-sheen) 50%,
+      var(--gold) 52%,
+      var(--bronze) 60%,
+      var(--bronze-deep) 100%
+    );
+    /* Optical kerning between the lockup's two halves -- was a bare
+       text-space at the h1's own (now ~0) font-size, an accident, not
+       a designed gap. In em units against sopalda's own size, so it
+       scales with the same font-size transition during the
+       metamorphosis instead of jumping. */
+    margin-left: 0.12em;
     animation-delay: 0.9s;
-    transition: font-size 4.2s var(--ease-slow);
+    transition: font-size 4.2s var(--ease-slow), margin-left 4.2s var(--ease-slow);
   }
 
   body[data-landing='field'] .wordmark-eduardo {
