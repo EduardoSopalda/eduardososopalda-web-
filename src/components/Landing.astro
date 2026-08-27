@@ -28,7 +28,7 @@
     <h1 class="wordmark">
       <span class="wordmark-eduardo">EDUARDO</span> <span class="wordmark-sopalda">sopalda</span>
     </h1>
-    <p class="tagline">DATA | AI &amp; The human experience</p>
+    <p class="tagline">DATA | AI <span class="amp">&amp;</span> The human experience</p>
   </div>
 
   <p class="purpose">Understand it first&hellip; then you decide if you trust it.</p>
@@ -38,6 +38,7 @@
   <button type="button" class="cue" id="cue" aria-label="Continue">
     <span class="cue-line" aria-hidden="true"></span>
     <span class="cue-dot" aria-hidden="true"></span>
+    <span class="cue-word" aria-hidden="true">Continue</span>
   </button>
 </section>
 
@@ -88,7 +89,12 @@
        meaningfully so it's unmistakable rather than something you have
        to know to look for. */
     background: linear-gradient(180deg, rgba(230, 203, 155, 0.32) 0%, rgba(230, 203, 155, 0.12) 55%, transparent 100%);
-    opacity: 0;
+    /* Was 0 on the splash, full only after entering the field -- a
+       design critique noted the two states didn't read as one system
+       because of it ("bring a quieter version onto the splash").
+       Faint from the first frame, then strengthens once in the field,
+       same wash throughout instead of switching on. */
+    opacity: 0.4;
     pointer-events: none;
     z-index: 0;
     transition: opacity 2.4s var(--ease);
@@ -262,6 +268,20 @@
     text-align: left;
   }
 
+  /* A bare "&" in tracked uppercase mono reads cheap next to two
+     considered typefaces, per the design critique -- a small italic
+     serif flourish (borrowed from the display face, not a third
+     family) instead, the standard editorial answer to the same
+     problem. The word itself is untouched -- Eduardo's own line, only
+     the glyph's style changes. */
+  .tagline .amp {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 1.2em;
+    letter-spacing: 0;
+    opacity: 0.85;
+  }
+
   /* Full tracking only works with room to breathe. Under ~30rem the
      wide letter-spacing that reads as a specimen tag on desktop pushes
      this onto three ragged lines instead — found by actually
@@ -300,7 +320,16 @@
        scroll a nerve-drag might trigger. */
     position: fixed;
     left: 50%;
-    top: 56%;
+    /* Was 56% -- almost exactly the nerve's own resting band (idle
+       sway centres on H*0.55 in Field.astro, wandering roughly
+       41-69% of viewport height across its cycle). A friend's design
+       critique caught it precisely: "the purpose line sits on top of
+       the nerve... type and graphic occupy the same horizontal band
+       and cancel each other" -- confirmed directly by screenshotting
+       the idle hero state, where the line visibly ran straight
+       through "first... then you decide". Moved below the nerve's
+       full idle wander range instead of overlapping its middle. */
+    top: 74%;
     transform: translateX(-50%);
     margin: 0;
     font-family: var(--font-display);
@@ -347,6 +376,27 @@
     to { opacity: 1; }
   }
 
+  /* background-clip: text has near-universal support now, but has no
+     graceful degradation of its own -- a browser without it renders
+     these left at color: transparent, i.e. invisible text, not a
+     flat fallback color. A design critique's craft checklist called
+     this out specifically for .purpose; applied to the wordmark too,
+     since it uses the same technique for the same reason. */
+  @supports not ((background-clip: text) or (-webkit-background-clip: text)) {
+    .purpose {
+      background-image: none;
+      color: var(--flesh);
+    }
+    .wordmark-eduardo {
+      background-image: none;
+      color: var(--bronze);
+    }
+    .wordmark-sopalda {
+      background-image: none;
+      color: var(--gold);
+    }
+  }
+
   .meta {
     position: fixed;
     right: clamp(1.25rem, 5vw, 3rem);
@@ -360,7 +410,15 @@
     color: rgba(227, 175, 149, 0.35);
     text-align: right;
     line-height: 2;
+    /* Was invisible (opacity: 0) until the field state -- a design
+       critique caught this exactly: "a first visitor never learns
+       who or where you are." Location and contact are permanent
+       marks, per Landing's own framing above; they should be on the
+       first screen, not locked behind the metamorphosis. Same quiet
+       resolve-in as the tagline/purpose/cue, not an instant snap. */
     opacity: 0;
+    animation: resolve-quiet 1.6s var(--ease) forwards;
+    animation-delay: 2.2s;
     transition: opacity 1.4s var(--ease);
   }
 
@@ -424,6 +482,20 @@
   @keyframes cue-breathe {
     0%, 100% { opacity: 0.4; transform: scale(1); }
     50% { opacity: 1; transform: scale(1.3); }
+  }
+
+  /* A gold dot with no word is a decoration, not a verb -- a design
+     critique's exact phrasing. Reusing "Continue", the word already
+     chosen for the button's own aria-label, rather than inventing new
+     copy: this just makes the existing label visible to sighted
+     visitors too, in the same quiet tracked-mono language as the
+     tagline. */
+  .cue-word {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: rgba(230, 203, 155, 0.55);
   }
 
   .cue:focus-visible {

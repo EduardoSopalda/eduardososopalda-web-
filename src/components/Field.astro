@@ -228,9 +228,15 @@
   .frag-ref {
     margin: 0.5em 0 0 0.85em;
     font-family: var(--font-mono);
-    font-size: 0.62rem;
+    /* Was 0.62rem at 0.45 alpha -- a design critique called this out
+       correctly: "that is decoration, not citation... bump them or
+       they will never be read." A source line that's structurally
+       too faint to read defeats its own purpose. Still quieter than
+       the quote itself (this is metadata, not voice), just no longer
+       below the floor of legibility. */
+    font-size: 0.72rem;
     letter-spacing: 0.05em;
-    color: rgba(227, 175, 149, 0.45);
+    color: rgba(227, 175, 149, 0.65);
     line-height: 1.3;
   }
 
@@ -350,7 +356,7 @@
   // tagged "site" in the source file aren't from any article (a line
   // about the site itself), so they carry no source and the field
   // just omits the reference line for those.
-  const FRAGS: { text: string; thread: string; weight: 'short' | 'long'; source: string | null }[] = [
+  const FRAGS: { text: string; thread: string; weight: 'short' | 'long'; source: string | null; lang?: string }[] = [
     { text: 'Governance without proximity is just opinion with a logo.', thread: 'MEANING', weight: 'short', source: 'The Data Is My Shepherd, I Shall Not Want' },
     { text: 'That, my friends, is semantic chaos.', thread: 'MEANING', weight: 'short', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
     { text: 'Spoiler: nobody ever finds them.', thread: 'MEANING', weight: 'short', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
@@ -365,7 +371,7 @@
     { text: 'Most organizations already have governance. What they lack is practice.', thread: 'GOVERNANCE', weight: 'short', source: 'When Governance Lives in Memory… and When It Becomes Muscle' },
     { text: 'That is the day governance stops being memory. And starts being muscle.', thread: 'GOVERNANCE', weight: 'long', source: 'When Governance Lives in Memory… and When It Becomes Muscle' },
     { text: 'Tools do not replace culture. But they prevent culture from breaking at the first tight deadline.', thread: 'GOVERNANCE', weight: 'long', source: 'When Governance Lives in Memory… and When It Becomes Muscle' },
-    { text: 'No se puede empezar la casa por el tejado.', thread: 'GOVERNANCE', weight: 'short', source: 'From Stewardship to Partnership: Why GenAI in Data Governance Is No Longer “The Future”' },
+    { text: 'No se puede empezar la casa por el tejado.', thread: 'GOVERNANCE', weight: 'short', source: 'From Stewardship to Partnership: Why GenAI in Data Governance Is No Longer “The Future”', lang: 'es' },
     { text: 'Human override exists only on paper.', thread: 'GOVERNANCE', weight: 'short', source: 'Responsible AI in Times of Chaos: Why Trust Is Not a Feature' },
     { text: 'AI is a hammer.', thread: 'GOVERNANCE', weight: 'short', source: 'The Data Is My Shepherd, I Shall Not Want' },
     { text: 'I do not trust evangelists.', thread: 'TRUST', weight: 'short', source: 'The Data Is My Shepherd, I Shall Not Want' },
@@ -661,6 +667,11 @@
       const idx = nextFragIndex();
       const f = FRAGS[idx];
       slot.fragIndex = idx;
+      // The one Spanish line in the set ("No se puede empezar...")
+      // was inheriting the page's lang="en" like every other fragment
+      // -- wrong for assistive tech and translate tooling reading the
+      // page, per the design critique's craft checklist.
+      slot.quote.lang = f.lang || 'en';
       slot.quote.textContent = '';
       // Each letter is its own inline-block <i> so the decay physics can
       // move it independently -- but adjacent inline-blocks each carry
