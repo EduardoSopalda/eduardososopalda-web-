@@ -639,6 +639,7 @@
     const fragSlots = Array.from({ length: SLOT_COUNT }, (_, slotI) => {
       const el = document.createElement('div');
       el.className = 'frag-slot';
+      el.dataset.slot = String(slotI);
       const quote = document.createElement('p');
       quote.className = 'frag-quote';
       const ref = document.createElement('p');
@@ -707,6 +708,11 @@
       slot.ref.style.transition = '';
       slot.ref.style.opacity = '1';
       slot.depth = f.weight === 'long' ? 0.6 + Math.random() * 0.22 : 0.3 + Math.random() * 0.3;
+      // Font-size depends only on depth, so it's set here rather than at
+      // the very end of this function -- moved up because the shelf
+      // jitter below needs the block's REAL rendered height, which
+      // needs the real font-size already applied first.
+      slot.quote.style.fontSize = (14 + (1 - Math.abs(slot.depth - 0.7)) * 8) + 'px';
       // Spawn where it can actually be seen: solve for the xn that puts
       // it inside the current viewport right now, rather than a random
       // point across the whole ~4000px world (which, at 6 slots vs. a
@@ -731,17 +737,36 @@
       // column to its right at all -- so this measures the mark's own
       // rendered bottom edge and pushes the top band BELOW it instead,
       // which holds regardless of viewport width.
+      // Only while actually docked, though -- slot 0's own pendingT (up
+      // to 3s) means it often first spawns during the hero, where .mark
+      // is still the huge, centered hero wordmark, not the small corner
+      // mark this push exists for. Measuring THAT bottom edge inflated
+      // topBandStart hugely, and since it's only recalculated on this
+      // slot's next (rare, decay-gated) respawn, slot 0's whole shelf
+      // stayed pushed for its next 40-70+ seconds -- confirmed directly
+      // as the actual cause of slot 0 landing on top of slot 2's shelf,
+      // not the "long quote overflows its own shelf" case this file
+      // used to blame.
       let topBandStart = 0.08;
-      if (slot.slotI === 0) {
+      if (slot.slotI === 0 && document.body.dataset.landing === 'field') {
         const markEl = document.querySelector('.mark');
         if (markEl) topBandStart = Math.max(topBandStart, (markEl.getBoundingClientRect().bottom + 20) / H);
       }
-      // Jitter within the band was up to 0.5*bandH -- enough to push a
-      // tall (3-4 line, "long"-weight) quote right up against its
-      // neighbor's territory, seen as two quotes visually overlapping
-      // each other despite having separate band assignments. Tightened
-      // so fragments sit closer to the center of their own shelf.
-      slot.y = slot.slotI === 0 ? topBandStart + Math.random() * bandH * 0.25 : 0.08 + slot.slotI * bandH + Math.random() * bandH * 0.25;
+      // Jitter within the band was up to 0.5*bandH, then a flat 0.25 --
+      // both assumed every quote was short enough to fit its shelf with
+      // room to spare. A "long"-weight quote can wrap to 3-4 lines,
+      // tall enough to reach into the next shelf even parked at the very
+      // top of its own band -- confirmed directly: a long and a short
+      // quote in adjacent shelves rendering on top of each other for
+      // their entire shared lifetime, not just a passing brush during
+      // drift. The block already has its real text and font-size, so
+      // its real rendered height is measurable now -- cap the downward
+      // jitter by whatever room that leaves, instead of a fixed fraction
+      // that assumes a height no quote here actually has.
+      const measuredH = slot.el.offsetHeight || 80;
+      const roomFrac = Math.max(0, bandH - measuredH / H - 0.01);
+      const jitter = Math.min(bandH * 0.25, roomFrac);
+      slot.y = slot.slotI === 0 ? topBandStart + Math.random() * jitter : 0.08 + slot.slotI * bandH + Math.random() * jitter;
       // Bands only ever kept fragments from piling on EACH OTHER --
       // nothing kept a fragment from spawning right on top of a
       // specimen that happened to be drifting through that same screen
@@ -774,7 +799,6 @@
       slot.entryAmt = 1;
       slot.aloneTime = 0;
       slot.state = 'alive';
-      slot.quote.style.fontSize = (14 + (1 - Math.abs(slot.depth - 0.7)) * 8) + 'px';
       slot.el.style.zIndex = String(Math.round(slot.depth * 100));
     }
 
@@ -1012,6 +1036,11 @@
 
       // ---- fragments: staggered entrance, drift, decay onto the nerve ----
       const ENTRY_OFFSET = 320;
+      // Read by the stops loop just below, so a stop label can duck
+      // around a live quote instead of landing on top of it -- see that
+      // loop's own comment for why this is a stop's problem to solve,
+      // not the quote's.
+      const liveFragRects: { x: number; y: number; w: number; h: number }[] = [];
       for (const slot of fragSlots) {
         if (slot.state === 'pending') {
           slot.pendingT -= dt;
@@ -1022,7 +1051,18 @@
 
         const depthFactor = 0.3 + slot.depth * 0.7;
         const baseX = wrap(slot.xn * WORLD_W - worldX * depthFactor, WORLD_W) - Math.min(520, W * 0.4);
-        const baseY = slot.y * H + worldYoff * depthFactor;
+        // Quotes sit on dedicated vertical shelves specifically so they
+        // never overlap each other (see assignFragment's own comment on
+        // bandH) -- but scaling worldYoff by the same per-fragment
+        // depthFactor used for specimens' parallax meant two shelves
+        // drifted by a DIFFERENT amount depending on which fragment each
+        // had been assigned, since worldYoff's own swing (±0.16H) is
+        // nearly as large as the gap between shelves. Confirmed directly:
+        // two quotes' text rendered on top of each other mid-drift, well
+        // after both had spawned cleanly separated. A small, flat sway
+        // (not depth-scaled) keeps some ambient life without threatening
+        // the separation the shelves exist for.
+        const baseY = slot.y * H + worldYoff * 0.05;
 
         // Entry offset decays toward 0 each frame -- this is what makes
         // a freshly spawned fragment fly in from its chosen edge rather
@@ -1052,6 +1092,14 @@
         const on = baseX > -10 && baseX + bw < W + 10 && baseY > -10 && baseY + bh < H + 10;
         slot.el.style.visibility = on ? 'visible' : 'hidden';
         slot.el.style.transform = `translate3d(${X}px, ${Y}px, 0)`;
+
+        // Decaying quotes are already coming apart into scattered gold
+        // letters, not a solid block of text any more, so they aren't
+        // worth a stop label dodging -- only a fully "alive," genuinely
+        // readable quote counts as an obstacle.
+        if (on && slot.state === 'alive') {
+          liveFragRects.push({ x: X, y: Y, w: bw, h: bh });
+        }
 
         const fx = X + 140, fy = Y + 20;
         let near = false;
@@ -1111,10 +1159,34 @@
       // ---- stops ----
       for (const s of stopNodes) {
         const X = wrap(s.xn * WORLD_W - worldX, WORLD_W) - Math.min(520, W * 0.4);
-        const y = chainYAt(X) + worldYoff * 0.02;
+        let y = chainYAt(X) + worldYoff * 0.02;
         const on = X > -200 && X < W + 200;
         s.el.style.visibility = on ? 'visible' : 'hidden';
         if (!on) continue;
+
+        // A stop rides the nerve wherever the nerve happens to be, and
+        // nothing kept that from landing exactly on a live quote's own
+        // territory -- unlike a specimen (a photo can sit behind a short
+        // word and both still read fine), two blocks of dense text on
+        // the same pixels are simply unreadable, seen directly: a stop's
+        // name rendered right through a quote's own line. A stop is one
+        // short word, so nudging it perpendicular off the wire just far
+        // enough to clear the quote is far cheaper than moving the
+        // quote itself, and it still visibly rides the nerve -- just
+        // ducking around something in its way, the way it already dips
+        // for a specimen drifting past.
+        const sw = s.el.offsetWidth || 90, sh = s.el.offsetHeight || 22;
+        for (const r of liveFragRects) {
+          const sy = y - 22;
+          if (X < r.x + r.w && X + sw > r.x && sy < r.y + r.h && sy + sh > r.y) {
+            const below = r.y + r.h + sh / 2 + 16;
+            const above = r.y - sh / 2 - 16;
+            y = Math.abs(below - y) < Math.abs(above - y) ? below : above;
+            y = Math.max(nerveMin + 14, Math.min(nerveMax - 14, y));
+            break;
+          }
+        }
+
         s.el.style.transform = `translate3d(${X}px, ${y - 22}px, 0)`;
         let near = 0;
         if (hasPointer) {
