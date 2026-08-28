@@ -1,4 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" fill="#161010"/>
-  <circle cx="16" cy="16" r="4" fill="#7C5631"/>
+  <!-- A node from the nerve itself, not an unrelated dot -- same gold
+       used nowhere else on the site, plus the glow that makes an
+       "awake" node read as lit. The old brown dot on #161010 was a
+       smudge at 16px (a design critique caught this exactly); a bigger
+       gold circle with a soft halo actually survives a browser tab. -->
+  <defs>
+    <filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="2.6" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="32" height="32" fill="#000000" />
+  <circle cx="16" cy="16" r="6" fill="#F7C56A" filter="url(#glow)" />
 </svg>

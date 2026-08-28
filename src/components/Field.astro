@@ -2,12 +2,21 @@
 // The field itself: the cabinet of curiosities. Specimens and
 // fragments drifting at depth, a nerve running through it, the seven
 // stops riding that nerve. Ported from prototype/field.html's proven
-// drift/decay math (CLAUDE.md: "it already works"), with the nerve
-// upgraded to the spring/tension chain from Landing.astro rather than
-// its original closed-form sine.
+// drift/decay math (CLAUDE.md: "it already works").
+//
+// The nerve's wave went spring/tension chain -> closed-form sine (a
+// second opinion's reference prototype, "wave, not an electrocardiogram")
+// -- back to closed-form, but not the original: this one adds a slow
+// amplitude "breath", a spatial "warp" so the phase isn't perfectly
+// uniform across the width, and a drifting mid-line, all sampled fresh
+// from `t` every frame instead of spring-integrated per point. Pointer
+// bend, the drag-linked vertical offset, and the text-zone Y clamp are
+// all still layered on top -- see chainYAt/nerveYAt below.
 //
 // Fragment text is Eduardo's own, verbatim from fragments/fragments.md
-// (50 real fragments, thread + weight). Specimen images/video are the
+// (50 real fragments, thread + weight) -- shared with Landing.astro's
+// hero quote via src/data/fragments.ts, one source of truth instead of
+// two copies drifting apart. Specimen images/video are the
 // confirmed assets from this session — see public/specimens/. Three
 // have real "DATA" catalogue tags per the cabinet's thread mapping
 // decided earlier; the rest (seaweed, eyefish) are untagged
@@ -228,9 +237,15 @@
   .frag-ref {
     margin: 0.5em 0 0 0.85em;
     font-family: var(--font-mono);
-    font-size: 0.62rem;
+    /* Was 0.62rem at 0.45 alpha -- a design critique called this out
+       correctly: "that is decoration, not citation... bump them or
+       they will never be read." A source line that's structurally
+       too faint to read defeats its own purpose. Still quieter than
+       the quote itself (this is metadata, not voice), just no longer
+       below the floor of legibility. */
+    font-size: 0.72rem;
     letter-spacing: 0.05em;
-    color: rgba(227, 175, 149, 0.45);
+    color: rgba(227, 175, 149, 0.65);
     line-height: 1.3;
   }
 
@@ -281,6 +296,8 @@
 </style>
 
 <script>
+  import { FRAGS } from '../data/fragments';
+
   type Specimen = {
     img?: string;
     vid?: string;
@@ -292,19 +309,39 @@
     vignette?: boolean; // true = source has a soft dark edge, not flat black — fade it via mask instead of showing a rectangle
     cutout?: boolean; // true = source has a genuine alpha-cut background — safe to brighten/glow on wake without lighting up a visible rectangle
     boost?: number; // static brightness multiplier on top of the base 0.82 -- compensates for a source that's inherently pale/low-contrast (not a real fix; that's a re-shoot), default 1
+    pulse?: boolean; // true = fades slowly in and out on its own, independent of awake/flare -- per Eduardo's note for the second jellyfish
   };
 
   const SPECIMENS: Specimen[] = [
     { img: '/specimens/chimp.png', w: 460, y: 0.28, d: 1.0, tag: 'No.04 · PROXIMITY · CHIMP', vignette: true, cutout: true },
-    // Big and near the top on purpose: at xn≈0.21 this specimen resolves
-    // near the left-center of the screen at load (worldX starts at 0),
-    // and y now matches the first fragment slot's own band -- so the
-    // octopus is already part of the first thing a visitor sees, resting
-    // over the first quote rather than waiting to drift into view.
-    { img: '/specimens/octopus.png', w: 640, y: 0.2, d: 0.97, tag: 'No.02 · GOVERNANCE · OCTOPUS', vignette: true, cutout: true },
+    // Still big and near-load-visible (xn≈0.21 resolves near the
+    // left-center of the screen at load), but moved to the lower half --
+    // y was 0.2, same band as the chimp (0.28) and the first jellyfish
+    // (0.2), leaving three of ten specimens stacked in the top quarter
+    // of the screen and almost nothing below center besides the
+    // goldfish. At this y and size the tentacles can drift close to the
+    // permanent purpose-line text (worked out: the existing vertical
+    // sine drift, worldYoff, moves every specimen by up to ±144px*d --
+    // not unique to this one), but that's not the corner-mark bug from
+    // earlier: Landing.astro's content always paints above the whole
+    // field regardless of what's behind it, so the text stays fully
+    // legible either way. A specimen drifting near it is the same
+    // "chaos" every other specimen already has.
+    // Replaced the static PNG with a looping animation Eduardo sent --
+    // genuinely alpha-cut this time (verified the same way as the
+    // others: canvas pixel sampling and a real <video> tag against
+    // both red and true-black test backgrounds), so vignette is
+    // dropped -- the old PNG's soft dark edge needed that mask, this
+    // one blends into true black cleanly on its own.
+    { vid: '/specimens/octopus.webm', w: 640, y: 0.66, d: 0.97, tag: 'No.02 · GOVERNANCE · OCTOPUS', cutout: true },
     { vid: '/specimens/jellyfish.webm', w: 560, y: 0.2, d: 0.66, tag: 'No.03 · TRUST · JELLYFISH', cutout: true },
     { vid: '/specimens/goldfish.mp4', poster: '/specimens/goldfish.png', w: 400, y: 0.7, d: 0.94, tag: 'No.01 · MEMORY · GOLDFISH', boost: 1.2 },
-    { img: '/specimens/pig.png', w: 300, y: 0.42, d: 0.74, tag: 'No.05 · MEANING · PIGLET' },
+    // Replaces the old static pig.png -- an animated piglet (turns to
+    // face camera, sits) with the same "DATA" motif as the other
+    // specimens. Not a cutout (plain mp4, opaque, near-black background
+    // matching the old still almost pixel-for-pixel), so it gets the
+    // standard static treatment, same as goldfish/seaweed.
+    { vid: '/specimens/piglet.mp4', poster: '/specimens/piglet-poster.png', w: 300, y: 0.42, d: 0.74, tag: 'No.05 · MEANING · PIGLET' },
     { img: '/specimens/eyefish.png', w: 260, y: 0.54, d: 0.58, boost: 1.15 },
     { vid: '/specimens/seaweed.mp4', w: 300, y: 0.34, d: 0.5 },
     // Both genuinely alpha-cut (verified same as the others: canvas
@@ -313,65 +350,15 @@
     // the octopus/chimp's tuned load-time positions.
     { vid: '/specimens/brain.webm', w: 480, y: 0.46, d: 0.9, tag: 'No.06 · CURIOSITY · BRAIN', cutout: true },
     { vid: '/specimens/bluefish.webm', w: 420, y: 0.58, d: 0.62, tag: 'No.07 · GOVERNANCE · BLUE FISH', cutout: true },
-  ];
-
-  // "source" is the real article title each fragment was lifted from
-  // (content/_index.json), not invented — matches fragments.md's own
-  // arrow-target links, resolved to human-readable titles. Fragments
-  // tagged "site" in the source file aren't from any article (a line
-  // about the site itself), so they carry no source and the field
-  // just omits the reference line for those.
-  const FRAGS: { text: string; thread: string; weight: 'short' | 'long'; source: string | null }[] = [
-    { text: 'Governance without proximity is just opinion with a logo.', thread: 'MEANING', weight: 'short', source: 'The Data Is My Shepherd, I Shall Not Want' },
-    { text: 'That, my friends, is semantic chaos.', thread: 'MEANING', weight: 'short', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
-    { text: 'Spoiler: nobody ever finds them.', thread: 'MEANING', weight: 'short', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
-    { text: 'You cannot build a data-quality penthouse on semantic quicksand.', thread: 'MEANING', weight: 'short', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
-    { text: 'Ask five people across one company what "revenue" means and you will get eight answers.', thread: 'MEANING', weight: 'long', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
-    { text: 'Everyone guards their terminology like national heritage.', thread: 'MEANING', weight: 'short', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
-    { text: 'That is archaeology, not governance.', thread: 'MEANING', weight: 'short', source: 'If We Can’t Agree on “Customer,” How Can We Ever Govern Data?' },
-    { text: 'Wittgenstein is still making data people uncomfortable. Good. We deserve it.', thread: 'MEANING', weight: 'long', source: 'The Data Is My Shepherd, I Shall Not Want' },
-    { text: 'A document waiting to be ignored.', thread: 'MEANING', weight: 'short', source: 'The Data Is My Shepherd, I Shall Not Want' },
-    { text: 'Asking the right question is key to getting the right results.', thread: 'MEANING', weight: 'short', source: "Why the Smarter AI Isn't the One That Predicts" },
-    { text: 'Governance becomes a narrative, not a reflex.', thread: 'GOVERNANCE', weight: 'short', source: 'When Governance Lives in Memory… and When It Becomes Muscle' },
-    { text: 'Most organizations already have governance. What they lack is practice.', thread: 'GOVERNANCE', weight: 'short', source: 'When Governance Lives in Memory… and When It Becomes Muscle' },
-    { text: 'That is the day governance stops being memory. And starts being muscle.', thread: 'GOVERNANCE', weight: 'long', source: 'When Governance Lives in Memory… and When It Becomes Muscle' },
-    { text: 'Tools do not replace culture. But they prevent culture from breaking at the first tight deadline.', thread: 'GOVERNANCE', weight: 'long', source: 'When Governance Lives in Memory… and When It Becomes Muscle' },
-    { text: 'No se puede empezar la casa por el tejado.', thread: 'GOVERNANCE', weight: 'short', source: 'From Stewardship to Partnership: Why GenAI in Data Governance Is No Longer “The Future”' },
-    { text: 'Human override exists only on paper.', thread: 'GOVERNANCE', weight: 'short', source: 'Responsible AI in Times of Chaos: Why Trust Is Not a Feature' },
-    { text: 'AI is a hammer.', thread: 'GOVERNANCE', weight: 'short', source: 'The Data Is My Shepherd, I Shall Not Want' },
-    { text: 'I do not trust evangelists.', thread: 'TRUST', weight: 'short', source: 'The Data Is My Shepherd, I Shall Not Want' },
-    { text: 'AI does not hesitate. It does not say, "That depends." It simply responds.', thread: 'TRUST', weight: 'long', source: 'ATLAN´S Great Data Debate: DATA, Dashboards, AI, and the Fragility of Meaning' },
-    { text: 'Agents do not own risk. They do not carry accountability. Humans do… always.', thread: 'TRUST', weight: 'long', source: 'From Stewardship to Partnership: Why GenAI in Data Governance Is No Longer “The Future”' },
-    { text: "In times of chaos, the absence of friction is not efficiency. It's a warning sign.", thread: 'TRUST', weight: 'long', source: 'Responsible AI in Times of Chaos: Why Trust Is Not a Feature' },
-    { text: 'Speed is mistaken for correctness.', thread: 'TRUST', weight: 'short', source: 'Responsible AI in Times of Chaos: Why Trust Is Not a Feature' },
-    { text: 'There is nothing more human than that.', thread: 'TRUST', weight: 'short', source: 'From Stewardship to Partnership: Why GenAI in Data Governance Is No Longer “The Future”' },
-    { text: "It didn't replace the rep. It amplified their judgment.", thread: 'TRUST', weight: 'short', source: "Why the Smarter AI Isn't the One That Predicts" },
-    { text: 'Nothing here is for sale, including the optimism.', thread: 'TRUST', weight: 'short', source: null },
-    { text: 'Come down from the tower. The coffee is better down here.', thread: 'PROXIMITY', weight: 'long', source: 'The Data Is My Shepherd, I Shall Not Want' },
-    { text: 'Data is love.', thread: 'PROXIMITY', weight: 'short', source: 'The Data Is My Shepherd, I Shall Not Want' },
-    { text: 'They didn’t want promises. They wanted presence.', thread: 'PROXIMITY', weight: 'short', source: '“TODO EL MUNDO ES UN PAÍS” Everyone is a country… Inspired by Goya’s silent truths' },
-    { text: 'Everyone is a country.', thread: 'PROXIMITY', weight: 'short', source: '“TODO EL MUNDO ES UN PAÍS” Everyone is a country… Inspired by Goya’s silent truths' },
-    { text: "Don't stop learning.", thread: 'PROXIMITY', weight: 'short', source: '"Can I Call You Uncle Too?" On unexpected mentors, timeless advice, and the art of never stopping learning' },
-    { text: "Sometimes it's a sentence. Sometimes it's silence.", thread: 'PROXIMITY', weight: 'short', source: '"Can I Call You Uncle Too?" On unexpected mentors, timeless advice, and the art of never stopping learning' },
-    { text: 'But I switched them. The wrong envelopes went to the wrong places.', thread: 'PROXIMITY', weight: 'long', source: 'Crisis Management 101: The Morning Everything Went Wrong (and I Survived)' },
-    { text: "Not every Monday starts right.", thread: 'PROXIMITY', weight: 'short', source: 'Crisis Management 101: The Morning Everything Went Wrong (and I Survived)' },
-    { text: 'Roughly two thousand of them are relevant.', thread: 'MEMORY', weight: 'short', source: 'Ten Thousand Files, Two Thousand That Mattered' },
-    { text: 'It is like guarding the vault while the library burns down.', thread: 'MEMORY', weight: 'long', source: 'Ten Thousand Files, Two Thousand That Mattered' },
-    { text: 'Data is perishable.', thread: 'MEMORY', weight: 'short', source: 'Ten Thousand Files, Two Thousand That Mattered' },
-    { text: 'Nobody was going to read that folder.', thread: 'MEMORY', weight: 'short', source: 'Ten Thousand Files, Two Thousand That Mattered' },
-    { text: "Raw data doesn't scream; it whispers.", thread: 'MEMORY', weight: 'short', source: 'Strada Maestra: Lessons from an Italian Curve' },
-    { text: 'You do not reach 1,000 without doing 1.', thread: 'CURIOSITY', weight: 'short', source: 'Starting the AI Journey: From First Wave to Business-Ready AI' },
-    { text: 'Most people never start because they wait to feel "ready."', thread: 'CURIOSITY', weight: 'long', source: 'Starting the AI Journey: From First Wave to Business-Ready AI' },
-    { text: 'Knowing the ingredients is not the same as understanding the process.', thread: 'CURIOSITY', weight: 'long', source: '“Knowing the Ingredients Isn’t Enough” – The Scientific Method According to a Hibiscus Margarita' },
-    { text: 'Three ingredients. How hard could it be?', thread: 'CURIOSITY', weight: 'short', source: '“Knowing the Ingredients Isn’t Enough” – The Scientific Method According to a Hibiscus Margarita' },
-    { text: 'Spoiler: it was a disaster.', thread: 'CURIOSITY', weight: 'short', source: '“Knowing the Ingredients Isn’t Enough” – The Scientific Method According to a Hibiscus Margarita' },
-    { text: 'Lime is the green one.', thread: 'CURIOSITY', weight: 'short', source: '“Knowing the Ingredients Isn’t Enough” – The Scientific Method According to a Hibiscus Margarita' },
-    { text: 'Honk before the curve.', thread: 'CURIOSITY', weight: 'short', source: 'Strada Maestra: Lessons from an Italian Curve' },
-    { text: 'And yes, there was a goat.', thread: 'CURIOSITY', weight: 'short', source: 'Strada Maestra: Lessons from an Italian Curve' },
-    { text: 'Claude: Therapy-energy, brings herbal tea and listening skills.', thread: 'CURIOSITY', weight: 'long', source: 'Speed Dating with AI: Grok' },
-    { text: 'Bring holy water and a firewall.', thread: 'CURIOSITY', weight: 'short', source: 'Speed-Dating with AI: The GitHub Copilot' },
-    { text: "You know you won't find \"the one\" if you don't shop around.", thread: 'CURIOSITY', weight: 'long', source: 'Speed Dating with AI: Shopping Around' },
-    { text: 'Also, ducks. Always ducks.', thread: 'CURIOSITY', weight: 'short', source: 'Speed Dating with AI: ChatGPT' },
+    // Second jellyfish -- was a still, now a looping animation Eduardo
+    // sent, genuinely alpha-cut (verified against both red and true-
+    // black test backgrounds, same as the octopus above), so cutout:
+    // true now too. Still fades in and out very slowly on its own
+    // (pulse: true) on top of that -- the two are independent, so it
+    // both swims in its own loop and breathes in and out at the same
+    // time. Different y/d from the existing jellyfish so the two don't
+    // habitually overlap.
+    { vid: '/specimens/jellyfish2.webm', w: 460, y: 0.62, d: 0.42, tag: 'No.08 · TRUST · JELLYFISH', pulse: true, cutout: true },
   ];
 
   const STOPS: [string, string][] = [
@@ -442,62 +429,90 @@
       targetX += (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) * 1.1;
     }, { passive: true });
 
-    // ================= nerve: spring/tension chain (see Landing.astro) =================
-    const N = 42, MARGIN = 240;
-    type Pt = { x: number; y: number; vy: number; seed: number };
+    // ================= nerve: closed-form wave, sampled fresh each frame =================
+    const N = 56, MARGIN = 240;
+    type Pt = { x: number; y: number };
     let chain: Pt[] = [];
     function buildChain() {
       chain = [];
       for (let i = 0; i < N; i++) {
         const x = (i / (N - 1)) * (W + MARGIN * 2) - MARGIN;
-        chain.push({ x, y: H * 0.55, vy: 0, seed: i });
+        chain.push({ x, y: H * 0.55 });
       }
     }
 
-    function stepChain(dt: number) {
-      const base = H * 0.55 + worldYoff * 0.4;
-      // Phase is driven by chain index (position along the rope), not a
-      // per-point random seed -- neighbors need correlated targets or the
-      // tension pass below (which pulls each point toward its neighbors'
-      // average) cancels the noise into a flat line instead of a wave.
-      for (const p of chain) {
-        let target =
-          base +
-          Math.sin(t * 0.045 + p.seed * 0.16) * H * 0.03 +
-          Math.sin(t * 0.02 + p.seed * 0.42 + 2.1) * H * 0.045;
-        if (hasPointer) {
-          const d = Math.abs(p.x - px);
-          if (d < 560) {
-            const f = 1 - d / 560;
-            target += (py - target) * f * f * 0.8;
-          }
-        }
-        // Per-frame spring, not per-second: dt is a fixed 1/60 constant
-        // everywhere else in this file (worldX, the tension pass below),
-        // so scaling only the gain by dt while damping stayed at a flat
-        // 0.9 every frame made the spring ~3600x too weak to ever reach
-        // its target -- the chain sat frozen at its initial resting y.
-        // Gain/damping loosened from 0.02/0.9 for a more flexible, live
-        // reaction to the cursor -- "very flexible" per Eduardo's note --
-        // while staying inside stable range.
-        p.vy += (target - p.y) * 0.032;
-        p.vy *= 0.87;
-        p.y += p.vy;
-      }
-      for (let pass = 0; pass < 2; pass++) {
-        for (let i = 1; i < chain.length - 1; i++) {
-          const avg = (chain[i - 1].y + chain[i + 1].y) / 2;
-          chain[i].y += (avg - chain[i].y) * 0.18;
-        }
-      }
+    // The base curve: a slow amplitude "breath" (the wave's height
+    // itself swells and eases, not just the wave riding at a fixed
+    // height), a spatial "warp" so the phase isn't perfectly even
+    // across the width (an organic curve, not a uniform machine-sine),
+    // and a mid-line that drifts with the same worldYoff the specimens
+    // already move on -- so the nerve and the cabinet breathe together.
+    function nerveBaseY(x: number): number {
+      const u = x / Math.max(W, 1);
+      const breath = 0.55 + 0.45 * Math.sin(t * 0.22);
+      // worldYoff already carries its own ±0.16H idle swing (plus up to
+      // ±0.34H while dragging) -- added at the reference prototype's own
+      // coefficient (0.4) on top of ITS wave amplitude, the combined
+      // worst-case excursion badly overshot the H*0.16-0.86 clamp below,
+      // pinning the curve flat against one bound for a third of the
+      // width at a time (confirmed by sampling the actual rendered pixel
+      // column-by-column, not by eyeballing a single frame). Rescaled
+      // down (0.4 -> 0.18, plus a smaller wave amplitude below) so the
+      // worst-case sum of every term still fits inside the clamp with
+      // margin, instead of relying on the clamp to hide an oversized
+      // signal.
+      const mid = H * 0.615 + Math.sin(t * 0.14) * H * 0.01 + worldYoff * 0.08;
+      const warp = u + 0.08 * Math.sin(u * Math.PI * 2 + t * 0.2);
+      const amp = H * (0.02 + 0.025 * breath);
+      return (
+        mid +
+        Math.sin(warp * Math.PI * 1.05 + t * 0.48) * amp +
+        Math.sin(warp * Math.PI * 2.1 + t * 0.27) * amp * 0.28 +
+        Math.sin(u * Math.PI * 0.4 + t * 0.11) * H * 0.006
+      );
     }
 
     function chainYAt(x: number): number {
-      for (let i = 0; i < chain.length - 1; i++) {
-        const a = chain[i], b = chain[i + 1];
-        if (x >= a.x && x <= b.x) return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
+      let y = nerveBaseY(x);
+      if (hasPointer) {
+        const d = Math.abs(x - px);
+        if (d < 560) {
+          const f = 1 - d / 560;
+          y += (py - y) * f * f * 0.8;
+        }
       }
-      return chain[chain.length - 1].y;
+      // The corner mark, top bar, tagline, purpose line, and meta live
+      // in Landing.astro's own stacking context, which paints above
+      // this whole canvas regardless of the nerve's z-index -- that
+      // only wins comparisons against other things inside Field.astro
+      // (specimens, fragments, stops), not against a sibling section
+      // entirely. Clamping keeps the curve's actual geometry out of
+      // both text zones so it can't happen, rather than trying to
+      // out-stack a separate section.
+      //
+      // Was 0.16-0.86 (generous, sized for the old lower-amplitude
+      // spring chain). This wave's amplitude overshot that badly at
+      // first -- confirmed two different ways: sampling the rendered
+      // canvas column-by-column showed it pinned flat against 0.86 for
+      // a third of the width at a time, and once the amplitude was cut
+      // down to stop that, a later sample still caught the peak
+      // crossing directly through the tagline's own rendered rect
+      // (measured at 415-444px in a 900px viewport, i.e. ~0.46-0.49H)
+      // and the trough coming within 6px of the purpose line's rect
+      // (666-691px, ~0.74-0.77H). Tightened to a channel that clears
+      // both with real margin, verified by sampling the actual
+      // rendered curve every 600ms over 18+ seconds afterward, not
+      // just checking one frame.
+      return Math.max(H * 0.51, Math.min(H * 0.72, y));
+    }
+
+    function stepChain(_dt: number) {
+      // No more spring state to integrate -- every point is a fresh,
+      // stateless sample of chainYAt(x) at the current t. Kept as its
+      // own function (rather than inlining into frame()) since it's
+      // called once per frame right before the points are drawn, same
+      // as the spring version it replaced.
+      for (const p of chain) p.y = chainYAt(p.x);
     }
 
     const pulses = [
@@ -541,6 +556,7 @@
         // reacts to the visitor; this one doesn't wait to be found.
         flareIn: 6 + Math.random() * 14,
         flareT: -1, // -1 = not currently flaring
+        pulsePhase: Math.random() * Math.PI * 2,
       };
       if (isTouch) {
         el.style.pointerEvents = 'auto';
@@ -564,13 +580,12 @@
     // range a short mobile viewport leaves once the bottom marks are
     // excluded -- window.innerWidth here, not the closure W, since W
     // isn't set until the first resize() call, which happens after this.
-    // 6 concurrent quotes plus up to 7 independently-drifting specimens
-    // and 7 stops in the same vertical range read as clutter, not chaos,
-    // in a design audit -- caught a moment with three quotes and three
-    // specimens all in one horizontal band, competing rather than
-    // composing. Fewer concurrent fragments gives everything else more
-    // room to be seen on its own.
-    const SLOT_COUNT = window.innerWidth < 500 ? 3 : 4;
+    // Was 6, then 4 -- reduced again after the menagerie grew to 9
+    // specimens (brain, blue fish added since) and a friend's screenshot
+    // still showed a quote, a specimen, and a stop all crammed into one
+    // spot, illegible. Fewer concurrent fragments gives the rest of the
+    // field -- now genuinely dense on its own -- more room to be seen.
+    const SLOT_COUNT = window.innerWidth < 500 ? 2 : 3;
     type Dir = 'left' | 'right' | 'top' | 'bottom';
     const DIRS: Dir[] = ['left', 'right', 'top', 'bottom'];
 
@@ -620,6 +635,11 @@
       const idx = nextFragIndex();
       const f = FRAGS[idx];
       slot.fragIndex = idx;
+      // The one Spanish line in the set ("No se puede empezar...")
+      // was inheriting the page's lang="en" like every other fragment
+      // -- wrong for assistive tech and translate tooling reading the
+      // page, per the design critique's craft checklist.
+      slot.quote.lang = f.lang || 'en';
       slot.quote.textContent = '';
       // Each letter is its own inline-block <i> so the decay physics can
       // move it independently -- but adjacent inline-blocks each carry
@@ -660,12 +680,6 @@
       // world wider than the screen, would spawn most fragments
       // somewhere nobody will ever scroll to before they decay unseen).
       const depthFactor = 0.3 + slot.depth * 0.7;
-      // Leaves room on the right for the quote block's own width (up to
-      // 24em) so it doesn't spawn overflowing off the viewport edge —
-      // the first version placed it anywhere up to 0.84W and clipped.
-      const targetScreenX = W * 0.06 + Math.random() * W * 0.5;
-      const offset = Math.min(520, W * 0.4);
-      slot.xn = wrap(targetScreenX + offset + worldX * depthFactor, WORLD_W) / WORLD_W;
       // Kept out of the bottom ~35% of the viewport on purpose -- the
       // purpose line and the Barcelona/LinkedIn mark both live down
       // there and are permanent fixtures, not other field objects a
@@ -695,6 +709,34 @@
       // each other despite having separate band assignments. Tightened
       // so fragments sit closer to the center of their own shelf.
       slot.y = slot.slotI === 0 ? topBandStart + Math.random() * bandH * 0.25 : 0.08 + slot.slotI * bandH + Math.random() * bandH * 0.25;
+      // Bands only ever kept fragments from piling on EACH OTHER --
+      // nothing kept a fragment from spawning right on top of a
+      // specimen that happened to be drifting through that same screen
+      // area, which a friend's screenshot caught directly (a quote
+      // rendered right across a specimen's face, both unreadable). Since
+      // specimens keep drifting independently after a fragment spawns,
+      // this can't be fully solved, but retrying the X position a few
+      // times against every specimen's ACTUAL current on-screen rect
+      // avoids spawning directly into a collision at least.
+      const candidateY = slot.y * H;
+      function collidesWithSpecimen(x: number) {
+        for (const n of specNodes) {
+          const r = n.el.getBoundingClientRect();
+          if (r.width < 10) continue;
+          const pad = 24;
+          if (x > r.left - pad && x < r.right + pad && candidateY > r.top - pad && candidateY < r.bottom + pad) return true;
+        }
+        return false;
+      }
+      // Leaves room on the right for the quote block's own width (up to
+      // 24em) so it doesn't spawn overflowing off the viewport edge —
+      // the first version placed it anywhere up to 0.84W and clipped.
+      let targetScreenX = W * 0.06 + Math.random() * W * 0.5;
+      for (let attempt = 0; attempt < 6 && collidesWithSpecimen(targetScreenX); attempt++) {
+        targetScreenX = W * 0.06 + Math.random() * W * 0.5;
+      }
+      const offset = Math.min(520, W * 0.4);
+      slot.xn = wrap(targetScreenX + offset + worldX * depthFactor, WORLD_W) / WORLD_W;
       slot.entryDir = DIRS[Math.floor(Math.random() * DIRS.length)];
       slot.entryAmt = 1;
       slot.aloneTime = 0;
@@ -875,6 +917,17 @@
         if (!on) continue;
         n.el.style.transform = `translate3d(${X}px, ${Y}px, 0)`;
         n.el.style.width = w + 'px';
+
+        // Slow, independent breathing -- 18s period, phase-offset per
+        // specimen so two pulsing specimens (if there ever are more
+        // than one) wouldn't sync up. Separate from --awake/--flare
+        // entirely: this one dims all the way toward transparent, not
+        // just less bright, since the ask was specifically to fade in
+        // and out rather than dim and brighten.
+        if (n.s.pulse) {
+          const cyc = 0.5 + 0.5 * Math.sin((t * Math.PI * 2) / 18 + n.pulsePhase);
+          n.el.style.opacity = (0.06 + cyc * 0.94).toFixed(3);
+        }
 
         if (flareEnv > 0.02) {
           flareLines.push({ x: sx, y1: sy, y2: chainYAt(sx), o: flareEnv * 0.7 });

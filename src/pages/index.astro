@@ -1,12 +1,22 @@
 ---
+// Newsreader was loaded here but never referenced by any component on
+// this page -- --font-reading in tokens.css exists for the future
+// Reader component (see CLAUDE.md's repo layout), which doesn't exist
+// yet. Pure dead weight on the one page that does exist today; the
+// Reader can import it itself once it's built.
 import '@fontsource-variable/fraunces/full.css';
-import '@fontsource-variable/newsreader';
 import '@fontsource/italiana';
 import 'typeface-glacial-indifference';
 import '@fontsource/ibm-plex-mono/400.css';
 import '../styles/global.css';
 import Field from '../components/Field.astro';
 import Landing from '../components/Landing.astro';
+
+// Reused verbatim from Landing.astro's own .purpose line -- Eduardo's
+// approved copy, not a new sentence -- for the two places a stranger
+// actually reads text before the page itself: the meta description
+// and the social preview card.
+const description = 'Understand it first… then you decide if you trust it.';
 ---
 
 <!doctype html>
@@ -14,9 +24,20 @@ import Landing from '../components/Landing.astro';
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Eduardo Sopalda." />
-    <title>EDUARDOsopalda</title>
+    <meta name="description" content={description} />
+    <title>EDUARDO sopalda</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://eduardosopalda.com/" />
+    <meta property="og:title" content="EDUARDO sopalda" />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content="https://eduardosopalda.com/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="EDUARDO sopalda" />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content="https://eduardosopalda.com/og-image.png" />
+    <meta name="theme-color" content="#000000" />
   </head>
   <body data-landing="landing">
     <Field />
