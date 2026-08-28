@@ -347,7 +347,16 @@
        fragment to fit the manifesto's exact width. */
     max-width: min(85vw, 34rem);
     font-family: var(--font-display);
-    font-style: italic;
+    font-weight: 400;
+    /* Was italic -- called out directly, twice now, as looking bad:
+       Fraunces' italic is a swashy, dramatic cut, and at display size
+       in gold, centred, on black, it reads as a soap-opera title card
+       rather than a sentence about trust and rigor. Field.astro's own
+       fragment quotes -- same Fraunces family, never flagged -- were
+       never italic to begin with (font-style: normal there); this
+       just brings the one line that was different into line with the
+       rest of the system instead of being its own special case. */
+    font-style: normal;
     /* WONK was 1 -- Fraunces' axis for its wonky, hand-lettered
        alternate letterforms, deliberately irregular by design. Fine
        for a display headline having fun with itself; wrong for a
