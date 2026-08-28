@@ -2,9 +2,16 @@
 // The field itself: the cabinet of curiosities. Specimens and
 // fragments drifting at depth, a nerve running through it, the seven
 // stops riding that nerve. Ported from prototype/field.html's proven
-// drift/decay math (CLAUDE.md: "it already works"), with the nerve
-// upgraded to the spring/tension chain from Landing.astro rather than
-// its original closed-form sine.
+// drift/decay math (CLAUDE.md: "it already works").
+//
+// The nerve's wave went spring/tension chain -> closed-form sine (a
+// second opinion's reference prototype, "wave, not an electrocardiogram")
+// -- back to closed-form, but not the original: this one adds a slow
+// amplitude "breath", a spatial "warp" so the phase isn't perfectly
+// uniform across the width, and a drifting mid-line, all sampled fresh
+// from `t` every frame instead of spring-integrated per point. Pointer
+// bend, the drag-linked vertical offset, and the text-zone Y clamp are
+// all still layered on top -- see chainYAt/nerveYAt below.
 //
 // Fragment text is Eduardo's own, verbatim from fragments/fragments.md
 // (50 real fragments, thread + weight). Specimen images/video are the
@@ -477,74 +484,90 @@
       targetX += (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) * 1.1;
     }, { passive: true });
 
-    // ================= nerve: spring/tension chain (see Landing.astro) =================
-    const N = 42, MARGIN = 240;
-    type Pt = { x: number; y: number; vy: number; seed: number };
+    // ================= nerve: closed-form wave, sampled fresh each frame =================
+    const N = 56, MARGIN = 240;
+    type Pt = { x: number; y: number };
     let chain: Pt[] = [];
     function buildChain() {
       chain = [];
       for (let i = 0; i < N; i++) {
         const x = (i / (N - 1)) * (W + MARGIN * 2) - MARGIN;
-        chain.push({ x, y: H * 0.55, vy: 0, seed: i });
+        chain.push({ x, y: H * 0.55 });
       }
     }
 
-    function stepChain(dt: number) {
-      const base = H * 0.55 + worldYoff * 0.4;
-      // Phase is driven by chain index (position along the rope), not a
-      // per-point random seed -- neighbors need correlated targets or the
-      // tension pass below (which pulls each point toward its neighbors'
-      // average) cancels the noise into a flat line instead of a wave.
-      for (const p of chain) {
-        let target =
-          base +
-          Math.sin(t * 0.045 + p.seed * 0.16) * H * 0.03 +
-          Math.sin(t * 0.02 + p.seed * 0.42 + 2.1) * H * 0.045;
-        if (hasPointer) {
-          const d = Math.abs(p.x - px);
-          if (d < 560) {
-            const f = 1 - d / 560;
-            target += (py - target) * f * f * 0.8;
-          }
-        }
-        // The corner mark, top bar, purpose line, and meta live in
-        // Landing.astro's own stacking context, which paints above this
-        // whole canvas regardless of the nerve's z-index -- that only
-        // wins comparisons against other things inside Field.astro
-        // (specimens, fragments, stops), not against a sibling section
-        // entirely. Moving the mouse near the top let the pointer-bend
-        // pull the chain up behind the wordmark, where it vanished
-        // completely -- reproduced directly, not assumed. Clamping the
-        // target keeps the chain's actual geometry out of both text
-        // zones so it can't happen, rather than trying to out-stack a
-        // separate section.
-        target = Math.max(H * 0.16, Math.min(H * 0.86, target));
-        // Per-frame spring, not per-second: dt is a fixed 1/60 constant
-        // everywhere else in this file (worldX, the tension pass below),
-        // so scaling only the gain by dt while damping stayed at a flat
-        // 0.9 every frame made the spring ~3600x too weak to ever reach
-        // its target -- the chain sat frozen at its initial resting y.
-        // Gain/damping loosened from 0.02/0.9 for a more flexible, live
-        // reaction to the cursor -- "very flexible" per Eduardo's note --
-        // while staying inside stable range.
-        p.vy += (target - p.y) * 0.032;
-        p.vy *= 0.87;
-        p.y += p.vy;
-      }
-      for (let pass = 0; pass < 2; pass++) {
-        for (let i = 1; i < chain.length - 1; i++) {
-          const avg = (chain[i - 1].y + chain[i + 1].y) / 2;
-          chain[i].y += (avg - chain[i].y) * 0.18;
-        }
-      }
+    // The base curve: a slow amplitude "breath" (the wave's height
+    // itself swells and eases, not just the wave riding at a fixed
+    // height), a spatial "warp" so the phase isn't perfectly even
+    // across the width (an organic curve, not a uniform machine-sine),
+    // and a mid-line that drifts with the same worldYoff the specimens
+    // already move on -- so the nerve and the cabinet breathe together.
+    function nerveBaseY(x: number): number {
+      const u = x / Math.max(W, 1);
+      const breath = 0.55 + 0.45 * Math.sin(t * 0.22);
+      // worldYoff already carries its own ±0.16H idle swing (plus up to
+      // ±0.34H while dragging) -- added at the reference prototype's own
+      // coefficient (0.4) on top of ITS wave amplitude, the combined
+      // worst-case excursion badly overshot the H*0.16-0.86 clamp below,
+      // pinning the curve flat against one bound for a third of the
+      // width at a time (confirmed by sampling the actual rendered pixel
+      // column-by-column, not by eyeballing a single frame). Rescaled
+      // down (0.4 -> 0.18, plus a smaller wave amplitude below) so the
+      // worst-case sum of every term still fits inside the clamp with
+      // margin, instead of relying on the clamp to hide an oversized
+      // signal.
+      const mid = H * 0.615 + Math.sin(t * 0.14) * H * 0.01 + worldYoff * 0.08;
+      const warp = u + 0.08 * Math.sin(u * Math.PI * 2 + t * 0.2);
+      const amp = H * (0.02 + 0.025 * breath);
+      return (
+        mid +
+        Math.sin(warp * Math.PI * 1.05 + t * 0.48) * amp +
+        Math.sin(warp * Math.PI * 2.1 + t * 0.27) * amp * 0.28 +
+        Math.sin(u * Math.PI * 0.4 + t * 0.11) * H * 0.006
+      );
     }
 
     function chainYAt(x: number): number {
-      for (let i = 0; i < chain.length - 1; i++) {
-        const a = chain[i], b = chain[i + 1];
-        if (x >= a.x && x <= b.x) return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
+      let y = nerveBaseY(x);
+      if (hasPointer) {
+        const d = Math.abs(x - px);
+        if (d < 560) {
+          const f = 1 - d / 560;
+          y += (py - y) * f * f * 0.8;
+        }
       }
-      return chain[chain.length - 1].y;
+      // The corner mark, top bar, tagline, purpose line, and meta live
+      // in Landing.astro's own stacking context, which paints above
+      // this whole canvas regardless of the nerve's z-index -- that
+      // only wins comparisons against other things inside Field.astro
+      // (specimens, fragments, stops), not against a sibling section
+      // entirely. Clamping keeps the curve's actual geometry out of
+      // both text zones so it can't happen, rather than trying to
+      // out-stack a separate section.
+      //
+      // Was 0.16-0.86 (generous, sized for the old lower-amplitude
+      // spring chain). This wave's amplitude overshot that badly at
+      // first -- confirmed two different ways: sampling the rendered
+      // canvas column-by-column showed it pinned flat against 0.86 for
+      // a third of the width at a time, and once the amplitude was cut
+      // down to stop that, a later sample still caught the peak
+      // crossing directly through the tagline's own rendered rect
+      // (measured at 415-444px in a 900px viewport, i.e. ~0.46-0.49H)
+      // and the trough coming within 6px of the purpose line's rect
+      // (666-691px, ~0.74-0.77H). Tightened to a channel that clears
+      // both with real margin, verified by sampling the actual
+      // rendered curve every 600ms over 18+ seconds afterward, not
+      // just checking one frame.
+      return Math.max(H * 0.51, Math.min(H * 0.72, y));
+    }
+
+    function stepChain(_dt: number) {
+      // No more spring state to integrate -- every point is a fresh,
+      // stateless sample of chainYAt(x) at the current t. Kept as its
+      // own function (rather than inlining into frame()) since it's
+      // called once per frame right before the points are drawn, same
+      // as the spring version it replaced.
+      for (const p of chain) p.y = chainYAt(p.x);
     }
 
     const pulses = [
