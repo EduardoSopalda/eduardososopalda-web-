@@ -36,6 +36,15 @@
      a pale shell tone (e.g. the tagline). */
   --champagne: #E6CB9B;
 
+  /* Oxide — a second opinion's reference prototype uses this pair
+     (not --flesh) for its own quote text: a muted, burnt-bronze rust
+     rather than flesh's much lighter, brighter pink-tan. Matches this
+     site's own quotes to that -- flesh reads too light/bright for
+     essay fragments sitting on true black, closer to the "cheap"
+     brightness a design critique flagged elsewhere. */
+  --oxide: #6E3D24;
+  --oxide-lit: #8F4E2C;
+
   --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
   /* The wordmark's landing-to-corner metamorphosis specifically: slower
      and gentler than --ease, so the shrink/move reads as an unhurried
