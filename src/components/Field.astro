@@ -212,7 +212,14 @@
     margin: 0;
     font-family: var(--font-display);
     font-weight: 400;
-    font-variation-settings: 'SOFT' 50, 'WONK' 1;
+    /* WONK was 1 -- Fraunces' wonky, hand-lettered alternate
+       letterforms, deliberately irregular by design. Fine for a
+       display headline having fun with itself; wrong for the site's
+       essay fragments, called out directly as looking bad on the
+       landing's copy of this same setting (Landing.astro's .purpose).
+       0 uses the regular forms; SOFT (terminal roundness) is
+       unrelated and left as is. */
+    font-variation-settings: 'SOFT' 50, 'WONK' 0;
     color: var(--flesh);
     line-height: 1.4;
     border-left: 1px solid rgba(247, 197, 106, 0.22);
