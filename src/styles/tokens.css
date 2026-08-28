@@ -15,25 +15,12 @@
   --gold: #F7C56A;
   --neon: #FF6E93;
 
-  /* Bronze — the specimens' own glow, one step down from gold. Used
-     for the wordmark gradient and nowhere gold itself needs to stay
-     scarce. --bronze-deep was originally #5E3018 (1.91:1 against
-     black, fails WCAG AA even for large text) — lightened to clear
-     3.96:1, since it's the darkest stop in every wordmark/purpose-line
-     gradient and shows up at real size on the small corner-state text. */
+  /* Bronze — the specimens' own glow, one step down from gold. The
+     reference prototype's own EDUARDO colour, flat, no gradient. */
   --bronze: #A6613A;
-  --bronze-deep: #9C5B36;
 
-  /* Nácar — mother-of-pearl, the other classic Wunderkammer material
-     alongside bronze and glass. A cool, faintly iridescent white,
-     distinct from --bone's warmer paper tone. Used sparingly, for
-     text that should read as shell rather than ink. */
-  --nacar: #F1EDE6;
-  --nacar-sheen: #FDFBF6;
-
-  /* Champagne — warmer and more golden than nácar, closer to the
-     bronze/gold family. For text that needs real warmth rather than
-     a pale shell tone (e.g. the tagline). */
+  /* Champagne — warm and golden, close to the bronze/gold family.
+     For text that needs real warmth (e.g. the tagline). */
   --champagne: #E6CB9B;
 
   /* Oxide — a second opinion's reference prototype uses this pair

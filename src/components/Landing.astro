@@ -210,6 +210,16 @@
        revisited note; asked directly to stop treating that as fixed
        and actually match the reference here. */
     font-size: clamp(1.7rem, 8vw, 3.2rem);
+    /* Flat, not a gradient -- the reference's own .given rule is
+       exactly this: color: var(--bronze), nothing else. A per-letter
+       gradient (bronze-deep/bronze/gold, background-clip: text) had
+       been built here instead, which was never in the reference to
+       begin with -- it was the actual source of "cheap 80s TV chrome"
+       and the compositing-layer bug that kept needing new patches
+       (the nacar-sheen spike, the animated-letter invisibility fix).
+       Removing the fabricated gradient outright rather than patching
+       it again, per the reference's own file, not a guess. */
+    color: var(--bronze);
   }
 
   body[data-landing='field'] .wordmark-eduardo {
@@ -222,6 +232,9 @@
     font-weight: 700;
     font-size: clamp(2.4rem, 12vw, 4.6rem);
     letter-spacing: -0.02em;
+    /* Flat, matching the reference's own .family rule (color:
+       var(--flesh)) -- see .wordmark-eduardo's own comment above. */
+    color: var(--flesh);
   }
 
   body[data-landing='field'] .wordmark-sopalda {
@@ -229,17 +242,11 @@
     letter-spacing: 0;
   }
 
-  /* Neither word carries a background-image/clip rule here on purpose
-     -- both are split into per-letter <b>s by the script below (so
-     each can be FLIP-animated and, for sopalda, wander), and Astro
-     scopes this component's <style> block by stamping a data-astro-cid
-     attribute onto template elements at build time. Letters created at
-     runtime never get that attribute, so a scoped rule here would
-     silently never match them (confirmed directly, twice now -- see
-     Field.astro's own header comment for the first time this exact
-     failure mode showed up). Every property they need, including their
-     own slice of the gradient, is set as an inline style in the script
-     instead. */
+  /* Both words are still split into per-letter <b>s by the script
+     below -- needed for the staggered birth reveal and the FLIP dock,
+     neither of which is a gradient concern -- but each letter just
+     inherits this flat color now rather than carrying its own slice
+     of a background-image. */
 
   /* A specimen tag, not a headline: IBM Plex Mono is already the
      design system's face for labels and catalogue numbers, so setting
@@ -347,7 +354,16 @@
        fragment to fit the manifesto's exact width. */
     max-width: min(85vw, 34rem);
     font-family: var(--font-display);
-    font-style: italic;
+    font-weight: 400;
+    /* Was italic -- called out directly, twice now, as looking bad:
+       Fraunces' italic is a swashy, dramatic cut, and at display size
+       in gold, centred, on black, it reads as a soap-opera title card
+       rather than a sentence about trust and rigor. Field.astro's own
+       fragment quotes -- same Fraunces family, never flagged -- were
+       never italic to begin with (font-style: normal there); this
+       just brings the one line that was different into line with the
+       rest of the system instead of being its own special case. */
+    font-style: normal;
     /* WONK was 1 -- Fraunces' axis for its wonky, hand-lettered
        alternate letterforms, deliberately irregular by design. Fine
        for a display headline having fun with itself; wrong for a
@@ -360,8 +376,8 @@
        currently resting here, not only the manifesto. */
     font-size: clamp(1rem, 1.8vw, 1.4rem);
     line-height: 1.34;
-    /* Flat colour, not the wordmark's gradient -- tried the gradient
-       first (background-clip: text on the parent, letters as plain
+    /* Flat colour -- a gradient was tried here too at one point
+       (background-clip: text on the parent, letters as plain
        nested spans with no background of their own), and a static
        side-by-side render confirmed it CAN work that way. But the
        moment a letter is actually animated -- opacity/transform via
@@ -628,50 +644,22 @@
   // motion too, not only the initial reveal.
   type Letter = HTMLElement;
 
-  function splitGradientLetters(el: HTMLElement, gradient: string): Letter[] {
+  // Every letter is still its own <b>, needed for the staggered birth
+  // reveal below and the FLIP dock further down -- but each one just
+  // inherits the word's flat CSS color now (see .wordmark-eduardo/
+  // .wordmark-sopalda's own comment) rather than carrying a slice of a
+  // gradient, so there's no background-clip/background-position math
+  // left to do here at all.
+  function splitLetters(el: HTMLElement): Letter[] {
     const text = el.textContent || '';
     el.textContent = '';
-    // Every property set directly, not via a CSS rule for the letters
-    // -- Astro scopes this component's <style> block by stamping a
-    // data-astro-cid attribute onto template elements at build time,
-    // and these <b>s are created here, at runtime, so they never get
-    // that attribute and a scoped rule would silently never match them
-    // (confirmed directly, twice now: plain black text on a literal
-    // rectangular gradient background instead of clipped, transparent
-    // text -- see Field.astro's own header comment for the first time
-    // this exact failure mode showed up).
     return [...text].map((ch) => {
       const b = document.createElement('b');
       b.textContent = ch;
       b.style.display = 'inline-block';
-      b.style.color = 'transparent';
-      b.style.backgroundClip = 'text';
-      (b.style as any).webkitBackgroundClip = 'text';
-      b.style.backgroundImage = gradient;
       b.style.opacity = '0';
-      b.style.filter = 'blur(14px)';
       el.appendChild(b);
       return b;
-    });
-  }
-
-  // Percentages, not fixed pixels, for background-size/position -- a
-  // ratio between letters (this letter's share of the whole word's
-  // width) rather than an absolute measurement, so it stays correct
-  // regardless of the word's actual current size. Mattered more when
-  // font-size changed continuously via a CSS transition; kept now
-  // because it's still correct and a resize can still change it.
-  function sliceGradient(el: HTMLElement, letters: Letter[]) {
-    const total = el.getBoundingClientRect().width;
-    let offset = 0;
-    letters.forEach((b) => {
-      const w = b.getBoundingClientRect().width;
-      const r = total / w;
-      const f = offset / total;
-      const posPct = r <= 1 ? 0 : (100 * f * r) / (r - 1);
-      b.style.backgroundSize = `${r * 100}% 100%`;
-      b.style.backgroundPosition = `${posPct}% 0`;
-      offset += w;
     });
   }
 
@@ -679,11 +667,14 @@
     letters.forEach((b, i) => {
       b.animate(
         [
-          { opacity: 0, transform: 'translateY(14px)', filter: 'blur(14px)' },
+          // translateY(14px) and blur(10px), the reference's own
+          // rise-in keyframe values exactly (this had drifted to
+          // blur(14px) and a 1400ms duration below -- fixed to match).
+          { opacity: 0, transform: 'translateY(14px)', filter: 'blur(10px)' },
           { opacity: 1, transform: 'translateY(0)', filter: 'blur(0)' },
         ],
         {
-          duration: reduced ? 1 : 1400,
+          duration: reduced ? 1 : 2400,
           delay: reduced ? 0 : baseDelay + i * stagger,
           easing: 'cubic-bezier(.22,.7,.2,1)',
           fill: 'forwards',
@@ -698,39 +689,17 @@
     const tag = document.querySelector<HTMLElement>('.tagline');
     if (!eduardoEl || !sopaldaEl || !tag) return () => {};
 
-    const eduardoGradient =
-      'linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 44%, var(--champagne) 50%, var(--bronze) 56%, var(--bronze-deep) 100%)';
-    // A near-white nacar-sheen spike used to sit at sopalda's peak, a
-    // "specular highlight" for brushed metal -- called out directly as
-    // looking like a cheap TV chrome effect rather than something
-    // precious. Plain gold peak instead, no hard flash.
-    const sopaldaGradient =
-      'linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 42%, var(--gold) 50%, var(--bronze) 58%, var(--bronze-deep) 100%)';
+    const eduardoLetters = splitLetters(eduardoEl);
+    const sopaldaLetters = splitLetters(sopaldaEl);
 
-    const eduardoLetters = splitGradientLetters(eduardoEl, eduardoGradient);
-    const sopaldaLetters = splitGradientLetters(sopaldaEl, sopaldaGradient);
-
-    function sliceAll() {
-      sliceGradient(eduardoEl!, eduardoLetters);
-      sliceGradient(sopaldaEl!, sopaldaLetters);
-    }
-
-    function reveal() {
-      sliceAll();
-      revealLetters(eduardoLetters, reduced, 150, 55);
-      revealLetters(sopaldaLetters, reduced, 900, 55);
-    }
-
-    // The slice math needs real layout (getBoundingClientRect), so it
-    // has to run after the browser has actually laid the letters out --
-    // a font load or a resize can change that width, so it's redone
-    // then too, not just once on the first frame.
-    requestAnimationFrame(reveal);
-    let resizeT: ReturnType<typeof setTimeout>;
-    addEventListener('resize', () => {
-      clearTimeout(resizeT);
-      resizeT = setTimeout(sliceAll, 150);
-    });
+    // EDUARDO: 7 letters, 70ms stagger starting at 150ms -- the
+    // reference's own literal nth-child delays (.15s, .22s, .29s ...
+    // .57s) are each exactly 70ms apart, not the 55ms this had drifted
+    // to. sopalda: also 7 letters, but its own stagger is 110ms
+    // starting at 850ms (.85s, .96s, 1.07s ... 1.51s) -- a distinctly
+    // slower gather than EDUARDO's, not the same 55ms reused for both.
+    revealLetters(eduardoLetters, reduced, 150, 70);
+    revealLetters(sopaldaLetters, reduced, 850, 110);
 
     let docked = false;
     return function dock() {
@@ -808,13 +777,6 @@
           { duration: 6800, delay: 280 + i * 180, easing: 'cubic-bezier(.18,.2,.2,1)', fill: 'both' }
         );
       });
-
-      // The gradient slice is a size-independent ratio (see
-      // sliceGradient's own comment), so it doesn't strictly need
-      // re-measuring once the layout is already at its final size --
-      // but re-slicing during the settle costs nothing and removes any
-      // doubt from sub-pixel rounding while the transform is moving.
-      [200, 800, 1800, 3200, 6800].forEach((t) => setTimeout(sliceAll, t));
     };
   }
 
