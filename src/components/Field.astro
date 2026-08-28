@@ -408,6 +408,7 @@
       canvas!.style.height = H + 'px';
       ctx!.setTransform(DPR, 0, 0, DPR, 0, 0);
       buildChain();
+      computeNerveChannel();
     }
 
     // ---- input: drag horizontal (infinite) + vertical (bounded), wheel scrolls horizontal ----
@@ -441,34 +442,69 @@
       }
     }
 
+    // The safe vertical channel the nerve is allowed to occupy. First
+    // attempt at this used fixed fractions of H (0.51-0.72), tuned by
+    // sampling collisions at exactly one viewport (1440x900 desktop).
+    // That fixed band was wrong everywhere else: on a phone, the real
+    // gap between the tagline and the quote is much taller than on
+    // desktop, so the same fraction-of-H math left a large dead zone
+    // of empty black between them and squeezed the wave down to a
+    // flat, minor squiggle instead of the dominant, hypnotic curve the
+    // reference prototype has -- a friend's side-by-side screenshot
+    // caught this precisely (their reference vs. this site on the same
+    // phone). Measuring the ACTUAL rendered gap between the real
+    // elements instead, so the channel -- and the wave that fills it --
+    // adapts to whatever room genuinely exists on that viewport, phone
+    // or desktop alike, rather than a number tuned for one screen.
+    let nerveMin = H * 0.16, nerveMax = H * 0.86;
+    function computeNerveChannel() {
+      if (document.body.dataset.landing === 'field') {
+        // Docked: the corner mark is tiny and the quote is hidden
+        // (opacity 0) -- only the very top (top-bar/corner mark) and
+        // very bottom (meta/stops) need real clearance.
+        nerveMin = H * 0.12;
+        nerveMax = H * 0.88;
+        return;
+      }
+      const tagline = document.querySelector('.tagline');
+      const purpose = document.getElementById('frag-a');
+      if (!tagline || !purpose) return;
+      const tBottom = tagline.getBoundingClientRect().bottom;
+      const pTop = purpose.getBoundingClientRect().top;
+      const margin = 26;
+      // Sanity floor (120px) before trusting the measurement -- a
+      // layout mid-reflow (fonts still loading, a transition mid-way)
+      // could momentarily report a near-zero or negative gap, and
+      // clamping the wave into that would be worse than just keeping
+      // last frame's good channel until the next recompute.
+      if (pTop - tBottom > margin * 2 + 120) {
+        nerveMin = tBottom + margin;
+        nerveMax = pTop - margin;
+      }
+    }
+
     // The base curve: a slow amplitude "breath" (the wave's height
     // itself swells and eases, not just the wave riding at a fixed
     // height), a spatial "warp" so the phase isn't perfectly even
     // across the width (an organic curve, not a uniform machine-sine),
     // and a mid-line that drifts with the same worldYoff the specimens
     // already move on -- so the nerve and the cabinet breathe together.
+    // Every amplitude term below is a fraction of the CHANNEL's own
+    // height, not of H directly -- that's what makes the wave big and
+    // confident on a tall phone channel and safely smaller on a short
+    // desktop one, from the same formula.
     function nerveBaseY(x: number): number {
       const u = x / Math.max(W, 1);
+      const channel = nerveMax - nerveMin;
       const breath = 0.55 + 0.45 * Math.sin(t * 0.22);
-      // worldYoff already carries its own ±0.16H idle swing (plus up to
-      // ±0.34H while dragging) -- added at the reference prototype's own
-      // coefficient (0.4) on top of ITS wave amplitude, the combined
-      // worst-case excursion badly overshot the H*0.16-0.86 clamp below,
-      // pinning the curve flat against one bound for a third of the
-      // width at a time (confirmed by sampling the actual rendered pixel
-      // column-by-column, not by eyeballing a single frame). Rescaled
-      // down (0.4 -> 0.18, plus a smaller wave amplitude below) so the
-      // worst-case sum of every term still fits inside the clamp with
-      // margin, instead of relying on the clamp to hide an oversized
-      // signal.
-      const mid = H * 0.615 + Math.sin(t * 0.14) * H * 0.01 + worldYoff * 0.08;
+      const mid = nerveMin + channel * 0.5 + Math.sin(t * 0.14) * channel * 0.05 + worldYoff * 0.06;
       const warp = u + 0.08 * Math.sin(u * Math.PI * 2 + t * 0.2);
-      const amp = H * (0.02 + 0.025 * breath);
+      const amp = channel * (0.14 + 0.12 * breath);
       return (
         mid +
         Math.sin(warp * Math.PI * 1.05 + t * 0.48) * amp +
         Math.sin(warp * Math.PI * 2.1 + t * 0.27) * amp * 0.28 +
-        Math.sin(u * Math.PI * 0.4 + t * 0.11) * H * 0.006
+        Math.sin(u * Math.PI * 0.4 + t * 0.11) * channel * 0.035
       );
     }
 
@@ -488,22 +524,9 @@
       // (specimens, fragments, stops), not against a sibling section
       // entirely. Clamping keeps the curve's actual geometry out of
       // both text zones so it can't happen, rather than trying to
-      // out-stack a separate section.
-      //
-      // Was 0.16-0.86 (generous, sized for the old lower-amplitude
-      // spring chain). This wave's amplitude overshot that badly at
-      // first -- confirmed two different ways: sampling the rendered
-      // canvas column-by-column showed it pinned flat against 0.86 for
-      // a third of the width at a time, and once the amplitude was cut
-      // down to stop that, a later sample still caught the peak
-      // crossing directly through the tagline's own rendered rect
-      // (measured at 415-444px in a 900px viewport, i.e. ~0.46-0.49H)
-      // and the trough coming within 6px of the purpose line's rect
-      // (666-691px, ~0.74-0.77H). Tightened to a channel that clears
-      // both with real margin, verified by sampling the actual
-      // rendered curve every 600ms over 18+ seconds afterward, not
-      // just checking one frame.
-      return Math.max(H * 0.51, Math.min(H * 0.72, y));
+      // out-stack a separate section. nerveMin/nerveMax are the
+      // measured channel above, recomputed regularly in frame().
+      return Math.max(nerveMin, Math.min(nerveMax, y));
     }
 
     function stepChain(_dt: number) {
@@ -768,6 +791,7 @@
     // is the touch equivalent -- unconditional rather than earned.
     const DECAY_AFTER = isTouch ? 70 : 40, DECAY_TIME = 10;
 
+    let channelT = 0;
     function frame() {
       const dt = reduced ? 0 : 1 / 60;
       t += dt;
@@ -775,6 +799,14 @@
       if (!drag) targetX += reduced ? 0 : 0.34;
       worldX += (targetX - worldX) * 0.06;
       worldYoff = dragY + (reduced ? 0 : Math.sin(t * 0.0817) * H * 0.16);
+
+      // Every ~20 frames (~3/sec), not every frame -- getBoundingClientRect
+      // forces a layout read, and the channel only needs to track real
+      // changes (the hero->field transition moving everything, a new
+      // quote fragment changing height), not react within one frame of
+      // them. Catches both without a resize or attribute-change listener.
+      channelT += 1;
+      if (channelT > 20) { channelT = 0; computeNerveChannel(); }
 
       stepChain(dt);
       ctx!.clearRect(0, 0, W, H);
