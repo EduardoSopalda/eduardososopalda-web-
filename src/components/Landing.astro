@@ -941,7 +941,7 @@
           ],
           {
             duration: reduced ? 1 : 1600,
-            delay: reduced ? 0 : 90 + i * 42,
+            delay: reduced ? 0 : 90 + i * 58,
             easing: 'cubic-bezier(.22,.7,.2,1)',
             fill: 'forwards',
           }
@@ -1071,7 +1071,10 @@
         if (isStopped()) return;
         const f = next();
         setLine(f.text, f.source, nextLayer);
-        setTimeout(scheduleDecay, 14000);
+        // 16000, not the first call's 12000 -- the reference itself uses
+        // different values for the opening line vs. every repeat after
+        // it, not one flattened number for both.
+        setTimeout(scheduleDecay, 16000);
       }, overlap);
       setTimeout(() => {
         if (dying !== layers[live]) {
@@ -1107,7 +1110,10 @@
     });
 
     setLine(MANIFESTO.text, MANIFESTO.source, layers[0]);
-    if (!reduced) setTimeout(scheduleDecay, 14000);
+    // 12000 for this first line only -- the reference's own two
+    // different constants (12000 to start, 16000 every cycle after),
+    // not one number standing in for both.
+    if (!reduced) setTimeout(scheduleDecay, 12000);
   }
 
   initLanding();
