@@ -41,8 +41,8 @@
   <div class="top-bar" aria-hidden="true"></div>
 
   <div class="mark">
-    <h1 class="wordmark">
-      <span class="wordmark-eduardo">EDUARDO</span> <span class="wordmark-sopalda">sopalda</span>
+    <h1 class="wordmark" aria-label="Eduardo Sopalda">
+      <span class="wordmark-eduardo" aria-hidden="true">EDUARDO</span><span class="wordmark-sopalda" aria-hidden="true">sopalda</span>
     </h1>
     <p class="tagline">DATA | AI <span class="amp">&amp;</span> The human experience</p>
   </div>
@@ -135,33 +135,35 @@
     }
   }
 
-  /* The mark: name + tagline, travelling together as one unit — this
-     is what prototype/field.html's #mark does (one block, one
-     transform), not two independently-animated lines. */
+  /* The mark: name + tagline, travelling together as one unit. Was a
+     single CSS transition on left/top/transform/font-size, trusted to
+     stay in lockstep over 4.2s -- worked, after enough one-off fixes
+     (the text-align "bump", the tagline's text-wrap:balance reflow),
+     but every one of those was a symptom of the same structural gap: a
+     handful of independently-eased properties have no guarantee of
+     staying pixel-perfect together. A second opinion's reference
+     prototype uses real FLIP instead (measure, apply the final state
+     instantly, measure again, animate the computed delta back to
+     identity) -- that's what "the transitions don't jump" in their
+     own feedback was actually describing. Ported here: .mark, the
+     wordmark's letters, and the tagline all jump to their final
+     layout state THE INSTANT body[data-landing] flips (no transition
+     on position/size any more), and the script below computes and
+     plays the delta as a transform, so the illusion of continuous
+     travel comes from measured pixels, not from trusting several
+     eased properties to agree. */
   .mark {
     /* Fixed, not absolute -- pinned to the viewport itself rather than
-       .landing's document-flow box, so it holds its position (a frozen
-       bar, per Eduardo's note) no matter what: dragging the nerve on a
-       touch device shouldn't be able to carry it away even if that
-       gesture ever triggers real page scroll. */
+       .landing's document-flow box, so it holds its position no
+       matter what: dragging the nerve on a touch device shouldn't be
+       able to carry it away even if that gesture ever triggers real
+       page scroll. */
     position: fixed;
     left: 50%;
     top: 38%;
     transform: translate(-50%, -50%);
     text-align: center;
     z-index: 1;
-    /* The walk to the corner is the metamorphosis, not a UI snap --
-       slow and unhurried on purpose, per Eduardo's note.
-       text-align can't be smoothly interpolated at all -- it was
-       switching center -> left the instant the field-state class
-       applied, at t=0, while the block was still centre-screen and
-       full size. That snap read as a "bump" partway through what
-       should have been one continuous motion. transition-delay can't
-       smooth a non-animatable property, but it CAN defer the jump: set
-       to fire only once the position/size transition has actually
-       finished, so the snap lands after the block is already small and
-       in the corner, where it's imperceptible. */
-    transition: left 4.2s var(--ease-slow), top 4.2s var(--ease-slow), transform 4.2s var(--ease-slow), text-align 0s 4.2s;
   }
 
   body[data-landing='field'] .mark {
@@ -171,148 +173,73 @@
     text-align: left;
   }
 
-  /* Two names, two faces: Eduardo in Fraunces — the display system's
-     "who he is" — and Sopalda in Glacial Indifference, because the
-     surname is round-letter-heavy and reads easiest leaning into that
-     rather than fighting it. Both start out of focus and resolve in,
-     Sopalda a half-beat behind, so the eye lands on the given name
-     first and the round one gathers after. */
+  /* Two names, two faces: Eduardo in Italiana -- tall, structured,
+     arrives first and directly -- and sopalda in Glacial Indifference,
+     round and modern, gathering a half-beat behind. Stacked (column),
+     not side by side -- the reference's own layout, and it's what
+     actually gives "EDUARDO" room to resolve before "sopalda" arrives
+     underneath it, rather than both racing across the same line. Row
+     layout, baseline-aligned, only once docked -- a corner mark reads
+     as one compact lockup, not two stacked lines taking up a header's
+     worth of height. */
   .wordmark {
     margin: 0;
-    line-height: 1;
-    /* "EDUARDO" and "sopalda" are two spans with a plain space between
-       them -- normal wrap applies by default, and at the hero size the
-       combined width doesn't fit one line, so it starts wrapped and
-       only becomes one line once shrunk enough mid-transition. Traced
-       it directly (measuring each span's left edge across the whole
-       transition, not guessing): wrapped the entire hero phase, single
-       line from partway through onward -- a real reflow, the same
-       family of bug as the tagline's text-wrap: balance fix. Forcing
-       one line here instead; the responsive clamp()s already bring the
-       hero size down substantially on narrow viewports specifically so
-       this fits without needing to wrap. */
-    white-space: nowrap;
-    /* The literal space between the two spans is a bare text node, so
-       it renders at the H1'S OWN font-size -- which was never set, so
-       it fell back to the browser default (~16px) regardless of how
-       enormous the two words next to it were. That's why the gap
-       read as an accident rather than a designed lockup: a fixed
-       ~8px gap next to letters 60-160px tall. Shrinking the h1's own
-       font-size to near-zero makes that stray space negligible, so
-       the real gap below (margin-left on sopalda, in ITS OWN em
-       units) is the only thing controlling it -- and now scales
-       proportionally as the whole mark shrinks into the corner. Kept
-       the actual space character in markup rather than deleting it,
-       so the accessible name still reads as two words, not one
-       concatenated string. */
-    font-size: 1px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 0.88;
+  }
+
+  body[data-landing='field'] .wordmark {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.18em;
+  }
+
+  .wordmark-eduardo,
+  .wordmark-sopalda {
+    display: inline-flex;
   }
 
   .wordmark-eduardo {
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
-    opacity: 0;
-    filter: blur(18px);
-    animation: resolve-focus 2.4s var(--ease) forwards;
     font-family: var(--font-wordmark-given);
     font-weight: 400;
-    letter-spacing: 0.06em;
-    /* A lot bigger, per Eduardo's note -- the name should arrive at
-       full weight before the metamorphosis shrinks it to a mark. */
-    font-size: clamp(2.4rem, 7.5vw, 6.5rem);
-    /* Was a bronze-to-flesh sheen -- flesh is a skin tone, not a
-       metal, so EDUARDO never joined the same "precious metal"
-       family sopalda's gold peak belongs to; a design critique
-       called this out directly ("gold sheen only on sopalda... the
-       given name becomes a caption"). Champagne instead: still a
-       visibly quieter shine than sopalda's gold (per the same
-       critique's "weaker on EDUARDO"), but from the same warm-metal
-       family rather than a different material entirely. Peak band
-       narrowed (45-65% to 44-56%) so the shine reads as a crisper
-       highlight, not a slow, muddy fade. */
-    background-image: linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 44%, var(--champagne) 50%, var(--bronze) 56%, var(--bronze-deep) 100%);
-    animation-delay: 0.2s;
-    transition: font-size 4.2s var(--ease-slow);
+    letter-spacing: 0.14em;
+    /* Reference's own sizes -- roughly half what this used to be. An
+       earlier pass made it deliberately much bigger per a since-
+       revisited note; asked directly to stop treating that as fixed
+       and actually match the reference here. */
+    font-size: clamp(1.7rem, 8vw, 3.2rem);
+  }
+
+  body[data-landing='field'] .wordmark-eduardo {
+    font-size: clamp(0.95rem, 3.1vw, 1.2rem);
+    letter-spacing: 0.1em;
   }
 
   .wordmark-sopalda {
     font-family: var(--font-wordmark);
     font-weight: 700;
-    font-size: clamp(3.6rem, 11.5vw, 10rem);
-    /* No background-image/clip here any more -- this element carries
-       no direct text of its own now (see the script below), and
-       leaving the gradient on it turned it into a plain, unclipped
-       rectangle painted BEHIND the letters -- confirmed directly: the
-       letters were individually correct, but a solid gradient block
-       painted on the parent under them made the whole word
-       unreadable. Was a flat bronze -> gold -> bronze fade with no
-       true highlight, which is what the critique meant by "muddy...
-       reads as a mid-tone smear, not metal" -- real brushed metal has
-       a narrow, bright specular flash, not a slow tonal drift; a thin
-       near-white flash (nacar-sheen) between two gold shoulders reads
-       as an actual point of light instead. Each letter below carries
-       this exact gradient as its own slice now, not the parent. */
-    /* Optical kerning between the lockup's two halves -- was a bare
-       text-space at the h1's own (now ~0) font-size, an accident, not
-       a designed gap. In em units against sopalda's own size, so it
-       scales with the same font-size transition during the
-       metamorphosis instead of jumping. */
-    margin-left: 0.12em;
-    transition: font-size 4.2s var(--ease-slow);
-  }
-
-  /* sopalda carries no text of its own any more -- a second opinion's
-     reference prototype gives the surname a scatter-then-gather flourish
-     on dock ("sopalda ~6.8s, con un desvío") that EDUARDO doesn't get,
-     echoing this file's own established theme: EDUARDO resolves first
-     and directly, sopalda gathers a half-beat behind. Split into
-     per-letter <b>s by the script below so each one can wander
-     independently. background-clip: text on the parent would have
-     nothing left to clip once its text moves into these children, so
-     each letter carries its own copy of the gradient instead -- WAAPI-
-     animating opacity/transform on a letter promotes it to its own
-     compositing layer, which breaks a shared parent clip the same way
-     it broke the hero quote's gradient earlier; confirmed with the
-     same kind of isolated test before building this for real rather
-     than assuming it twice. The letter's own background-size/position
-     are set in PERCENTAGES (by the script), not fixed pixels, so the
-     gradient slice stays correctly aligned as font-size continuously
-     shrinks through the dock transition -- percentages recompute
-     against the letter's own current box on every frame; pixels
-     wouldn't have.
-
-     No CSS rule for the letters themselves here on purpose: Astro
-     scopes this component's <style> block by stamping a data-astro-cid
-     attribute onto template elements at build time, but these <b>s are
-     created at runtime by the script below and never get that
-     attribute, so a scoped rule here would silently never match them
-     (confirmed directly -- plain black text on a literal rectangular
-     gradient background instead of clipped, transparent text). Every
-     property they need is set as an inline style in the script
-     instead, same as Field.astro's own dynamically-created elements
-     already have to be (see that file's header comment for the same
-     failure mode). */
-
-  body[data-landing='field'] .wordmark-eduardo {
-    /* Was 0.7-0.85rem -- reasonable next to the old, smaller hero size,
-       but the hero got "a lot bigger" per Eduardo's earlier note and
-       this didn't scale with it, so the shrink ended up far more
-       extreme than intended and the corner mark read as too small to
-       work as a persistent header. */
-    font-size: clamp(0.9rem, 1.3vw, 1.05rem);
+    font-size: clamp(2.4rem, 12vw, 4.6rem);
+    letter-spacing: -0.02em;
   }
 
   body[data-landing='field'] .wordmark-sopalda {
-    font-size: clamp(1.3rem, 1.9vw, 1.5rem);
+    font-size: clamp(1.28rem, 4.1vw, 1.65rem);
+    letter-spacing: 0;
   }
 
-  @keyframes resolve-focus {
-    to {
-      opacity: 1;
-      filter: blur(0);
-    }
-  }
+  /* Neither word carries a background-image/clip rule here on purpose
+     -- both are split into per-letter <b>s by the script below (so
+     each can be FLIP-animated and, for sopalda, wander), and Astro
+     scopes this component's <style> block by stamping a data-astro-cid
+     attribute onto template elements at build time. Letters created at
+     runtime never get that attribute, so a scoped rule here would
+     silently never match them (confirmed directly, twice now -- see
+     Field.astro's own header comment for the first time this exact
+     failure mode showed up). Every property they need, including their
+     own slice of the gradient, is set as an inline style in the script
+     instead. */
 
   /* A specimen tag, not a headline: IBM Plex Mono is already the
      design system's face for labels and catalogue numbers, so setting
@@ -346,13 +273,10 @@
     opacity: 0;
     animation: resolve-quiet 1.6s var(--ease) forwards;
     animation-delay: 1.6s;
-    /* Same text-align issue as .mark above, and more visible here since
-       this element has width: 100% -- a real box wider than its own
-       text, not just a shrink-wrapped one -- so the center -> left snap
-       produced a genuine, noticeable horizontal jump instead of a
-       subtle one. Deferred the same way, to land only once the block
-       has finished moving. */
-    transition: font-size 4.2s var(--ease-slow), margin-top 4.2s var(--ease-slow), letter-spacing 4.2s var(--ease-slow), text-align 0s 4.2s;
+    /* No transition on font-size/margin-top/letter-spacing/text-align
+       any more -- FLIP-animated by the script now, alongside the
+       wordmark, instead of trusting four separately-eased properties
+       to land in sync (see .mark's own comment for why). */
   }
 
   body[data-landing='field'] .tagline {
@@ -384,28 +308,13 @@
     .tagline {
       letter-spacing: 0.14em;
     }
-
-    /* The hero wordmark's clamp() floor (2.4rem / 3.6rem) is a fixed
-       size that the 7.5vw/11.5vw term never actually reaches below
-       roughly a 500px viewport -- so on every real phone the combined
-       "EDUARDO sopalda" rendered at a constant ~408px wide, wider than
-       the phone itself. white-space: nowrap (needed to stop the
-       2-line/1-line reflow bug above) then meant that overflow was
-       silently clipped by .landing's overflow: hidden instead of
-       wrapping -- the first/last letters were never actually there to
-       animate, just cut off outside the viewport the whole time.
-       Confirmed by measuring the rendered rects directly at a 390px
-       viewport: eduardo started at x:-9px, mark ended at right:399px,
-       both outside the 390px frame. Lowering the floor here lets the
-       vw term do its job and scale the hero size down to actually fit
-       narrow phones instead of fighting the viewport. */
-    .wordmark-eduardo {
-      font-size: clamp(1.6rem, 7.5vw, 6.5rem);
-    }
-
-    .wordmark-sopalda {
-      font-size: clamp(2.4rem, 11.5vw, 10rem);
-    }
+    /* The old narrow-viewport wordmark override (lowering the hero
+       clamp() floor) doesn't apply any more: the wordmark is stacked
+       (column) now, not one wide side-by-side line, so each word only
+       needs to fit the viewport on its own -- and the reference's own
+       sizes ported in above are small enough that the vw term already
+       dominates well before the floor would, verified empirically at
+       320-430px rather than assumed. */
   }
 
   /* The quote at rest -- one of #frag-a/#frag-b visible at a time,
@@ -439,7 +348,13 @@
     max-width: min(85vw, 34rem);
     font-family: var(--font-display);
     font-style: italic;
-    font-variation-settings: 'SOFT' 50, 'WONK' 1;
+    /* WONK was 1 -- Fraunces' axis for its wonky, hand-lettered
+       alternate letterforms, deliberately irregular by design. Fine
+       for a display headline having fun with itself; wrong for a
+       sentence about trust and rigor, and called out directly as
+       looking bad here. 0 uses the regular (non-wonky) forms; SOFT
+       (terminal roundness) is unrelated and left as is. */
+    font-variation-settings: 'SOFT' 50, 'WONK' 0;
     /* A touch bigger than before (was 0.9-1.25rem) -- the critique's
        "treat it as a headline" note applies to whichever line is
        currently resting here, not only the manifesto. */
@@ -457,11 +372,13 @@
        instead of sharing the parent's clipped gradient paint: the
        text just disappears the instant animation starts. Confirmed
        directly (computed style showed opacity:1 and the right rect,
-       yet nothing rendered) before landing on this. Flesh, the same
-       flat colour Field.astro's own decaying fragments already use --
-       consistent with this being a preview of that same system,
-       not a mismatched one-off. */
-    color: var(--flesh);
+       yet nothing rendered) before landing on this. Oxide-lit, the
+       same flat colour Field.astro's own decaying fragments use (a
+       second opinion's reference prototype uses this same muted
+       bronze-rust for its own quotes, not flesh's much lighter
+       pink-tan) -- consistent with this being a preview of that same
+       system, not a mismatched one-off. */
+    color: var(--oxide-lit);
     text-align: center;
     z-index: 1;
     cursor: pointer;
@@ -528,23 +445,6 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 1.2s var(--ease);
-  }
-
-  /* background-clip: text has near-universal support now, but has no
-     graceful degradation of its own -- a browser without it renders
-     these left at color: transparent, i.e. invisible text, not a
-     flat fallback color. A design critique's craft checklist called
-     this out specifically for .purpose; applied to the wordmark too,
-     since it uses the same technique for the same reason. */
-  @supports not ((background-clip: text) or (-webkit-background-clip: text)) {
-    .wordmark-eduardo {
-      background-image: none;
-      color: var(--bronze);
-    }
-    .wordmark-sopalda {
-      background-image: none;
-      color: var(--gold);
-    }
   }
 
   .meta {
@@ -626,12 +526,16 @@
     border-radius: 50%;
     background: var(--gold);
     box-shadow: 0 0 0.7rem 0.15rem rgba(247, 197, 106, 0.5);
-    animation: cue-breathe 2.6s var(--ease) infinite;
+    /* Was 2.6s with a scale(1.3) pump on top of the opacity fade --
+       busier and faster than the reference's own cue, which just
+       breathes opacity slowly (5.6s, no scale). Matched to that; the
+       scale pump read as more "attention-grabbing UI widget" than the
+       quiet, patient signal this is meant to be. */
+    animation: cue-breathe 5.6s ease-in-out infinite;
   }
 
   @keyframes cue-breathe {
-    0%, 100% { opacity: 0.4; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.3); }
+    50% { opacity: 0.28; }
   }
 
   /* A gold dot with no word is a decoration, not a verb -- a design
@@ -662,16 +566,12 @@
 
   @media (prefers-reduced-motion: reduce) {
     .mark,
-    .wordmark-eduardo,
-    .wordmark-sopalda,
     .tagline,
     .purpose,
     .meta,
     .cue {
       transition: none;
     }
-    .wordmark-eduardo,
-    .wordmark-sopalda,
     .tagline,
     .purpose,
     .cue {
@@ -679,17 +579,15 @@
       opacity: 1;
       filter: none;
     }
-    /* Letters are revealed via JS (Web Animations API), not this
-       stylesheet -- the script checks prefers-reduced-motion itself
-       and uses a near-instant duration there, but these act as a
-       belt-and-braces default in case a letter is ever visible before
-       that animation has actually run. */
-    /* Not .wordmark-sopalda b here -- same scoping reason as the
-       comment above .wordmark-sopalda: a rule here could never match
-       those runtime-created letters anyway. Its script already
-       collapses the reveal to a 1ms animation and skips the dock
-       wander entirely when reduced is true, which is the real
-       safety net for that element. */
+    /* Neither wordmark word appears here -- they carry no CSS
+       animation/transition of their own any more (both are split into
+       per-letter <b>s, entirely JS-driven; see the script). Nor do
+       their letters: Astro's scoping means a rule here could never
+       reach elements created at runtime anyway (same reason there's
+       no CSS rule for them at rest either). Each word's own init
+       function already checks prefers-reduced-motion directly and
+       collapses its reveal to a ~0 duration and skips the dock
+       wander/FLIP delta entirely, which is the actual safety net. */
     .purpose b {
       opacity: 1;
       filter: none;
@@ -707,49 +605,44 @@
 <script>
   import { FRAGS } from '../data/fragments';
 
-  // ================= sopalda: per-letter reveal + scatter-on-dock =================
-  // A second opinion's reference prototype (sopaldalanding.zip) gives the
-  // surname its own distinct animation -- letters resolve in individually,
-  // then take a wandering detour before settling into the corner mark,
-  // "sopalda ~6.8s, con un desvío" in the reference's own notes. EDUARDO
-  // stays as a single block (the reference's own given name is more
-  // direct too), matching this file's established theme: EDUARDO
-  // resolves first, sopalda gathers a half-beat behind.
+  // ================= wordmark: per-letter reveal + real FLIP dock =================
+  // Was a CSS transition on left/top/transform/font-size, trusted to
+  // stay in lockstep over 4.2s -- worked, after enough one-off fixes
+  // (the text-align "bump", the tagline's text-wrap:balance reflow),
+  // but every one of those was a symptom of the same structural gap.
+  // Asked directly to stop treating the old approach as settled and
+  // actually rebuild it the way a second opinion's reference prototype
+  // does: real FLIP. Measure every letter's rect, flip body[data-landing]
+  // (now an instant, transition-less jump to the final layout), measure
+  // again, then animate the computed delta back to identity. The
+  // illusion of continuous travel comes from measured pixels, not from
+  // trusting several eased CSS properties to agree -- that's the actual
+  // mechanism behind "the transitions don't jump" in the reference's
+  // own feedback.
   //
-  // Splitting into per-letter <b>s to animate them independently means
-  // background-clip: text on the parent has nothing to clip any more
-  // (see the CSS comment on .wordmark-sopalda b) -- each letter carries
-  // its own slice of the same gradient instead, sized and positioned in
-  // PERCENTAGES (not fixed pixels) so the slice stays correctly aligned
-  // as font-size continuously shrinks through the whole dock transition,
-  // not just at the two endpoints.
-  function initWordmarkSopalda(reduced: boolean): () => void {
-    const el = document.querySelector<HTMLElement>('.wordmark-sopalda');
-    if (!el) return () => {};
+  // EDUARDO flips directly (matching the reference's own given name);
+  // sopalda gets an extra wandering detour mid-flight before settling,
+  // "sopalda ~6.8s, con un desvío" in the reference's own notes -- the
+  // same "resolves first / gathers a half-beat behind" theme already
+  // established elsewhere in this file, just carried into the dock
+  // motion too, not only the initial reveal.
+  type Letter = HTMLElement;
+
+  function splitGradientLetters(el: HTMLElement, gradient: string): Letter[] {
     const text = el.textContent || '';
     el.textContent = '';
-    // Hardcoded, not read from getComputedStyle -- the CSS rule for
-    // .wordmark-sopalda deliberately carries no background-image any
-    // more (it has no direct text left to clip; see that rule's own
-    // comment), so computed style would just return "none" here.
-    // Keep this in sync with that comment's gradient stops by hand if
-    // they ever change.
-    const gradient =
-      'linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 40%, var(--gold) 48%, var(--nacar-sheen) 50%, var(--gold) 52%, var(--bronze) 60%, var(--bronze-deep) 100%)';
-    const letters = [...text].map((ch) => {
+    // Every property set directly, not via a CSS rule for the letters
+    // -- Astro scopes this component's <style> block by stamping a
+    // data-astro-cid attribute onto template elements at build time,
+    // and these <b>s are created here, at runtime, so they never get
+    // that attribute and a scoped rule would silently never match them
+    // (confirmed directly, twice now: plain black text on a literal
+    // rectangular gradient background instead of clipped, transparent
+    // text -- see Field.astro's own header comment for the first time
+    // this exact failure mode showed up).
+    return [...text].map((ch) => {
       const b = document.createElement('b');
       b.textContent = ch;
-      // Set directly rather than relying on the .wordmark-sopalda b
-      // CSS rule -- Astro scopes this component's <style> block by
-      // stamping a data-astro-cid attribute onto template elements at
-      // build time, but these <b>s are created here, at runtime, and
-      // never get that attribute, so the scoped rule silently never
-      // matches them. Confirmed directly: computed style showed plain
-      // black text on a literal rectangular gradient background
-      // (background-clip sitting at its default border-box) instead
-      // of clipped, transparent text -- the exact failure mode
-      // Field.astro's own header comment already documents for this
-      // same class of bug.
       b.style.display = 'inline-block';
       b.style.color = 'transparent';
       b.style.backgroundClip = 'text';
@@ -760,37 +653,72 @@
       el.appendChild(b);
       return b;
     });
+  }
 
-    function sliceGradient() {
-      const total = el!.getBoundingClientRect().width;
-      let offset = 0;
-      letters.forEach((b) => {
-        const w = b.getBoundingClientRect().width;
-        const r = total / w;
-        const f = offset / total;
-        const posPct = r <= 1 ? 0 : (100 * f * r) / (r - 1);
-        b.style.backgroundSize = `${r * 100}% 100%`;
-        b.style.backgroundPosition = `${posPct}% 0`;
-        offset += w;
-      });
+  // Percentages, not fixed pixels, for background-size/position -- a
+  // ratio between letters (this letter's share of the whole word's
+  // width) rather than an absolute measurement, so it stays correct
+  // regardless of the word's actual current size. Mattered more when
+  // font-size changed continuously via a CSS transition; kept now
+  // because it's still correct and a resize can still change it.
+  function sliceGradient(el: HTMLElement, letters: Letter[]) {
+    const total = el.getBoundingClientRect().width;
+    let offset = 0;
+    letters.forEach((b) => {
+      const w = b.getBoundingClientRect().width;
+      const r = total / w;
+      const f = offset / total;
+      const posPct = r <= 1 ? 0 : (100 * f * r) / (r - 1);
+      b.style.backgroundSize = `${r * 100}% 100%`;
+      b.style.backgroundPosition = `${posPct}% 0`;
+      offset += w;
+    });
+  }
+
+  function revealLetters(letters: Letter[], reduced: boolean, baseDelay: number, stagger: number) {
+    letters.forEach((b, i) => {
+      b.animate(
+        [
+          { opacity: 0, transform: 'translateY(14px)', filter: 'blur(14px)' },
+          { opacity: 1, transform: 'translateY(0)', filter: 'blur(0)' },
+        ],
+        {
+          duration: reduced ? 1 : 1400,
+          delay: reduced ? 0 : baseDelay + i * stagger,
+          easing: 'cubic-bezier(.22,.7,.2,1)',
+          fill: 'forwards',
+        }
+      );
+    });
+  }
+
+  function initWordmark(reduced: boolean): () => void {
+    const eduardoEl = document.querySelector<HTMLElement>('.wordmark-eduardo');
+    const sopaldaEl = document.querySelector<HTMLElement>('.wordmark-sopalda');
+    const tag = document.querySelector<HTMLElement>('.tagline');
+    if (!eduardoEl || !sopaldaEl || !tag) return () => {};
+
+    const eduardoGradient =
+      'linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 44%, var(--champagne) 50%, var(--bronze) 56%, var(--bronze-deep) 100%)';
+    // A near-white nacar-sheen spike used to sit at sopalda's peak, a
+    // "specular highlight" for brushed metal -- called out directly as
+    // looking like a cheap TV chrome effect rather than something
+    // precious. Plain gold peak instead, no hard flash.
+    const sopaldaGradient =
+      'linear-gradient(100deg, var(--bronze-deep) 0%, var(--bronze) 42%, var(--gold) 50%, var(--bronze) 58%, var(--bronze-deep) 100%)';
+
+    const eduardoLetters = splitGradientLetters(eduardoEl, eduardoGradient);
+    const sopaldaLetters = splitGradientLetters(sopaldaEl, sopaldaGradient);
+
+    function sliceAll() {
+      sliceGradient(eduardoEl!, eduardoLetters);
+      sliceGradient(sopaldaEl!, sopaldaLetters);
     }
 
     function reveal() {
-      sliceGradient();
-      letters.forEach((b, i) => {
-        b.animate(
-          [
-            { opacity: 0, transform: 'translateY(14px)', filter: 'blur(14px)' },
-            { opacity: 1, transform: 'translateY(0)', filter: 'blur(0)' },
-          ],
-          {
-            duration: reduced ? 1 : 1400,
-            delay: reduced ? 0 : 900 + i * 55,
-            easing: 'cubic-bezier(.22,.7,.2,1)',
-            fill: 'forwards',
-          }
-        );
-      });
+      sliceAll();
+      revealLetters(eduardoLetters, reduced, 150, 55);
+      revealLetters(sopaldaLetters, reduced, 900, 55);
     }
 
     // The slice math needs real layout (getBoundingClientRect), so it
@@ -801,40 +729,92 @@
     let resizeT: ReturnType<typeof setTimeout>;
     addEventListener('resize', () => {
       clearTimeout(resizeT);
-      resizeT = setTimeout(sliceGradient, 150);
+      resizeT = setTimeout(sliceAll, 150);
     });
 
-    let gathered = false;
-    return function gather() {
-      if (reduced || gathered) return;
-      gathered = true;
-      letters.forEach((b, i) => {
+    let docked = false;
+    return function dock() {
+      if (docked) return;
+      docked = true;
+
+      // Reduced motion skips the FLIP measurement/animation entirely --
+      // body[data-landing] flipping is enough on its own; the CSS
+      // handles the rest of the jump with no transition either way.
+      if (reduced) {
+        document.body.dataset.landing = 'field';
+        return;
+      }
+
+      // ---- FLIP: First ----
+      const firstEduardo = eduardoLetters.map((b) => b.getBoundingClientRect());
+      const firstSopalda = sopaldaLetters.map((b) => b.getBoundingClientRect());
+      const firstTag = tag!.getBoundingClientRect();
+
+      // ---- the instant jump: no CSS transition left on any of these
+      // properties any more, so this applies the final layout in one
+      // synchronous step, before the browser has painted anything new.
+      document.body.dataset.landing = 'field';
+
+      // ---- FLIP: Last ----
+      const lastEduardo = eduardoLetters.map((b) => b.getBoundingClientRect());
+      const lastSopalda = sopaldaLetters.map((b) => b.getBoundingClientRect());
+      const lastTag = tag!.getBoundingClientRect();
+
+      eduardoLetters.forEach((b, i) => {
         b.getAnimations().forEach((a) => a.cancel());
-        const wx = (Math.random() * 2 - 1) * 46;
-        const wy = (Math.random() > 0.5 ? -1 : 1) * (30 + Math.random() * 34);
-        const wr = (Math.random() * 2 - 1) * 14;
+        const dx = firstEduardo[i].left - lastEduardo[i].left;
+        const dy = firstEduardo[i].top - lastEduardo[i].top;
+        const sx = firstEduardo[i].width / Math.max(lastEduardo[i].width, 1);
+        const sy = firstEduardo[i].height / Math.max(lastEduardo[i].height, 1);
         b.animate(
           [
-            { transform: 'translate(0, 0) rotate(0deg)', offset: 0 },
-            { transform: `translate(${wx}px, ${wy}px) rotate(${wr}deg)`, offset: 0.5 },
-            { transform: 'translate(0, 0) rotate(0deg)', offset: 1 },
+            { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` },
+            { transform: 'translate(0, 0) scale(1)' },
           ],
-          {
-            duration: 3200,
-            delay: i * 90,
-            easing: 'cubic-bezier(.18,.2,.2,1)',
-            fill: 'both',
-          }
+          { duration: 3400, delay: i * 55, easing: 'cubic-bezier(.22,.7,.2,1)', fill: 'both' }
         );
       });
-      // The slice is sized against sopalda's CURRENT (hero) width; the
-      // dock transition keeps shrinking font-size for another 4.2s
-      // after this, so a few more re-slices during that window keep
-      // the gradient aligned instead of freezing it at the hero ratio
-      // (which -- being a ratio between letters, not an absolute size
-      // -- is actually constant throughout, but re-measuring costs
-      // nothing and removes any doubt from sub-pixel rounding).
-      [200, 800, 1800, 3200].forEach((t) => setTimeout(sliceGradient, t));
+
+      {
+        const dx = firstTag.left - lastTag.left;
+        const dy = firstTag.top - lastTag.top;
+        const sx = firstTag.width / Math.max(lastTag.width, 1);
+        const sy = firstTag.height / Math.max(lastTag.height, 1);
+        tag!.getAnimations().forEach((a) => a.cancel());
+        tag!.animate(
+          [
+            { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` },
+            { transform: 'translate(0, 0) scale(1)' },
+          ],
+          { duration: 3800, delay: 120, easing: 'cubic-bezier(.22,.65,.2,1)', fill: 'both' }
+        );
+      }
+
+      sopaldaLetters.forEach((b, i) => {
+        b.getAnimations().forEach((a) => a.cancel());
+        const dx = firstSopalda[i].left - lastSopalda[i].left;
+        const dy = firstSopalda[i].top - lastSopalda[i].top;
+        const sx = firstSopalda[i].width / Math.max(lastSopalda[i].width, 1);
+        const sy = firstSopalda[i].height / Math.max(lastSopalda[i].height, 1);
+        const wanderX = dx + (Math.random() - 0.4) * 70;
+        const wanderY = dy + (Math.random() > 0.5 ? -36 - Math.random() * 40 : 28 + Math.random() * 36);
+        const rot = (Math.random() - 0.5) * 12;
+        b.animate(
+          [
+            { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy}) rotate(0deg)` },
+            { transform: `translate(${wanderX}px, ${wanderY}px) scale(${sx}, ${sy}) rotate(${rot}deg)`, offset: 0.48 },
+            { transform: 'translate(0, 0) scale(1) rotate(0deg)' },
+          ],
+          { duration: 6800, delay: 280 + i * 180, easing: 'cubic-bezier(.18,.2,.2,1)', fill: 'both' }
+        );
+      });
+
+      // The gradient slice is a size-independent ratio (see
+      // sliceGradient's own comment), so it doesn't strictly need
+      // re-measuring once the layout is already at its final size --
+      // but re-slicing during the settle costs nothing and removes any
+      // doubt from sub-pixel rounding while the transform is moving.
+      [200, 800, 1800, 3200, 6800].forEach((t) => setTimeout(sliceAll, t));
     };
   }
 
@@ -845,16 +825,18 @@
     // to a placeholder href.
     document.getElementById('li')?.addEventListener('click', (e) => e.preventDefault());
 
-    const gatherSopalda = initWordmarkSopalda(reduced);
+    const dockWordmark = initWordmark(reduced);
 
     let stopped = false;
     function enterField() {
-      document.body.dataset.landing = 'field';
+      // The wordmark's own FLIP measures the pre-dock rects itself, so
+      // it must run before the dataset flip -- it flips document.body
+      // as its own mid-measurement step.
       // The quote itself is Field.astro's job from here on -- stop
       // scheduling anything new rather than let a hidden decay cycle
       // keep running behind the field for no visible reason.
       stopped = true;
-      gatherSopalda();
+      dockWordmark();
     }
 
     if (reduced) {

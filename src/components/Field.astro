@@ -212,8 +212,18 @@
     margin: 0;
     font-family: var(--font-display);
     font-weight: 400;
-    font-variation-settings: 'SOFT' 50, 'WONK' 1;
-    color: var(--flesh);
+    /* WONK was 1 -- Fraunces' wonky, hand-lettered alternate
+       letterforms, deliberately irregular by design. Fine for a
+       display headline having fun with itself; wrong for the site's
+       essay fragments, called out directly as looking bad on the
+       landing's copy of this same setting (Landing.astro's .purpose).
+       0 uses the regular forms; SOFT (terminal roundness) is
+       unrelated and left as is. */
+    font-variation-settings: 'SOFT' 50, 'WONK' 0;
+    /* Was --flesh -- a light, bright pink-tan that reads closer to
+       skin than to the muted bronze/rust the reference's own quotes
+       use (--oxide-lit). Matched to that instead. */
+    color: var(--oxide-lit);
     line-height: 1.4;
     border-left: 1px solid rgba(247, 197, 106, 0.22);
     padding-left: 0.85em;
@@ -408,6 +418,7 @@
       canvas!.style.height = H + 'px';
       ctx!.setTransform(DPR, 0, 0, DPR, 0, 0);
       buildChain();
+      computeNerveChannel();
     }
 
     // ---- input: drag horizontal (infinite) + vertical (bounded), wheel scrolls horizontal ----
@@ -441,34 +452,69 @@
       }
     }
 
+    // The safe vertical channel the nerve is allowed to occupy. First
+    // attempt at this used fixed fractions of H (0.51-0.72), tuned by
+    // sampling collisions at exactly one viewport (1440x900 desktop).
+    // That fixed band was wrong everywhere else: on a phone, the real
+    // gap between the tagline and the quote is much taller than on
+    // desktop, so the same fraction-of-H math left a large dead zone
+    // of empty black between them and squeezed the wave down to a
+    // flat, minor squiggle instead of the dominant, hypnotic curve the
+    // reference prototype has -- a friend's side-by-side screenshot
+    // caught this precisely (their reference vs. this site on the same
+    // phone). Measuring the ACTUAL rendered gap between the real
+    // elements instead, so the channel -- and the wave that fills it --
+    // adapts to whatever room genuinely exists on that viewport, phone
+    // or desktop alike, rather than a number tuned for one screen.
+    let nerveMin = H * 0.16, nerveMax = H * 0.86;
+    function computeNerveChannel() {
+      if (document.body.dataset.landing === 'field') {
+        // Docked: the corner mark is tiny and the quote is hidden
+        // (opacity 0) -- only the very top (top-bar/corner mark) and
+        // very bottom (meta/stops) need real clearance.
+        nerveMin = H * 0.12;
+        nerveMax = H * 0.88;
+        return;
+      }
+      const tagline = document.querySelector('.tagline');
+      const purpose = document.getElementById('frag-a');
+      if (!tagline || !purpose) return;
+      const tBottom = tagline.getBoundingClientRect().bottom;
+      const pTop = purpose.getBoundingClientRect().top;
+      const margin = 26;
+      // Sanity floor (120px) before trusting the measurement -- a
+      // layout mid-reflow (fonts still loading, a transition mid-way)
+      // could momentarily report a near-zero or negative gap, and
+      // clamping the wave into that would be worse than just keeping
+      // last frame's good channel until the next recompute.
+      if (pTop - tBottom > margin * 2 + 120) {
+        nerveMin = tBottom + margin;
+        nerveMax = pTop - margin;
+      }
+    }
+
     // The base curve: a slow amplitude "breath" (the wave's height
     // itself swells and eases, not just the wave riding at a fixed
     // height), a spatial "warp" so the phase isn't perfectly even
     // across the width (an organic curve, not a uniform machine-sine),
     // and a mid-line that drifts with the same worldYoff the specimens
     // already move on -- so the nerve and the cabinet breathe together.
+    // Every amplitude term below is a fraction of the CHANNEL's own
+    // height, not of H directly -- that's what makes the wave big and
+    // confident on a tall phone channel and safely smaller on a short
+    // desktop one, from the same formula.
     function nerveBaseY(x: number): number {
       const u = x / Math.max(W, 1);
+      const channel = nerveMax - nerveMin;
       const breath = 0.55 + 0.45 * Math.sin(t * 0.22);
-      // worldYoff already carries its own ±0.16H idle swing (plus up to
-      // ±0.34H while dragging) -- added at the reference prototype's own
-      // coefficient (0.4) on top of ITS wave amplitude, the combined
-      // worst-case excursion badly overshot the H*0.16-0.86 clamp below,
-      // pinning the curve flat against one bound for a third of the
-      // width at a time (confirmed by sampling the actual rendered pixel
-      // column-by-column, not by eyeballing a single frame). Rescaled
-      // down (0.4 -> 0.18, plus a smaller wave amplitude below) so the
-      // worst-case sum of every term still fits inside the clamp with
-      // margin, instead of relying on the clamp to hide an oversized
-      // signal.
-      const mid = H * 0.615 + Math.sin(t * 0.14) * H * 0.01 + worldYoff * 0.08;
+      const mid = nerveMin + channel * 0.5 + Math.sin(t * 0.14) * channel * 0.05 + worldYoff * 0.06;
       const warp = u + 0.08 * Math.sin(u * Math.PI * 2 + t * 0.2);
-      const amp = H * (0.02 + 0.025 * breath);
+      const amp = channel * (0.14 + 0.12 * breath);
       return (
         mid +
         Math.sin(warp * Math.PI * 1.05 + t * 0.48) * amp +
         Math.sin(warp * Math.PI * 2.1 + t * 0.27) * amp * 0.28 +
-        Math.sin(u * Math.PI * 0.4 + t * 0.11) * H * 0.006
+        Math.sin(u * Math.PI * 0.4 + t * 0.11) * channel * 0.035
       );
     }
 
@@ -488,22 +534,9 @@
       // (specimens, fragments, stops), not against a sibling section
       // entirely. Clamping keeps the curve's actual geometry out of
       // both text zones so it can't happen, rather than trying to
-      // out-stack a separate section.
-      //
-      // Was 0.16-0.86 (generous, sized for the old lower-amplitude
-      // spring chain). This wave's amplitude overshot that badly at
-      // first -- confirmed two different ways: sampling the rendered
-      // canvas column-by-column showed it pinned flat against 0.86 for
-      // a third of the width at a time, and once the amplitude was cut
-      // down to stop that, a later sample still caught the peak
-      // crossing directly through the tagline's own rendered rect
-      // (measured at 415-444px in a 900px viewport, i.e. ~0.46-0.49H)
-      // and the trough coming within 6px of the purpose line's rect
-      // (666-691px, ~0.74-0.77H). Tightened to a channel that clears
-      // both with real margin, verified by sampling the actual
-      // rendered curve every 600ms over 18+ seconds afterward, not
-      // just checking one frame.
-      return Math.max(H * 0.51, Math.min(H * 0.72, y));
+      // out-stack a separate section. nerveMin/nerveMax are the
+      // measured channel above, recomputed regularly in frame().
+      return Math.max(nerveMin, Math.min(nerveMax, y));
     }
 
     function stepChain(_dt: number) {
@@ -606,6 +639,7 @@
     const fragSlots = Array.from({ length: SLOT_COUNT }, (_, slotI) => {
       const el = document.createElement('div');
       el.className = 'frag-slot';
+      el.dataset.slot = String(slotI);
       const quote = document.createElement('p');
       quote.className = 'frag-quote';
       const ref = document.createElement('p');
@@ -674,6 +708,11 @@
       slot.ref.style.transition = '';
       slot.ref.style.opacity = '1';
       slot.depth = f.weight === 'long' ? 0.6 + Math.random() * 0.22 : 0.3 + Math.random() * 0.3;
+      // Font-size depends only on depth, so it's set here rather than at
+      // the very end of this function -- moved up because the shelf
+      // jitter below needs the block's REAL rendered height, which
+      // needs the real font-size already applied first.
+      slot.quote.style.fontSize = (14 + (1 - Math.abs(slot.depth - 0.7)) * 8) + 'px';
       // Spawn where it can actually be seen: solve for the xn that puts
       // it inside the current viewport right now, rather than a random
       // point across the whole ~4000px world (which, at 6 slots vs. a
@@ -698,17 +737,36 @@
       // column to its right at all -- so this measures the mark's own
       // rendered bottom edge and pushes the top band BELOW it instead,
       // which holds regardless of viewport width.
+      // Only while actually docked, though -- slot 0's own pendingT (up
+      // to 3s) means it often first spawns during the hero, where .mark
+      // is still the huge, centered hero wordmark, not the small corner
+      // mark this push exists for. Measuring THAT bottom edge inflated
+      // topBandStart hugely, and since it's only recalculated on this
+      // slot's next (rare, decay-gated) respawn, slot 0's whole shelf
+      // stayed pushed for its next 40-70+ seconds -- confirmed directly
+      // as the actual cause of slot 0 landing on top of slot 2's shelf,
+      // not the "long quote overflows its own shelf" case this file
+      // used to blame.
       let topBandStart = 0.08;
-      if (slot.slotI === 0) {
+      if (slot.slotI === 0 && document.body.dataset.landing === 'field') {
         const markEl = document.querySelector('.mark');
         if (markEl) topBandStart = Math.max(topBandStart, (markEl.getBoundingClientRect().bottom + 20) / H);
       }
-      // Jitter within the band was up to 0.5*bandH -- enough to push a
-      // tall (3-4 line, "long"-weight) quote right up against its
-      // neighbor's territory, seen as two quotes visually overlapping
-      // each other despite having separate band assignments. Tightened
-      // so fragments sit closer to the center of their own shelf.
-      slot.y = slot.slotI === 0 ? topBandStart + Math.random() * bandH * 0.25 : 0.08 + slot.slotI * bandH + Math.random() * bandH * 0.25;
+      // Jitter within the band was up to 0.5*bandH, then a flat 0.25 --
+      // both assumed every quote was short enough to fit its shelf with
+      // room to spare. A "long"-weight quote can wrap to 3-4 lines,
+      // tall enough to reach into the next shelf even parked at the very
+      // top of its own band -- confirmed directly: a long and a short
+      // quote in adjacent shelves rendering on top of each other for
+      // their entire shared lifetime, not just a passing brush during
+      // drift. The block already has its real text and font-size, so
+      // its real rendered height is measurable now -- cap the downward
+      // jitter by whatever room that leaves, instead of a fixed fraction
+      // that assumes a height no quote here actually has.
+      const measuredH = slot.el.offsetHeight || 80;
+      const roomFrac = Math.max(0, bandH - measuredH / H - 0.01);
+      const jitter = Math.min(bandH * 0.25, roomFrac);
+      slot.y = slot.slotI === 0 ? topBandStart + Math.random() * jitter : 0.08 + slot.slotI * bandH + Math.random() * jitter;
       // Bands only ever kept fragments from piling on EACH OTHER --
       // nothing kept a fragment from spawning right on top of a
       // specimen that happened to be drifting through that same screen
@@ -741,7 +799,6 @@
       slot.entryAmt = 1;
       slot.aloneTime = 0;
       slot.state = 'alive';
-      slot.quote.style.fontSize = (14 + (1 - Math.abs(slot.depth - 0.7)) * 8) + 'px';
       slot.el.style.zIndex = String(Math.round(slot.depth * 100));
     }
 
@@ -768,6 +825,7 @@
     // is the touch equivalent -- unconditional rather than earned.
     const DECAY_AFTER = isTouch ? 70 : 40, DECAY_TIME = 10;
 
+    let channelT = 0;
     function frame() {
       const dt = reduced ? 0 : 1 / 60;
       t += dt;
@@ -775,6 +833,14 @@
       if (!drag) targetX += reduced ? 0 : 0.34;
       worldX += (targetX - worldX) * 0.06;
       worldYoff = dragY + (reduced ? 0 : Math.sin(t * 0.0817) * H * 0.16);
+
+      // Every ~20 frames (~3/sec), not every frame -- getBoundingClientRect
+      // forces a layout read, and the channel only needs to track real
+      // changes (the hero->field transition moving everything, a new
+      // quote fragment changing height), not react within one frame of
+      // them. Catches both without a resize or attribute-change listener.
+      channelT += 1;
+      if (channelT > 20) { channelT = 0; computeNerveChannel(); }
 
       stepChain(dt);
       ctx!.clearRect(0, 0, W, H);
@@ -970,6 +1036,11 @@
 
       // ---- fragments: staggered entrance, drift, decay onto the nerve ----
       const ENTRY_OFFSET = 320;
+      // Read by the stops loop just below, so a stop label can duck
+      // around a live quote instead of landing on top of it -- see that
+      // loop's own comment for why this is a stop's problem to solve,
+      // not the quote's.
+      const liveFragRects: { x: number; y: number; w: number; h: number }[] = [];
       for (const slot of fragSlots) {
         if (slot.state === 'pending') {
           slot.pendingT -= dt;
@@ -980,7 +1051,18 @@
 
         const depthFactor = 0.3 + slot.depth * 0.7;
         const baseX = wrap(slot.xn * WORLD_W - worldX * depthFactor, WORLD_W) - Math.min(520, W * 0.4);
-        const baseY = slot.y * H + worldYoff * depthFactor;
+        // Quotes sit on dedicated vertical shelves specifically so they
+        // never overlap each other (see assignFragment's own comment on
+        // bandH) -- but scaling worldYoff by the same per-fragment
+        // depthFactor used for specimens' parallax meant two shelves
+        // drifted by a DIFFERENT amount depending on which fragment each
+        // had been assigned, since worldYoff's own swing (±0.16H) is
+        // nearly as large as the gap between shelves. Confirmed directly:
+        // two quotes' text rendered on top of each other mid-drift, well
+        // after both had spawned cleanly separated. A small, flat sway
+        // (not depth-scaled) keeps some ambient life without threatening
+        // the separation the shelves exist for.
+        const baseY = slot.y * H + worldYoff * 0.05;
 
         // Entry offset decays toward 0 each frame -- this is what makes
         // a freshly spawned fragment fly in from its chosen edge rather
@@ -1010,6 +1092,14 @@
         const on = baseX > -10 && baseX + bw < W + 10 && baseY > -10 && baseY + bh < H + 10;
         slot.el.style.visibility = on ? 'visible' : 'hidden';
         slot.el.style.transform = `translate3d(${X}px, ${Y}px, 0)`;
+
+        // Decaying quotes are already coming apart into scattered gold
+        // letters, not a solid block of text any more, so they aren't
+        // worth a stop label dodging -- only a fully "alive," genuinely
+        // readable quote counts as an obstacle.
+        if (on && slot.state === 'alive') {
+          liveFragRects.push({ x: X, y: Y, w: bw, h: bh });
+        }
 
         const fx = X + 140, fy = Y + 20;
         let near = false;
@@ -1069,10 +1159,34 @@
       // ---- stops ----
       for (const s of stopNodes) {
         const X = wrap(s.xn * WORLD_W - worldX, WORLD_W) - Math.min(520, W * 0.4);
-        const y = chainYAt(X) + worldYoff * 0.02;
+        let y = chainYAt(X) + worldYoff * 0.02;
         const on = X > -200 && X < W + 200;
         s.el.style.visibility = on ? 'visible' : 'hidden';
         if (!on) continue;
+
+        // A stop rides the nerve wherever the nerve happens to be, and
+        // nothing kept that from landing exactly on a live quote's own
+        // territory -- unlike a specimen (a photo can sit behind a short
+        // word and both still read fine), two blocks of dense text on
+        // the same pixels are simply unreadable, seen directly: a stop's
+        // name rendered right through a quote's own line. A stop is one
+        // short word, so nudging it perpendicular off the wire just far
+        // enough to clear the quote is far cheaper than moving the
+        // quote itself, and it still visibly rides the nerve -- just
+        // ducking around something in its way, the way it already dips
+        // for a specimen drifting past.
+        const sw = s.el.offsetWidth || 90, sh = s.el.offsetHeight || 22;
+        for (const r of liveFragRects) {
+          const sy = y - 22;
+          if (X < r.x + r.w && X + sw > r.x && sy < r.y + r.h && sy + sh > r.y) {
+            const below = r.y + r.h + sh / 2 + 16;
+            const above = r.y - sh / 2 - 16;
+            y = Math.abs(below - y) < Math.abs(above - y) ? below : above;
+            y = Math.max(nerveMin + 14, Math.min(nerveMax - 14, y));
+            break;
+          }
+        }
+
         s.el.style.transform = `translate3d(${X}px, ${y - 22}px, 0)`;
         let near = 0;
         if (hasPointer) {
