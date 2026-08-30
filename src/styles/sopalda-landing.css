@@ -147,20 +147,26 @@ body[data-landing='field'] .top-bar {
   opacity: 0.85;
 }
 
+/* Moved to the top-right corner, per direct feedback: the top-left
+   lockup left the whole left/lower-left quadrant crowded while the
+   nerve's own curve had nowhere calm to resolve into. Compact and
+   right-aligned instead -- EDUARDO stacked above sopalda even once
+   docked (h1 stays column, not row), not spread across one wide line. */
 body.is-docked .mark {
   position: fixed;
-  top: calc(12px + env(safe-area-inset-top));
-  left: 16px;
+  top: calc(18px + env(safe-area-inset-top));
+  right: 28px;
+  left: auto;
   padding: 0;
-  text-align: left;
+  text-align: right;
   z-index: 4;
   height: 0;
   overflow: visible;
 }
 
 body.is-docked .mark h1 {
-  flex-direction: row;
-  align-items: baseline;
+  flex-direction: column;
+  align-items: flex-end;
   gap: 0;
 }
 
@@ -177,8 +183,8 @@ body.is-docked .family {
 body.is-docked .tagline {
   margin-top: 4px;
   font-size: clamp(.42rem, 1.7vw, .52rem);
-  letter-spacing: .1em;
-  text-align: left;
+  letter-spacing: .16em;
+  text-align: right;
   max-width: 16rem;
 }
 
