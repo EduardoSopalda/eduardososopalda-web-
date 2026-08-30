@@ -747,8 +747,14 @@
     // several lines tall) simply don't fit in the compressed vertical
     // range a short mobile viewport leaves -- window.innerWidth here,
     // not the closure W, since W isn't set until the first resize()
-    // call, which happens after this.
-    const SLOT_COUNT = window.innerWidth < 500 ? 2 : 4;
+    // call, which happens after this. 2 -> 3: with only 2, both chairs
+    // being off-screen (or mid-decay) at the same moment left long
+    // real stretches with zero fragment text visible on a phone --
+    // confirmed directly by tracking chair visibility over time. A
+    // third chair makes that overlap much less likely without
+    // approaching the "mosaic" density the field spec explicitly rules
+    // out.
+    const SLOT_COUNT = window.innerWidth < 500 ? 3 : 4;
     type Dir = 'left' | 'right' | 'top' | 'bottom';
     const DIRS: Dir[] = ['left', 'right', 'top', 'bottom'];
 
@@ -833,6 +839,20 @@
         // visible specimen's bounding box -- "el texto espera o se
         // va" -- accumulated so a one-frame graze doesn't trigger it.
         collideTime: 0,
+        // How long this chair has sat off-screen while still "alive".
+        // assignFragment spawns a fragment ON-screen on purpose, but
+        // the drifting world is much wider than the viewport (WORLD_W
+        // vs. W), so a quote that isn't actively held drifts back OUT
+        // of view within a few seconds -- and decayAfter (20-45s) is
+        // long enough that it would otherwise then sit invisible for
+        // most of its remaining life before finally respawning
+        // somewhere visible again. Measured directly: with only
+        // SLOT_COUNT chairs, that left the screen completely empty of
+        // text most of the time -- "that's not a gap, that's pure
+        // emptiness." Forcing an early respawn once a chair has been
+        // off-screen for a few seconds keeps a chair from burning its
+        // whole lifespan somewhere nobody can see it.
+        offscreenTime: 0,
         // Verlet death state -- see DEATHS above.
         deathI: 0,
         phys: [] as Particle[],
@@ -959,8 +979,25 @@
       const channel = Math.max(1, nerveMax - nerveMin);
       const nerveRef = chainYAt(W * 0.5);
       const [lo, hi] = isLong ? BAND_RANGE.baja : BAND_RANGE.nervio;
-      const side = isLong ? 1 : (Math.random() < 0.5 ? -1 : 1);
-      const mag = (lo + Math.random() * (hi - lo)) * channel;
+      // Independent random side+magnitude per fragment meant two
+      // same-weight chairs (both "short", both landing in the same
+      // narrow nervio band) could easily roll near-identical Y with
+      // nothing to separate them -- retrying X alone can't fix that on
+      // a narrow phone, where a quote's own width already eats most of
+      // the viewport's spare horizontal room. Instead: look at where
+      // OTHER currently-alive same-weight siblings already are, and
+      // take whichever side is less crowded, spread across the band
+      // (not clustered near its center) so concurrent chairs land on
+      // deliberately different lines rather than converging by chance.
+      const sameWeightSiblings = fragSlots.filter(
+        (s) => s !== slot && s.state === 'alive' && FIELD_FRAGS[s.fragIndex]?.weight === f.weight
+      );
+      const negCount = sameWeightSiblings.filter((s) => s.y * H < nerveRef).length;
+      const posCount = sameWeightSiblings.length - negCount;
+      const side = isLong ? 1 : negCount <= posCount ? -1 : 1;
+      const laneCount = sameWeightSiblings.filter((s) => (s.y * H < nerveRef ? -1 : 1) === side).length;
+      const laneT = ((laneCount % 3) + 0.5) / 3; // spreads concurrent same-side chairs across the band instead of re-rolling near each other
+      const mag = (lo + laneT * (hi - lo)) * channel;
       const candidateY = Math.max(nerveMin + 20, Math.min(nerveMax - 20, nerveRef + side * mag));
       slot.y = candidateY / H;
 
@@ -972,7 +1009,15 @@
       // this slot is positioned in the frame loop) -- generous enough
       // that a near-miss still counts as a hit.
       function collidesAt(x: number, y: number) {
-        const bw = 320, bh = 90, pad = 24;
+        // A generous but real estimate -- bh was 90, a wild
+        // underestimate once a quote wraps to 3-4 lines plus its own
+        // ref card underneath (measured directly: easily 150-220px real
+        // height). bw matches the CSS cap itself (min(24em, 62vw))
+        // rather than a flat desktop-sized guess, which on a 390px
+        // phone (62vw=242px) was ~40% too wide -- retrying X can only
+        // resolve a collision if there's actual room to move INTO, and
+        // an oversized box left none.
+        const bw = Math.min(384, W * 0.62) + 20, bh = 160, pad = 24;
         for (const n of specNodes) {
           const r = n.el.getBoundingClientRect();
           if (r.width < 10) continue;
@@ -1509,7 +1554,7 @@
       // around a live quote instead of landing on top of it -- see that
       // loop's own comment for why this is a stop's problem to solve,
       // not the quote's.
-      const liveFragRects: { x: number; y: number; w: number; h: number }[] = [];
+      const liveFragRects: { x: number; y: number; w: number; h: number; slot: typeof fragSlots[number] }[] = [];
       for (const slot of fragSlots) {
         if (slot.state === 'pending') {
           slot.pendingT -= dt;
@@ -1561,12 +1606,26 @@
         slot.el.style.visibility = on ? 'visible' : 'hidden';
         slot.el.style.transform = `translate3d(${X}px, ${Y}px, 0)`;
 
+        // See offscreenTime's own comment on the slot object. Applies
+        // regardless of state (alive, decaying, or dead-waiting-to-
+        // respawn) -- not just 'alive' -- because a slot whose natural
+        // decayAfter timer happens to fire right around when it drifts
+        // off-screen would otherwise still run its full decay animation
+        // and respawnDelay (up to ~10-15s combined) with nobody able to
+        // see any of it, defeating the whole point of this fix. Skips
+        // straight to a fresh assignFragment instead.
+        slot.offscreenTime = on ? 0 : slot.offscreenTime + dt;
+        if (slot.offscreenTime >= 3.5) {
+          assignFragment(slot);
+          continue;
+        }
+
         // Decaying quotes are already coming apart into scattered gold
         // letters, not a solid block of text any more, so they aren't
         // worth a stop label dodging -- only a fully "alive," genuinely
         // readable quote counts as an obstacle.
         if (on && slot.state === 'alive') {
-          liveFragRects.push({ x: X, y: Y, w: bw, h: bh });
+          liveFragRects.push({ x: X, y: Y, w: bw, h: bh, slot });
         }
 
         const fx = X + 140, fy = Y + 20;
@@ -1584,15 +1643,32 @@
           // toward early decay instead of sitting drawn across a fish's
           // face. Accumulated (not instant) so a one-frame graze from a
           // specimen drifting past doesn't trigger it; recovers if the
-          // overlap clears before it fires.
+          // overlap clears before it fires. Also checked against OTHER
+          // live fragments -- assignFragment only checks siblings once,
+          // at spawn, but two chairs keep drifting independently after
+          // that and can converge later; seen directly, two citation
+          // cards landing right on top of each other, both unreadable.
+          // liveFragRects already has this slot's own rect pushed just
+          // above, so it's excluded by identity here.
           if (on) {
             let colliding = false;
             for (const r of visibleSpecRects) {
               if (X < r.x + r.w && X + bw > r.x && Y < r.y + r.h && Y + bh > r.y) { colliding = true; break; }
             }
+            if (!colliding) {
+              for (const r of liveFragRects) {
+                if (r.slot === slot) continue;
+                if (X < r.x + r.w && X + bw > r.x && Y < r.y + r.h && Y + bh > r.y) { colliding = true; break; }
+              }
+            }
             slot.collideTime = colliding ? slot.collideTime + dt : Math.max(0, slot.collideTime - dt * 2);
           }
-          const forcedByCollision = slot.collideTime >= 0.4;
+          // Lowered from 0.4s -- multiple chairs landing stacked
+          // together is bad enough to look broken (three full quotes
+          // overlapping, none readable) that it's worth resolving
+          // faster than the specimen-overlap case, even at the cost of
+          // a shorter-lived fragment.
+          const forcedByCollision = slot.collideTime >= 0.25;
 
           // Reduced motion: no death at all, per direct spec -- a
           // fragment just stays put, static, its own citation card
