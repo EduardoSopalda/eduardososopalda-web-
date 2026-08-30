@@ -1097,7 +1097,7 @@
       const laneCount = sameWeightSiblings.filter((s) => (s.y * H < nerveRef ? -1 : 1) === side).length;
       const laneT = ((laneCount % 3) + 0.5) / 3; // spreads concurrent same-side chairs across the band instead of re-rolling near each other
       const mag = (lo + laneT * (hi - lo)) * channel;
-      const candidateY = Math.max(nerveMin + 20, Math.min(nerveMax - 20, nerveRef + side * mag));
+      let candidateY = Math.max(nerveMin + 20, Math.min(nerveMax - 20, nerveRef + side * mag));
       slot.y = candidateY / H;
 
       // Retried against both other specimens' AND sibling fragments'
@@ -1134,8 +1134,22 @@
       // 24em) so it doesn't spawn overflowing off the viewport edge --
       // the first version placed it anywhere up to 0.84W and clipped.
       let targetScreenX = W * 0.06 + Math.random() * W * 0.5;
-      for (let attempt = 0; attempt < 6 && collidesAt(targetScreenX, candidateY); attempt++) {
+      for (let attempt = 0; attempt < 10 && collidesAt(targetScreenX, candidateY); attempt++) {
         targetScreenX = W * 0.06 + Math.random() * W * 0.5;
+        // First few attempts only move sideways (keeps the sibling-lane
+        // spreading above meaningful in the common case) -- but a wide
+        // dominant specimen can block the ENTIRE horizontal band at one
+        // Y, which no amount of X-only retrying can ever escape.
+        // Confirmed directly: fragments were re-colliding and re-decaying
+        // in a tight loop because every retry kept landing back on the
+        // same blocked band. From here on, also re-roll Y within the
+        // same band/side (not a different band -- weight-to-band linkage
+        // still holds), giving a genuine way out.
+        if (attempt >= 4) {
+          const freshMag = (lo + Math.random() * (hi - lo)) * channel;
+          candidateY = Math.max(nerveMin + 20, Math.min(nerveMax - 20, nerveRef + side * freshMag));
+          slot.y = candidateY / H;
+        }
       }
       const offset = Math.min(520, W * 0.4);
       slot.xn = wrap(targetScreenX + offset + worldX * depthFactor, WORLD_W) / WORLD_W;
@@ -1823,6 +1837,21 @@
             slot.physMode = mode;
             slot.physT = 0;
             slot.physLast = performance.now();
+            // Collision is a "get out of the way NOW," not a performance --
+            // "el texto espera o se va" means it actually leaves, not that
+            // it quietly starts a 10-20s decay while its block keeps
+            // sitting drawn across the specimen the whole time it was
+            // supposed to avoid. Confirmed directly: a fragment forced
+            // into 'decaying' by collision stayed fully opaque and
+            // unmoved for 10+ seconds afterward, because 'float' mode's
+            // own per-letter wake delay (up to i*0.12s) plus its fade
+            // rate (~15s to fully fade) both run at their normal,
+            // deliberately unhurried pace regardless of WHY the decay
+            // started. A natural aloneTime timeout should still get the
+            // slow, savored version; a collision needs the fast one.
+            const wasCollision = forcedByCollision && slot.aloneTime < slot.decayAfter;
+            const wakeMul = wasCollision ? 0.15 : 1;
+            const fadeMul = wasCollision ? 5 : 1;
             // Same formulas as Landing's own decay() -- each letter is a
             // Verlet particle displaced by a transform relative to its
             // own normal-flow position, not repositioned to an absolute
@@ -1848,9 +1877,11 @@
                 // at first ("misma física"), but direct tempo spec now
                 // wants Field's decay specifically slower than Landing's
                 // ("Verlet ... más lento que Landing"). Same relative
-                // ordering between modes, just stretched out.
-                fade: mode === 'explode' ? 0.0033 : mode === 'fall' ? 0.0016 : mode === 'float' ? 0.0011 : 0.0013,
-                wake: mode === 'explode' ? 0.28 : mode === 'float' ? i * 0.12 : mode === 'corrode' ? i * 0.16 : mode === 'fall' ? i * 0.05 : 0,
+                // ordering between modes, just stretched out -- except
+                // when a collision forced this (fadeMul above), where
+                // getting off the specimen fast matters more than tempo.
+                fade: (mode === 'explode' ? 0.0033 : mode === 'fall' ? 0.0016 : mode === 'float' ? 0.0011 : 0.0013) * fadeMul,
+                wake: (mode === 'explode' ? 0.28 : mode === 'float' ? i * 0.12 : mode === 'corrode' ? i * 0.16 : mode === 'fall' ? i * 0.05 : 0) * wakeMul,
                 scale: 1,
                 link: mode === 'corrode' && i < slot.chars.length - 1,
                 rest,
