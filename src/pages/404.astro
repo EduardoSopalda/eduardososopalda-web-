@@ -1,0 +1,71 @@
+---
+// Plain infrastructure text, not Eduardo's voice -- CLAUDE.md is explicit
+// that every sentence on this site is his or a marked placeholder, and a
+// 404 page is exactly the kind of copy nobody should invent as if he
+// wrote it. This exists only so the new real stop/nav hrefs (routes that
+// don't have rooms built yet) land somewhere instead of a raw framework
+// error.
+import '../styles/global.css';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Not found — EDUARDO sopalda</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <main>
+      <p class="code">404</p>
+      <p class="msg">This page does not exist yet.</p>
+      <a class="back" href="/">Back to the field</a>
+    </main>
+  </body>
+</html>
+
+<style>
+  body {
+    overflow: visible;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  main {
+    text-align: center;
+    font-family: var(--font-mono);
+    color: var(--bone);
+  }
+
+  .code {
+    font-size: 0.75rem;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: rgba(243, 235, 224, 0.4);
+    margin: 0 0 1rem;
+  }
+
+  .msg {
+    font-size: 1rem;
+    margin: 0 0 2rem;
+  }
+
+  .back {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    color: var(--gold);
+    text-decoration: none;
+  }
+
+  .back:focus-visible {
+    outline: 1.5px solid var(--gold);
+    outline-offset: 4px;
+    border-radius: 2px;
+  }
+</style>
