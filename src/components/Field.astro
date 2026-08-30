@@ -1552,7 +1552,17 @@
         }
         n.el.style.transform = `translate3d(${X}px, ${(Y + bob).toFixed(1)}px, 0)`;
         n.el.style.width = w + 'px';
-        visibleSpecRects.push({ x: X, y: Y, w, h: w * 0.7 });
+        // h was a flat w*0.7 guess -- fine for the roster's mostly-16:9
+        // sources (~0.55-0.56 real aspect) but goldfish.mp4 and
+        // octopus.webm are square (624x624, 512x512), so their REAL
+        // rendered height is ~w, not 0.7w. That 30% shortfall left the
+        // bottom of exactly those two specimens outside the collision
+        // box fragments check against -- confirmed directly: a fragment
+        // sat fully intact on top of the goldfish for a sustained ~18s
+        // with the "quote never sits on a video" avoidance never
+        // firing, because by this box's math there was no collision at
+        // all. offsetHeight reads the real rendered box instead.
+        visibleSpecRects.push({ x: X, y: Y, w, h: n.el.offsetHeight || w * 0.7 });
         // Depth-of-field blur on the specimen's own wrapper -- the child
         // img/video already carries brightness/contrast/saturate via
         // the CSS rule (see .spec img/video), so this composes with
