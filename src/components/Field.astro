@@ -120,6 +120,20 @@
     /* --boost is set once at creation (not per-frame) for specimens
        whose source is inherently pale/low-contrast -- see Specimen.boost. */
     filter: brightness(calc(0.82 * var(--boost, 1))) contrast(1.24) saturate(0.92);
+    /* A raw <video> is directly tappable by default -- on iOS Safari a
+       tap that lands on it (not on a wrapping element) can trigger the
+       browser's own native video UI (a play button, then a fullscreen
+       player with scrubber/controls), taking over the whole screen.
+       Reported directly: "the website stops and you get a specimen
+       full screen and a play button." None of these videos are meant
+       to be interactive at all -- playback is driven entirely by JS,
+       proximity/tap-to-wake is handled by the .spec wrapper (see
+       isTouch's click listener below) -- so the media element itself
+       has no reason to receive pointer events. Long-press's preview/
+       context menu is a separate iOS affordance from the same root
+       cause; -webkit-touch-callout blocks that too. */
+    pointer-events: none;
+    -webkit-touch-callout: none;
   }
 
   /* --awake and --flare are both set per-frame in JS (0 to 1 floats).
@@ -648,7 +662,12 @@
         el.innerHTML = `<img src="${s.img}" alt="" loading="lazy" />`;
       } else if (s.vid) {
         const posterAttr = s.poster ? ` poster="${s.poster}"` : '';
-        el.innerHTML = `<video src="${s.vid}" muted loop playsinline preload="metadata"${posterAttr}></video>`;
+        // webkit-playsinline is the legacy (pre-iOS10) spelling of the
+        // same thing playsinline already covers on current iOS -- kept
+        // alongside it defensively, since these are exactly the videos
+        // that were observed taking over the whole screen as a native
+        // fullscreen player.
+        el.innerHTML = `<video src="${s.vid}" muted loop playsinline webkit-playsinline preload="metadata"${posterAttr}></video>`;
       }
       if (s.tag) {
         const tag = document.createElement('span');
@@ -658,6 +677,15 @@
       }
       world!.appendChild(el);
       const video = el.querySelector('video') as HTMLVideoElement | null;
+      if (video) {
+        // Belt-and-suspenders alongside the CSS pointer-events:none on
+        // .spec video (see that rule's own comment for the actual bug
+        // this addresses) -- explicit JS properties rather than relying
+        // on attribute parsing alone.
+        video.controls = false;
+        video.disablePictureInPicture = true;
+        video.disableRemotePlayback = true;
+      }
       if (video) video.playbackRate = 0.45; // slowed for drama, per Eduardo's note
       el.style.zIndex = String(Math.round(s.d * 100));
       if (s.vignette) el.dataset.vignette = '1';
@@ -667,6 +695,17 @@
         el, s, video,
         xn: (i + 0.5) / SPECIMENS.length + (((i * 67) % 140) - 70) / 4200,
         awake: 0, playing: false,
+        // Throttles retrying .play() on a video that's still paused --
+        // was a fire-once flag (set to true right after calling .play(),
+        // regardless of whether that promise resolved or rejected), so
+        // a single failed/interrupted attempt (a large file still
+        // buffering, a transient autoplay rejection, a pause/resume
+        // cycle from the visibility budget) left the specimen frozen on
+        // its poster frame forever -- nothing ever asked it to try
+        // again. Found by actually inspecting a live page: two mp4
+        // specimens sat at readyState 0, paused, indefinitely, despite
+        // being on-screen and "shown" the whole time.
+        nextPlayAttempt: 0,
         tapAwakeUntil: 0,
         leanX: 0, leanY: 0,
         // Independent per-specimen cycle, per the field spec: "Every
@@ -1207,7 +1246,11 @@
         // narrow screen -- raised for the dominant tier specifically,
         // per direct spec ("~0.5-0.7 del viewport en un eje").
         const capFrac = tier === 'dominant' ? 0.68 : 0.42;
-        const w0 = Math.min(n.s.w * Math.min(1, Math.max(0.32, W / 1300)), W * capFrac);
+        // Floor raised 0.32 -> 0.36 after direct feedback that fish
+        // were unreadably small on a real phone -- measured directly on
+        // a 390px viewport: eyefish (perdido, w:260) was rendering at
+        // ~33x19 CSS px, a smudge rather than a recognizable creature.
+        const w0 = Math.min(n.s.w * Math.min(1, Math.max(0.36, W / 1300)), W * capFrac);
         // Depth of field: d spans roughly 0.42-1.0 across the roster.
         // Interpolated into scale/blur/speed rather than a hard
         // foreground/background split, since d itself is continuous --
@@ -1220,8 +1263,11 @@
         // Three scales, per direct spec: dominant reads large, mesa is
         // the baseline (unchanged), perdido is small on purpose --
         // eyefish and the new goldfish, easy to miss, not a third
-        // showpiece competing with the roster's real cast.
-        const tierMul = tier === 'dominant' ? 1.3 : tier === 'perdido' ? 0.52 : 1;
+        // showpiece competing with the roster's real cast. 0.52 -> 0.65
+        // after direct feedback ("can't see any of the fishes") --
+        // still clearly the smallest tier, just no longer past the
+        // point of reading as a creature at all.
+        const tierMul = tier === 'dominant' ? 1.3 : tier === 'perdido' ? 0.65 : 1;
         const blurPx = tier === 'perdido' ? 1.1 : (1 - dofT) * 2;
         const w = w0 * scaleDof * tierMul;
 
@@ -1398,9 +1444,18 @@
         // ("autoplay tras dock") -- previously a specimen already
         // geometrically on-screen at load could start decoding/playing
         // during the hero, before anyone had actually docked.
-        if (n.video && !n.playing && document.body.dataset.landing === 'field') {
-          n.video.play().catch(() => {});
-          n.playing = true;
+        // Retries every 1.5s while still paused, rather than a single
+        // fire-and-forget attempt -- see the nextPlayAttempt comment on
+        // specNodes for why a one-shot call left specimens stuck.
+        if (n.video && document.body.dataset.landing === 'field') {
+          if (n.video.paused) {
+            if (t >= n.nextPlayAttempt) {
+              n.nextPlayAttempt = t + 1.5;
+              n.video.play().then(() => { n.playing = true; }).catch(() => {});
+            }
+          } else {
+            n.playing = true;
+          }
         }
       }
 
