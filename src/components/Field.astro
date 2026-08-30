@@ -24,8 +24,31 @@
 // logic as gold.
 ---
 
-<section class="field" id="field-root" aria-hidden="true">
-  <canvas class="nerve" id="nerve"></canvas>
+<!-- The seven stops above are also built by JS onto the nerve (see
+     STOPS in the script below) -- those exist for the drifting visual
+     field. This list is the same seven, in the same order, as plain
+     static markup: a real navigation landmark that works with
+     JavaScript off and is not dependent on the field's runtime layout
+     math to be reachable. Keep it in sync with STOPS by hand if a
+     stop is ever added, renamed, or reordered. -->
+<nav class="field-nav" aria-label="Site">
+  <a href="/manifesto">Manifesto</a>
+  <a href="/writing">Writing</a>
+  <a href="/lexicon">Lexicon</a>
+  <a href="/out-loud">Out Loud</a>
+  <a href="/first-dates">First Dates</a>
+  <a href="/who">Who</a>
+  <a href="/contact">Contact</a>
+</nav>
+
+<!-- aria-hidden lives on the canvas only, not the section: the world div
+     holds the real stop links (and fragment/specimen content), and a
+     blanket aria-hidden on the section made all of it invisible to
+     every screen reader. The canvas is pure decoration -- the nerve
+     line has no informational content not already carried by the
+     stop links themselves. -->
+<section class="field" id="field-root">
+  <canvas class="nerve" id="nerve" aria-hidden="true"></canvas>
   <div class="world" id="world"></div>
 </section>
 
@@ -52,6 +75,43 @@
 
   .field:active {
     cursor: grabbing;
+  }
+
+  /* Standard visually-hidden pattern: present to screen readers and
+     sequential keyboard tab order, removed from visual layout without
+     display:none (which would pull it from both). This is the real,
+     always-present nav landmark -- the JS-built .stop links on the
+     nerve are the same seven destinations, restated as a drifting
+     visual, not a replacement for this list. */
+  .field-nav {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .field-nav a:focus-visible {
+    position: fixed;
+    top: 0.5rem;
+    left: 0.5rem;
+    width: auto;
+    height: auto;
+    padding: 0.5rem 0.9rem;
+    margin: 0;
+    clip: auto;
+    overflow: visible;
+    white-space: normal;
+    z-index: 999;
+    background: var(--void);
+    color: var(--gold);
+    outline: 1.5px solid var(--gold);
+    outline-offset: 4px;
+    border-radius: 2px;
   }
 
   /* The mouse itself becomes a point of light, not an arrow -- the OS
@@ -315,6 +375,13 @@
     white-space: nowrap;
     transition: color 0.5s, letter-spacing 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
     cursor: pointer;
+    /* Now a real <a>, not a div stub -- text-decoration:none keeps it
+       looking exactly as it did before, and font/background:inherit
+       block Safari/Firefox's UA-stylesheet defaults for links from
+       reintroducing a different font or an implicit blue/purple. */
+    text-decoration: none;
+    font: inherit;
+    background: none;
     /* z-index alone decides paint ORDER, not whether something behind
        it is still legible -- plain text with nothing opaque behind it
        still visually tangles with whatever's underneath regardless of
@@ -336,6 +403,15 @@
   .stop[data-near='1'] {
     color: var(--gold);
     letter-spacing: 0.52em;
+  }
+
+  /* Same ring as .cue:focus-visible in sopalda-landing.css -- the one
+     other keyboard-focusable interactive element on the page -- so
+     the focus style is consistent site-wide, not invented fresh here. */
+  .stop:focus-visible {
+    outline: 1.5px solid var(--gold);
+    outline-offset: 4px;
+    border-radius: 2px;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -480,14 +556,22 @@
     { vid: '/specimens/goldfish2.webm', w: 520, d: 0.78, tag: 'No.09 · MEMORY · GOLDFISH', cutout: true, band: 'nervio', scale: 'perdido' },
   ];
 
-  const STOPS: [string, string][] = [
-    ['Manifesto', 'the argument, stated once'],
-    ['Writing', 'twenty five signals'],
-    ['Lexicon', 'contested words, defined in public'],
-    ['Out Loud', 'talks, panels, DAMA, the white paper'],
-    ['First Dates', 'speed dating the machines'],
-    ['Who', 'Panama, Finland, Barcelona, a goat'],
-    ['Contact', 'a question, answerable'],
+  // Third element is the real route slug, per CLAUDE.md's own repo
+  // layout (manifesto, writing, lexicon, out-loud, first-dates, who,
+  // contact). Only index.astro exists today -- these routes 404 until
+  // the actual rooms are built, but a real href a screen reader can
+  // reach and a keyboard user can activate is correct architecture now,
+  // not something to wait on content for. Direct review finding: the
+  // stops were plain <div>s with a no-op click handler, formally
+  // invisible to every screen reader and unreachable by keyboard.
+  const STOPS: [string, string, string][] = [
+    ['Manifesto', 'the argument, stated once', '/manifesto'],
+    ['Writing', 'twenty five signals', '/writing'],
+    ['Lexicon', 'contested words, defined in public', '/lexicon'],
+    ['Out Loud', 'talks, panels, DAMA, the white paper', '/out-loud'],
+    ['First Dates', 'speed dating the machines', '/first-dates'],
+    ['Who', 'Panama, Finland, Barcelona, a goat', '/who'],
+    ['Contact', 'a question, answerable', '/contact'],
   ];
 
   function initField() {
@@ -718,19 +802,26 @@
     ];
 
     // ================= specimens =================
+    // All ten specimens used to get a real src the instant the field
+    // mounted -- 46MB total, fetched together on load regardless of
+    // whether ROLE_BUDGET (below) would ever actually show more than
+    // 3-4 of them at once. No <img>/<video> below carries a real src
+    // or poster at creation; those are assigned lazily, the first time
+    // a specimen is actually selected into `shown` for real (see the
+    // `!n.mounted` check in the per-frame specimen loop), so a
+    // specimen nobody's view ever surfaces never costs a byte.
     const specNodes = SPECIMENS.map((s, i) => {
       const el = document.createElement('div');
       el.className = 'spec';
       if (s.img) {
-        el.innerHTML = `<img src="${s.img}" alt="" loading="lazy" draggable="false" />`;
+        el.innerHTML = `<img alt="" draggable="false" />`;
       } else if (s.vid) {
-        const posterAttr = s.poster ? ` poster="${s.poster}"` : '';
         // webkit-playsinline is the legacy (pre-iOS10) spelling of the
         // same thing playsinline already covers on current iOS -- kept
         // alongside it defensively, since these are exactly the videos
         // that were observed taking over the whole screen as a native
         // fullscreen player.
-        el.innerHTML = `<video src="${s.vid}" muted loop playsinline webkit-playsinline preload="metadata" draggable="false"${posterAttr}></video>`;
+        el.innerHTML = `<video muted loop playsinline webkit-playsinline preload="none" draggable="false"></video>`;
       }
       if (s.tag) {
         const tag = document.createElement('span');
@@ -777,6 +868,11 @@
         el, s, video,
         xn: (i + 0.5) / SPECIMENS.length + (((i * 67) % 140) - 70) / 4200,
         awake: 0, playing: false,
+        // Set true the first time this specimen is actually chosen
+        // into `shown` -- the point its real src/poster get assigned
+        // and its network fetch begins. See the lazy-mount block in
+        // the per-frame specimen loop.
+        mounted: false,
         // Throttles retrying .play() on a video that's still paused --
         // was a fire-once flag (set to true right after calling .play(),
         // regardless of whether that promise resolved or rejected), so
@@ -1255,16 +1351,24 @@
     }
 
     // ================= stops =================
+    // Real anchors now, not <div>s with a no-op click handler -- per
+    // direct review finding, the old divs were formally invisible to
+    // every screen reader (no role, no href to announce) and
+    // unreachable by keyboard (no tabindex, no href to put them in the
+    // native tab order at all). An <a href> with position:absolute and
+    // a transform does everything the div did, plus it's a real link:
+    // natively focusable and in tab order without an explicit
+    // tabindex, right-click-copyable, crawlable, and it'll simply start
+    // working the moment a real room exists at that route -- nothing
+    // else in this file needs to change when that happens.
     const stopNodes = STOPS.map((s, i) => {
-      const el = document.createElement('div');
+      const el = document.createElement('a');
       el.className = 'stop';
+      el.href = s[2];
       el.textContent = s[0];
       world!.appendChild(el);
       el.style.zIndex = '200'; // navigation always reads above specimens/fragments
       el.addEventListener('click', () => {
-        // Rooms aren't built yet — quiet no-op stub, matching the
-        // working prototype's own "not built yet" placeholder rather
-        // than a dead link or a fake destination.
         el.dataset.justClicked = '1';
         setTimeout(() => delete el.dataset.justClicked, 400);
       });
@@ -1522,6 +1626,20 @@
         const { n, w, X, Y, sx, sy, anchorX, nerveYHere, dofT, blurPx } = c;
         const on = shown.has(n);
         n.el.style.visibility = on ? 'visible' : 'hidden';
+
+        // Lazy mount: assign the real src (and poster) only now, the
+        // first time this specimen is actually shown -- see the note
+        // on specNodes' creation above for why nothing is set earlier.
+        if (on && !n.mounted) {
+          n.mounted = true;
+          const img = n.el.querySelector('img') as HTMLImageElement | null;
+          if (img && n.s.img) img.src = n.s.img;
+          if (n.video) {
+            if (n.s.poster) n.video.poster = n.s.poster;
+            n.video.src = n.s.vid!;
+            n.video.load();
+          }
+        }
 
         // Flare cycle runs regardless of on-screen visibility (a
         // specimen currently off-screen shouldn't come back already
