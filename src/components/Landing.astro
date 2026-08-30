@@ -336,21 +336,27 @@ import '../styles/sopalda-landing.css';
       );
     }
 
+    // Was a 3-keyframe "wander" -- each letter flew out to a random
+    // scattered point mid-flight before settling, over 6800ms with a
+    // 180ms-per-letter stagger. Not in the reference prototype (its own
+    // dock has no such thing), and on a real phone it read as broken
+    // rather than as a flourish: the field behind it is already fully
+    // faded in (.world's own transition is 2.6s) while "sopalda"'s
+    // letters were still scattered across the screen, overlapping the
+    // tagline and the specimens underneath for several seconds. Matches
+    // givenLetters' and the tagline's own clean 2-keyframe FLIP now --
+    // one coherent dock motion, not two different animations racing.
     familyLetters.forEach((b, i) => {
       const dx = firstF[i].left - lastF[i].left;
       const dy = firstF[i].top - lastF[i].top;
       const sx = firstF[i].width / Math.max(lastF[i].width, 1);
       const sy = firstF[i].height / Math.max(lastF[i].height, 1);
-      const wanderX = dx + (Math.random() - 0.4) * 70;
-      const wanderY = dy + (Math.random() > 0.5 ? -36 - Math.random() * 40 : 28 + Math.random() * 36);
-      const rot = (Math.random() - 0.5) * 12;
       b.animate(
         [
-          { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy}) rotate(0deg)` },
-          { transform: `translate(${wanderX}px, ${wanderY}px) scale(${sx}, ${sy}) rotate(${rot}deg)`, offset: 0.48 },
-          { transform: 'translate(0,0) scale(1) rotate(0deg)' },
+          { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` },
+          { transform: 'translate(0,0) scale(1)' },
         ],
-        { duration: reduced ? 1 : 6800, delay: 280 + i * 180, easing: 'cubic-bezier(.18,.2,.2,1)', fill: 'both' }
+        { duration: reduced ? 1 : 3400, delay: i * 55, easing: 'cubic-bezier(.22,.7,.2,1)', fill: 'both' }
       );
     });
   }
