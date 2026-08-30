@@ -1,681 +1,160 @@
 ---
-// The landing — first moment of the cabinet of curiosities.
-// True black. The nerve is already crossing the screen and already
-// drifting: the site is mid thought and the visitor interrupted it.
-// Centred: the name + tagline as one block, and a quote at rest below
-// it. After ~3s, or on first pointer move / scroll, the mark block
-// walks to the top left — permanence by contrast of behaviour, not
-// size. Nothing fades to nothing; everything just gets quieter, per
-// prototype/field.html (#mark, #meta), the working reference this
-// ports faithfully.
+import '../styles/sopalda-landing.css';
+// Act I: mark, wordmark, rotating quote, cue. Overwritten from the
+// prototype's own text system (splitWord/setLine/decay/stepPhys/dock)
+// rather than patched again -- see the session's own record of drifted
+// constants and a fabricated wordmark gradient that was never in any
+// reference to begin with.
 //
-// Meta is Eduardo's own copy, taken verbatim from that prototype. The
-// tagline was revised directly by Eduardo in this session, replacing
-// the prototype's original ("data · AI · the human experience").
+// No canvas, no #tank, no specimen strip here on purpose: Field.astro
+// is the one nerve canvas and the one specimen field (Act II), already
+// gated on body[data-landing='field']. Duplicating either was the
+// actual bug behind "the nerve doubles/flickers" -- two elements with
+// id="nerve", two independent draw loops.
 //
-// The nerve used to be drawn here, but it's really the field's nerve,
-// not the landing's — Field.astro now owns it (same canvas, always
-// present from load) and this section sits transparently on top so it
-// shows through underneath the wordmark.
-//
-// The quote itself (#frag-a / #frag-b) went from one fixed sentence to
-// a rotating, decaying system per a second opinion's reference
-// prototype (sopaldalanding.zip) -- the manifesto line shown first
-// (Eduardo's thesis, no source, still a headline), then rotating
-// through the same 50-fragment pool Field.astro's continuous world
-// already uses (src/data/fragments.ts, one source of truth), each one
-// resting a while and then physically coming apart -- float, fall,
-// explode, corrode, cycling in that order -- while the next one is
-// already rising in the other layer. Fragment decay is load-bearing
-// per CLAUDE.md ("the Wittgenstein argument running as physics, not a
-// decoration"); this just brings that same idea to the first thing a
-// visitor sees, instead of confining it to the field. Touching the
-// quote holds it against its own death, same as the reference's own
-// framing ("tocarla la sostiene, para la muerte"). Entering the field
-// stops the rotation entirely -- Field.astro's own many fragments take
-// over that role at that point, so there's no second decaying-quote
-// system running underneath it.
+// Content stays real: the tagline Eduardo revised directly this
+// session, the manifesto line shown first with no citation (his own
+// thesis, not an article fragment), the citation line for every
+// fragment after it (Field.astro's own fragment pool, one source of
+// truth via src/data/fragments.ts), Barcelona/LinkedIn in the footer.
+// None of that is in the reference's own placeholder content (its tiny
+// 5-line LINES array, its "Berlin · Oct 2026" footer) -- that's demo
+// copy from wherever the prototype was last shown, not Eduardo's.
 ---
 
 <section class="landing" id="landing" aria-label="Eduardo Sopalda">
   <div class="top-bar" aria-hidden="true"></div>
 
-  <div class="mark">
-    <h1 class="wordmark" aria-label="Eduardo Sopalda">
-      <span class="wordmark-eduardo" aria-hidden="true">EDUARDO</span><span class="wordmark-sopalda" aria-hidden="true">sopalda</span>
-    </h1>
-    <p class="tagline">DATA | AI <span class="amp">&amp;</span> The human experience</p>
+  <div class="stage">
+    <header class="mark" id="mark">
+      <h1 aria-label="Eduardo Sopalda">
+        <span class="given" id="given" aria-hidden="true"></span>
+        <span class="family" id="family" aria-hidden="true"></span>
+      </h1>
+      <p class="tagline">DATA | AI <span class="amp">&amp;</span> The human experience</p>
+    </header>
+
+    <main class="slot">
+      <p class="frag" id="frag-a" hidden></p>
+      <p class="frag" id="frag-b" hidden></p>
+      <p class="frag-source" id="frag-source" aria-hidden="true"></p>
+    </main>
+
+    <footer class="foot">
+      <p class="meta">Barcelona<br /><a href="#" id="li">LinkedIn</a></p>
+      <button type="button" class="cue" id="cue" aria-label="Continue">
+        <span class="cue-line" aria-hidden="true"></span>
+        <span class="cue-dot" aria-hidden="true"></span>
+        <span class="cue-word" aria-hidden="true">Continue</span>
+      </button>
+    </footer>
   </div>
-
-  <p class="purpose" id="frag-a"></p>
-  <p class="purpose" id="frag-b" hidden></p>
-  <p class="frag-source" id="frag-source" aria-hidden="true"></p>
-
-  <p class="meta">Barcelona<br /><a href="#" id="li">LinkedIn</a></p>
-
-  <button type="button" class="cue" id="cue" aria-label="Continue">
-    <span class="cue-line" aria-hidden="true"></span>
-    <span class="cue-dot" aria-hidden="true"></span>
-    <span class="cue-word" aria-hidden="true">Continue</span>
-  </button>
 </section>
-
-<style>
-  /* Transparent on purpose — Field.astro's canvas sits fixed behind
-     this section and needs to show through. .landing only exists now
-     to host the text overlay and give it a stacking context above
-     the field (z-index below, on .mark/.purpose/.meta/.cue). */
-  .landing {
-    position: relative;
-    width: 100%;
-    height: 100svh;
-    overflow: hidden;
-    pointer-events: none;
-  }
-
-  .landing .cue,
-  .landing #li,
-  .landing .purpose {
-    /* .purpose needs this too now -- the hold-to-save-the-quote
-       gesture is a pointerdown listener on it, which silently never
-       fired at all while it inherited pointer-events: none from
-       .landing above (confirmed directly: a simulated click at its
-       exact coordinates had no effect, and decay kept running on
-       schedule as if never touched). */
-    pointer-events: auto;
-  }
-
-  /* Each of the three blocks (mark, purpose, meta) positions and
-     animates itself independently — anchored at its own left/top +
-     translate, never nested inside a container that ALSO transforms.
-     Compounding a parent transform with child transforms was an
-     earlier bug: the whole group shot off-screen because the math
-     assumed a center-pinned parent that didn't exist. */
-
-  /* A frozen bar across the top, per Eduardo's note, to give the
-     corner mark a persistent home rather than floating text -- room
-     for whatever else lands up there later, too. Champagne, not the
-     nerve's actual --gold: the design system reserves --gold as one
-     scarce accent ("nowhere else"), so a loud gold bar would compete
-     with the nerve itself. This reads as light gold without spending
-     that scarcity -- an ambient wash, fading out by 70% of its own
-     height, not a hard-edged colored block. Only visible in the field
-     state; behind .mark, not part of it, so it doesn't inherit the
-     mark's own position/size transition. */
-  .top-bar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: clamp(4.5rem, 12vh, 7rem);
-    /* Confirmed rendering correctly (verified in a screenshot -- it's
-       there), but Eduardo still couldn't see it, which means "technically
-       present" isn't good enough at 0.14 peak opacity -- raised
-       meaningfully so it's unmistakable rather than something you have
-       to know to look for. */
-    background: linear-gradient(180deg, rgba(230, 203, 155, 0.32) 0%, rgba(230, 203, 155, 0.12) 55%, transparent 100%);
-    /* Was 0 on the splash, full only after entering the field -- a
-       design critique noted the two states didn't read as one system
-       because of it ("bring a quieter version onto the splash").
-       Faint from the first frame, then strengthens once in the field,
-       same wash throughout instead of switching on. */
-    opacity: 0.4;
-    pointer-events: none;
-    z-index: 0;
-    transition: opacity 2.4s var(--ease);
-  }
-
-  body[data-landing='field'] .top-bar {
-    opacity: 1;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .top-bar {
-      transition: none;
-    }
-  }
-
-  /* The mark: name + tagline, travelling together as one unit. Was a
-     single CSS transition on left/top/transform/font-size, trusted to
-     stay in lockstep over 4.2s -- worked, after enough one-off fixes
-     (the text-align "bump", the tagline's text-wrap:balance reflow),
-     but every one of those was a symptom of the same structural gap: a
-     handful of independently-eased properties have no guarantee of
-     staying pixel-perfect together. A second opinion's reference
-     prototype uses real FLIP instead (measure, apply the final state
-     instantly, measure again, animate the computed delta back to
-     identity) -- that's what "the transitions don't jump" in their
-     own feedback was actually describing. Ported here: .mark, the
-     wordmark's letters, and the tagline all jump to their final
-     layout state THE INSTANT body[data-landing] flips (no transition
-     on position/size any more), and the script below computes and
-     plays the delta as a transform, so the illusion of continuous
-     travel comes from measured pixels, not from trusting several
-     eased properties to agree. */
-  .mark {
-    /* Fixed, not absolute -- pinned to the viewport itself rather than
-       .landing's document-flow box, so it holds its position no
-       matter what: dragging the nerve on a touch device shouldn't be
-       able to carry it away even if that gesture ever triggers real
-       page scroll. */
-    position: fixed;
-    left: 50%;
-    top: 38%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-    z-index: 1;
-  }
-
-  body[data-landing='field'] .mark {
-    left: clamp(1.25rem, 5vw, 3rem);
-    top: clamp(1.25rem, 5vh, 3rem);
-    transform: translate(0, 0);
-    text-align: left;
-  }
-
-  /* Two names, two faces: Eduardo in Italiana -- tall, structured,
-     arrives first and directly -- and sopalda in Glacial Indifference,
-     round and modern, gathering a half-beat behind. Stacked (column),
-     not side by side -- the reference's own layout, and it's what
-     actually gives "EDUARDO" room to resolve before "sopalda" arrives
-     underneath it, rather than both racing across the same line. Row
-     layout, baseline-aligned, only once docked -- a corner mark reads
-     as one compact lockup, not two stacked lines taking up a header's
-     worth of height. */
-  .wordmark {
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    line-height: 0.88;
-  }
-
-  body[data-landing='field'] .wordmark {
-    flex-direction: row;
-    align-items: baseline;
-    gap: 0.18em;
-  }
-
-  .wordmark-eduardo,
-  .wordmark-sopalda {
-    display: inline-flex;
-  }
-
-  .wordmark-eduardo {
-    font-family: var(--font-wordmark-given);
-    font-weight: 400;
-    letter-spacing: 0.14em;
-    /* Reference's own sizes -- roughly half what this used to be. An
-       earlier pass made it deliberately much bigger per a since-
-       revisited note; asked directly to stop treating that as fixed
-       and actually match the reference here. */
-    font-size: clamp(1.7rem, 8vw, 3.2rem);
-    /* Flat, not a gradient -- the reference's own .given rule is
-       exactly this: color: var(--bronze), nothing else. A per-letter
-       gradient (bronze-deep/bronze/gold, background-clip: text) had
-       been built here instead, which was never in the reference to
-       begin with -- it was the actual source of "cheap 80s TV chrome"
-       and the compositing-layer bug that kept needing new patches
-       (the nacar-sheen spike, the animated-letter invisibility fix).
-       Removing the fabricated gradient outright rather than patching
-       it again, per the reference's own file, not a guess. */
-    color: var(--bronze);
-  }
-
-  body[data-landing='field'] .wordmark-eduardo {
-    font-size: clamp(0.95rem, 3.1vw, 1.2rem);
-    letter-spacing: 0.1em;
-  }
-
-  .wordmark-sopalda {
-    font-family: var(--font-wordmark);
-    font-weight: 700;
-    font-size: clamp(2.4rem, 12vw, 4.6rem);
-    letter-spacing: -0.02em;
-    /* Flat, matching the reference's own .family rule (color:
-       var(--flesh)) -- see .wordmark-eduardo's own comment above. */
-    color: var(--flesh);
-  }
-
-  body[data-landing='field'] .wordmark-sopalda {
-    font-size: clamp(1.28rem, 4.1vw, 1.65rem);
-    letter-spacing: 0;
-  }
-
-  /* Both words are still split into per-letter <b>s by the script
-     below -- needed for the staggered birth reveal and the FLIP dock,
-     neither of which is a gradient concern -- but each letter just
-     inherits this flat color now rather than carrying its own slice
-     of a background-image. */
-
-  /* A specimen tag, not a headline: IBM Plex Mono is already the
-     design system's face for labels and catalogue numbers, so setting
-     the tagline there — tracked-out caps — reads as one system with
-     the rest of the cabinet, instead of a third unrelated typeface
-     competing with the two the wordmark already uses. Width comes
-     from letter-spacing, not a stretched sentence. */
-  .tagline {
-    display: block;
-    width: 100%;
-    margin: 1rem 0 0;
-    font-family: var(--font-mono);
-    font-weight: 400;
-    font-size: clamp(0.8rem, 1.7vw, 1.2rem);
-    color: var(--champagne);
-    letter-spacing: 0.32em;
-    text-transform: uppercase;
-    text-align: center;
-    /* text-wrap: balance was the real second source of the "bump" --
-       found by sampling position every 200ms through the transition
-       and seeing a real reflow (width dropping ~70px in one step,
-       position briefly reversing direction) right around the
-       midpoint, unrelated to the text-align fix above. As font-size
-       shrinks continuously, this line crosses the width where the
-       browser's line-balancing algorithm picks a different break point
-       -- a discrete layout event in the middle of what should be
-       continuous motion. The narrow-viewport letter-spacing reduction
-       just below was already tuned to keep this on one line, so
-       nowrap just makes that explicit and removes the wrap entirely. */
-    white-space: nowrap;
-    opacity: 0;
-    animation: resolve-quiet 1.6s var(--ease) forwards;
-    animation-delay: 1.6s;
-    /* No transition on font-size/margin-top/letter-spacing/text-align
-       any more -- FLIP-animated by the script now, alongside the
-       wordmark, instead of trusting four separately-eased properties
-       to land in sync (see .mark's own comment for why). */
-  }
-
-  body[data-landing='field'] .tagline {
-    font-size: clamp(0.55rem, 0.75vw, 0.65rem);
-    letter-spacing: 0.24em;
-    margin-top: 0.3rem;
-    text-align: left;
-  }
-
-  /* A bare "&" in tracked uppercase mono reads cheap next to two
-     considered typefaces, per the design critique -- a small italic
-     serif flourish (borrowed from the display face, not a third
-     family) instead, the standard editorial answer to the same
-     problem. The word itself is untouched -- Eduardo's own line, only
-     the glyph's style changes. */
-  .tagline .amp {
-    font-family: var(--font-display);
-    font-style: italic;
-    font-size: 1.2em;
-    letter-spacing: 0;
-    opacity: 0.85;
-  }
-
-  /* Full tracking only works with room to breathe. Under ~30rem the
-     wide letter-spacing that reads as a specimen tag on desktop pushes
-     this onto three ragged lines instead — found by actually
-     screenshotting a phone-width viewport, not by assumption. */
-  @media (max-width: 30rem) {
-    .tagline {
-      letter-spacing: 0.14em;
-    }
-    /* The old narrow-viewport wordmark override (lowering the hero
-       clamp() floor) doesn't apply any more: the wordmark is stacked
-       (column) now, not one wide side-by-side line, so each word only
-       needs to fit the viewport on its own -- and the reference's own
-       sizes ported in above are small enough that the vw term already
-       dominates well before the floor would, verified empirically at
-       320-430px rather than assumed. */
-  }
-
-  /* The quote at rest -- one of #frag-a/#frag-b visible at a time,
-     the other hidden, JS crossfading between them (see script below).
-     Both share this one rule, stacked at the exact same spot, so
-     swapping which is visible reads as one continuous element rather
-     than two things swapping places. */
-  .purpose {
-    /* Fixed for the same reason as .mark above -- the permanent
-       message shouldn't be able to drift with a page scroll a
-       nerve-drag might trigger. */
-    position: fixed;
-    left: 50%;
-    /* Was 56% -- almost exactly the nerve's own resting band. A
-       friend's design critique caught it precisely: "the purpose line
-       sits on top of the nerve... type and graphic occupy the same
-       horizontal band and cancel each other" -- confirmed directly by
-       screenshotting the idle hero state, where the line visibly ran
-       straight through "first... then you decide". The nerve's own
-       amplitude was later tightened too (see Field.astro), but keeping
-       real vertical clearance here as well costs nothing. */
-    top: 74%;
-    transform: translate(-50%, -50%);
-    margin: 0;
-    /* Was nowrap, fine for one fixed sentence tuned to fit a line --
-       the rotation now pulls from Field.astro's full fragment pool,
-       and several of those run 80-90 characters ("Ask five people
-       across one company..."). Centred wrapping across 1-3 lines,
-       same as Field.astro's own .frag-quote, rather than forcing every
-       fragment to fit the manifesto's exact width. */
-    max-width: min(85vw, 34rem);
-    font-family: var(--font-display);
-    font-weight: 400;
-    /* Was italic -- called out directly, twice now, as looking bad:
-       Fraunces' italic is a swashy, dramatic cut, and at display size
-       in gold, centred, on black, it reads as a soap-opera title card
-       rather than a sentence about trust and rigor. Field.astro's own
-       fragment quotes -- same Fraunces family, never flagged -- were
-       never italic to begin with (font-style: normal there); this
-       just brings the one line that was different into line with the
-       rest of the system instead of being its own special case. */
-    font-style: normal;
-    /* WONK was 1 -- Fraunces' axis for its wonky, hand-lettered
-       alternate letterforms, deliberately irregular by design. Fine
-       for a display headline having fun with itself; wrong for a
-       sentence about trust and rigor, and called out directly as
-       looking bad here. 0 uses the regular (non-wonky) forms; SOFT
-       (terminal roundness) is unrelated and left as is. */
-    font-variation-settings: 'SOFT' 50, 'WONK' 0;
-    /* A touch bigger than before (was 0.9-1.25rem) -- the critique's
-       "treat it as a headline" note applies to whichever line is
-       currently resting here, not only the manifesto. */
-    font-size: clamp(1rem, 1.8vw, 1.4rem);
-    line-height: 1.34;
-    /* Flat colour -- a gradient was tried here too at one point
-       (background-clip: text on the parent, letters as plain
-       nested spans with no background of their own), and a static
-       side-by-side render confirmed it CAN work that way. But the
-       moment a letter is actually animated -- opacity/transform via
-       Web Animations, needed for both the reveal and the decay
-       physics below -- the browser promotes it to its own compositing
-       layer, and once isolated like that it paints with its OWN
-       (nonexistent) background and inherited transparent colour
-       instead of sharing the parent's clipped gradient paint: the
-       text just disappears the instant animation starts. Confirmed
-       directly (computed style showed opacity:1 and the right rect,
-       yet nothing rendered) before landing on this. Oxide-lit, the
-       same flat colour Field.astro's own decaying fragments use (a
-       second opinion's reference prototype uses this same muted
-       bronze-rust for its own quotes, not flesh's much lighter
-       pink-tan) -- consistent with this being a preview of that same
-       system, not a mismatched one-off. */
-    color: var(--oxide-lit);
-    text-align: center;
-    z-index: 1;
-    cursor: pointer;
-    transition: left 4.2s var(--ease-slow), top 4.2s var(--ease-slow), transform 4.2s var(--ease-slow), font-size 4.2s var(--ease-slow);
-  }
-
-  /* The manifesto specifically -- Eduardo's own thesis, singled out by
-     the design critique as "the best piece of copy on the page...
-     treat it as a headline" -- gets a warmer, brighter flat tone than
-     the rotating fragments that follow it, so it still reads as a cut
-     above the rest even without the gradient. */
-  .purpose.is-manifesto {
-    color: var(--champagne);
-  }
-
-  .purpose .word {
-    display: inline-block;
-    white-space: nowrap;
-  }
-
-  .purpose b {
-    display: inline-block;
-    font-weight: inherit;
-    will-change: transform, opacity, filter;
-  }
-
-  /* The article each rotating fragment was lifted from -- the same
-     citation Field.astro shows next to its own fragments, so the
-     landing's preview of the field reads as the same system. Absent
-     for the manifesto (it's the site's own line, not from an essay)
-     and for any "site" fragment, same rule Field.astro already
-     follows. */
-  .frag-source {
-    position: fixed;
-    left: 50%;
-    top: 74%;
-    transform: translate(-50%, 2.6em);
-    margin: 0;
-    max-width: min(85vw, 34rem);
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.05em;
-    text-align: center;
-    color: rgba(227, 175, 149, 0.55);
-    z-index: 1;
-    opacity: 0;
-    transition: opacity 0.8s var(--ease);
-  }
-
-  .frag-source.is-visible {
-    opacity: 1;
-  }
-
-  @keyframes resolve-quiet {
-    to { opacity: 1; }
-  }
-
-  /* The quote fades out entirely once the field opens -- Field.astro's
-     own many fragments take over that role there, so a second,
-     smaller decaying-quote widget surviving in the corner would just
-     be a redundant, cluttered echo of it. */
-  body[data-landing='field'] .purpose,
-  body[data-landing='field'] .frag-source {
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 1.2s var(--ease);
-  }
-
-  .meta {
-    position: fixed;
-    right: clamp(1.25rem, 5vw, 3rem);
-    bottom: clamp(1.25rem, 5vh, 3rem);
-    z-index: 1;
-    margin: 0;
-    font-family: var(--font-mono);
-    font-size: 0.6rem;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: rgba(227, 175, 149, 0.35);
-    text-align: right;
-    line-height: 2;
-    /* Was invisible (opacity: 0) until the field state -- a design
-       critique caught this exactly: "a first visitor never learns
-       who or where you are." Location and contact are permanent
-       marks, per Landing's own framing above; they should be on the
-       first screen, not locked behind the metamorphosis. Same quiet
-       resolve-in as the tagline/purpose/cue, not an instant snap. */
-    opacity: 0;
-    animation: resolve-quiet 1.6s var(--ease) forwards;
-    animation-delay: 2.2s;
-    transition: opacity 1.4s var(--ease);
-  }
-
-  .meta a {
-    color: inherit;
-    text-decoration: none;
-    border-bottom: 1px solid rgba(227, 175, 149, 0.25);
-  }
-
-  .meta a:hover {
-    color: var(--gold);
-  }
-
-  body[data-landing='field'] .meta {
-    opacity: 1;
-  }
-
-  /* ---- The cue: no word for "enter," just a quiet signal that there's
-     more here — same gold-pulse language as the nerve and its stops.
-     This is the thing that actually gets someone into the field now;
-     nothing times out on its own (see script below), so this has to
-     read as clickable without saying so. Pointer move / scroll / touch
-     still work too, as a low-friction fallback for anyone who starts
-     exploring before noticing it. */
-  .cue {
-    position: fixed;
-    left: 50%;
-    bottom: clamp(2.25rem, 8vh, 4rem);
-    transform: translateX(-50%);
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    background: none;
-    border: none;
-    padding: 0.9rem;
-    margin: -0.9rem;
-    cursor: pointer;
-    opacity: 0;
-    animation: resolve-quiet 1.6s var(--ease) forwards;
-    animation-delay: 2.6s;
-    transition: opacity 1.4s var(--ease);
-  }
-
-  .cue-line {
-    width: 1px;
-    height: 2.1rem;
-    background: linear-gradient(to bottom, transparent, var(--gold));
-  }
-
-  .cue-dot {
-    width: 0.4rem;
-    height: 0.4rem;
-    border-radius: 50%;
-    background: var(--gold);
-    box-shadow: 0 0 0.7rem 0.15rem rgba(247, 197, 106, 0.5);
-    /* Was 2.6s with a scale(1.3) pump on top of the opacity fade --
-       busier and faster than the reference's own cue, which just
-       breathes opacity slowly (5.6s, no scale). Matched to that; the
-       scale pump read as more "attention-grabbing UI widget" than the
-       quiet, patient signal this is meant to be. */
-    animation: cue-breathe 5.6s ease-in-out infinite;
-  }
-
-  @keyframes cue-breathe {
-    50% { opacity: 0.28; }
-  }
-
-  /* A gold dot with no word is a decoration, not a verb -- a design
-     critique's exact phrasing. Reusing "Continue", the word already
-     chosen for the button's own aria-label, rather than inventing new
-     copy: this just makes the existing label visible to sighted
-     visitors too, in the same quiet tracked-mono language as the
-     tagline. */
-  .cue-word {
-    font-family: var(--font-mono);
-    font-size: 0.62rem;
-    letter-spacing: 0.34em;
-    text-transform: uppercase;
-    color: rgba(230, 203, 155, 0.55);
-  }
-
-  .cue:focus-visible {
-    outline: 1.5px solid var(--gold);
-    outline-offset: 4px;
-    border-radius: 2px;
-  }
-
-  body[data-landing='field'] .cue {
-    animation: none;
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .mark,
-    .tagline,
-    .purpose,
-    .meta,
-    .cue {
-      transition: none;
-    }
-    .tagline,
-    .purpose,
-    .cue {
-      animation: none;
-      opacity: 1;
-      filter: none;
-    }
-    /* Neither wordmark word appears here -- they carry no CSS
-       animation/transition of their own any more (both are split into
-       per-letter <b>s, entirely JS-driven; see the script). Nor do
-       their letters: Astro's scoping means a rule here could never
-       reach elements created at runtime anyway (same reason there's
-       no CSS rule for them at rest either). Each word's own init
-       function already checks prefers-reduced-motion directly and
-       collapses its reveal to a ~0 duration and skips the dock
-       wander/FLIP delta entirely, which is the actual safety net. */
-    .purpose b {
-      opacity: 1;
-      filter: none;
-      transform: none;
-    }
-    .frag-source {
-      transition: none;
-    }
-    .cue-dot {
-      animation: none;
-    }
-  }
-</style>
 
 <script>
   import { FRAGS } from '../data/fragments';
 
-  // ================= wordmark: per-letter reveal + real FLIP dock =================
-  // Was a CSS transition on left/top/transform/font-size, trusted to
-  // stay in lockstep over 4.2s -- worked, after enough one-off fixes
-  // (the text-align "bump", the tagline's text-wrap:balance reflow),
-  // but every one of those was a symptom of the same structural gap.
-  // Asked directly to stop treating the old approach as settled and
-  // actually rebuild it the way a second opinion's reference prototype
-  // does: real FLIP. Measure every letter's rect, flip body[data-landing]
-  // (now an instant, transition-less jump to the final layout), measure
-  // again, then animate the computed delta back to identity. The
-  // illusion of continuous travel comes from measured pixels, not from
-  // trusting several eased CSS properties to agree -- that's the actual
-  // mechanism behind "the transitions don't jump" in the reference's
-  // own feedback.
-  //
-  // EDUARDO flips directly (matching the reference's own given name);
-  // sopalda gets an extra wandering detour mid-flight before settling,
-  // "sopalda ~6.8s, con un desvío" in the reference's own notes -- the
-  // same "resolves first / gathers a half-beat behind" theme already
-  // established elsewhere in this file, just carried into the dock
-  // motion too, not only the initial reveal.
-  type Letter = HTMLElement;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // Every letter is still its own <b>, needed for the staggered birth
-  // reveal below and the FLIP dock further down -- but each one just
-  // inherits the word's flat CSS color now (see .wordmark-eduardo/
-  // .wordmark-sopalda's own comment) rather than carrying a slice of a
-  // gradient, so there's no background-clip/background-position math
-  // left to do here at all.
-  function splitLetters(el: HTMLElement): Letter[] {
-    const text = el.textContent || '';
-    el.textContent = '';
+  // No real LinkedIn URL yet -- stub the click rather than send anyone
+  // to a placeholder href.
+  document.getElementById('li')?.addEventListener('click', (e) => e.preventDefault());
+
+  // ================= wordmark: split + staggered CSS reveal =================
+  function splitWord(node: HTMLElement, text: string) {
+    node.textContent = '';
     return [...text].map((ch) => {
       const b = document.createElement('b');
       b.textContent = ch;
-      b.style.display = 'inline-block';
-      b.style.opacity = '0';
-      el.appendChild(b);
+      node.appendChild(b);
       return b;
     });
   }
 
-  function revealLetters(letters: Letter[], reduced: boolean, baseDelay: number, stagger: number) {
+  const givenLetters = splitWord(document.getElementById('given')!, 'EDUARDO');
+  const familyLetters = splitWord(document.getElementById('family')!, 'sopalda');
+
+  // ================= the quote: birth, Verlet death, repeat =================
+  // Two stacked layers (#frag-a/#frag-b): while one dies, the other is
+  // already rising -- that overlap is the cross, never a hard cut.
+  const layers = [
+    document.getElementById('frag-a'),
+    document.getElementById('frag-b'),
+  ].filter((el): el is HTMLParagraphElement => el instanceof HTMLParagraphElement);
+  const sourceEl = document.getElementById('frag-source');
+
+  // The manifesto is the site's own thesis, not an article fragment --
+  // shown first, every time, with no citation. Everything after it
+  // comes from the same 50-fragment pool Field.astro's own continuous
+  // world draws from (src/data/fragments.ts), not the reference's own
+  // 5-line placeholder LINES array.
+  const MANIFESTO = { text: 'Understand it first… then you decide if you trust it.', source: null as string | null };
+
+  let queue: number[] = [];
+  function shuffled(n: number) {
+    const arr = Array.from({ length: n }, (_, i) => i);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+  function nextFrag(): { text: string; source: string | null } {
+    if (queue.length === 0) queue = shuffled(FRAGS.length);
+    const f = FRAGS[queue.pop()!];
+    return { text: f.text, source: f.source };
+  }
+
+  function revealSourceFor(source: string | null) {
+    if (!sourceEl) return;
+    if (!source) {
+      sourceEl.classList.remove('is-visible');
+      return;
+    }
+    sourceEl.textContent = `— ${source}`;
+    setTimeout(() => sourceEl.classList.add('is-visible'), reduced ? 0 : 900);
+  }
+
+  let live = 0;
+  let letters: HTMLElement[] = [];
+  let decaying = false;
+  let held = false;
+  let docked = false;
+
+  function setLine(text: string, source: string | null, node: HTMLElement) {
+    decaying = false;
+    node.innerHTML = '';
+    letters = [];
+    node.style.animation = 'none';
+    node.style.opacity = '1';
+    node.hidden = false;
+    node.classList.toggle('is-manifesto', text === MANIFESTO.text);
+    revealSourceFor(source);
+    text.split(/(\s+)/).forEach((tok) => {
+      if (/^\s+$/.test(tok)) {
+        node.appendChild(document.createTextNode(' '));
+        return;
+      }
+      const word = document.createElement('span');
+      word.className = 'word';
+      [...tok].forEach((ch) => {
+        const b = document.createElement('b');
+        b.textContent = ch;
+        b.style.opacity = '0';
+        word.appendChild(b);
+        letters.push(b);
+      });
+      node.appendChild(word);
+    });
     letters.forEach((b, i) => {
       b.animate(
         [
-          // translateY(14px) and blur(10px), the reference's own
-          // rise-in keyframe values exactly (this had drifted to
-          // blur(14px) and a 1400ms duration below -- fixed to match).
-          { opacity: 0, transform: 'translateY(14px)', filter: 'blur(10px)' },
-          { opacity: 1, transform: 'translateY(0)', filter: 'blur(0)' },
+          { opacity: 0, transform: 'translateY(10px)', filter: 'blur(8px)' },
+          { opacity: 1, transform: 'none', filter: 'blur(0)' },
         ],
         {
-          duration: reduced ? 1 : 2400,
-          delay: reduced ? 0 : baseDelay + i * stagger,
+          duration: reduced ? 1 : 1600,
+          delay: reduced ? 0 : 90 + i * 58,
           easing: 'cubic-bezier(.22,.7,.2,1)',
           fill: 'forwards',
         }
@@ -683,400 +162,227 @@
     });
   }
 
-  function initWordmark(reduced: boolean): () => void {
-    const eduardoEl = document.querySelector<HTMLElement>('.wordmark-eduardo');
-    const sopaldaEl = document.querySelector<HTMLElement>('.wordmark-sopalda');
-    const tag = document.querySelector<HTMLElement>('.tagline');
-    if (!eduardoEl || !sopaldaEl || !tag) return () => {};
+  const DEATHS = ['float', 'fall', 'explode', 'corrode'] as const;
+  let deathI = 0;
+  type Particle = {
+    el: HTMLElement; x: number; y: number; px: number; py: number;
+    rot: number; rotv: number; damp: number; life: number; fade: number;
+    wake: number; scale: number; link: boolean; rest: number; breakAt: number;
+  };
+  let phys: Particle[] = [];
+  let physMode: (typeof DEATHS)[number] | '' = '';
+  let physT = 0;
+  let physRunning = false;
+  let physLast = 0;
 
-    const eduardoLetters = splitLetters(eduardoEl);
-    const sopaldaLetters = splitLetters(sopaldaEl);
-
-    // EDUARDO: 7 letters, 70ms stagger starting at 150ms -- the
-    // reference's own literal nth-child delays (.15s, .22s, .29s ...
-    // .57s) are each exactly 70ms apart, not the 55ms this had drifted
-    // to. sopalda: also 7 letters, but its own stagger is 110ms
-    // starting at 850ms (.85s, .96s, 1.07s ... 1.51s) -- a distinctly
-    // slower gather than EDUARDO's, not the same 55ms reused for both.
-    revealLetters(eduardoLetters, reduced, 150, 70);
-    revealLetters(sopaldaLetters, reduced, 850, 110);
-
-    let docked = false;
-    return function dock() {
-      if (docked) return;
-      docked = true;
-
-      // Reduced motion skips the FLIP measurement/animation entirely --
-      // body[data-landing] flipping is enough on its own; the CSS
-      // handles the rest of the jump with no transition either way.
-      if (reduced) {
-        document.body.dataset.landing = 'field';
-        return;
-      }
-
-      // ---- FLIP: First ----
-      const firstEduardo = eduardoLetters.map((b) => b.getBoundingClientRect());
-      const firstSopalda = sopaldaLetters.map((b) => b.getBoundingClientRect());
-      const firstTag = tag!.getBoundingClientRect();
-
-      // ---- the instant jump: no CSS transition left on any of these
-      // properties any more, so this applies the final layout in one
-      // synchronous step, before the browser has painted anything new.
-      document.body.dataset.landing = 'field';
-
-      // ---- FLIP: Last ----
-      const lastEduardo = eduardoLetters.map((b) => b.getBoundingClientRect());
-      const lastSopalda = sopaldaLetters.map((b) => b.getBoundingClientRect());
-      const lastTag = tag!.getBoundingClientRect();
-
-      eduardoLetters.forEach((b, i) => {
-        b.getAnimations().forEach((a) => a.cancel());
-        const dx = firstEduardo[i].left - lastEduardo[i].left;
-        const dy = firstEduardo[i].top - lastEduardo[i].top;
-        const sx = firstEduardo[i].width / Math.max(lastEduardo[i].width, 1);
-        const sy = firstEduardo[i].height / Math.max(lastEduardo[i].height, 1);
-        b.animate(
-          [
-            { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` },
-            { transform: 'translate(0, 0) scale(1)' },
-          ],
-          { duration: 3400, delay: i * 55, easing: 'cubic-bezier(.22,.7,.2,1)', fill: 'both' }
-        );
-      });
-
-      {
-        const dx = firstTag.left - lastTag.left;
-        const dy = firstTag.top - lastTag.top;
-        const sx = firstTag.width / Math.max(lastTag.width, 1);
-        const sy = firstTag.height / Math.max(lastTag.height, 1);
-        tag!.getAnimations().forEach((a) => a.cancel());
-        tag!.animate(
-          [
-            { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` },
-            { transform: 'translate(0, 0) scale(1)' },
-          ],
-          { duration: 3800, delay: 120, easing: 'cubic-bezier(.22,.65,.2,1)', fill: 'both' }
-        );
-      }
-
-      sopaldaLetters.forEach((b, i) => {
-        b.getAnimations().forEach((a) => a.cancel());
-        const dx = firstSopalda[i].left - lastSopalda[i].left;
-        const dy = firstSopalda[i].top - lastSopalda[i].top;
-        const sx = firstSopalda[i].width / Math.max(lastSopalda[i].width, 1);
-        const sy = firstSopalda[i].height / Math.max(lastSopalda[i].height, 1);
-        const wanderX = dx + (Math.random() - 0.4) * 70;
-        const wanderY = dy + (Math.random() > 0.5 ? -36 - Math.random() * 40 : 28 + Math.random() * 36);
-        const rot = (Math.random() - 0.5) * 12;
-        b.animate(
-          [
-            { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy}) rotate(0deg)` },
-            { transform: `translate(${wanderX}px, ${wanderY}px) scale(${sx}, ${sy}) rotate(${rot}deg)`, offset: 0.48 },
-            { transform: 'translate(0, 0) scale(1) rotate(0deg)' },
-          ],
-          { duration: 6800, delay: 280 + i * 180, easing: 'cubic-bezier(.18,.2,.2,1)', fill: 'both' }
-        );
-      });
-    };
+  function stopPhys() {
+    physRunning = false;
+    phys = [];
   }
 
-  function initLanding() {
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function stepPhys(now: number) {
+    if (!physRunning || held) return;
+    const dt = Math.min(0.032, (now - physLast) / 1000) || 0.016;
+    physLast = now;
+    physT += dt;
+    const wind = Math.sin(physT * 0.7) * 22;
 
-    // No real LinkedIn URL yet — stub the click rather than send anyone
-    // to a placeholder href.
-    document.getElementById('li')?.addEventListener('click', (e) => e.preventDefault());
-
-    const dockWordmark = initWordmark(reduced);
-
-    let stopped = false;
-    function enterField() {
-      // The wordmark's own FLIP measures the pre-dock rects itself, so
-      // it must run before the dataset flip -- it flips document.body
-      // as its own mid-measurement step.
-      // The quote itself is Field.astro's job from here on -- stop
-      // scheduling anything new rather than let a hidden decay cycle
-      // keep running behind the field for no visible reason.
-      stopped = true;
-      dockWordmark();
-    }
-
-    if (reduced) {
-      enterField();
-    } else {
-      // Deliberate only — nothing times out and forces this on its own,
-      // and plain pointer movement doesn't count: someone just moving
-      // the mouse to read isn't choosing to continue. The cue is the
-      // intended path; scroll and touch are the low-friction fallback,
-      // since both are already an act of trying to move past this screen.
-      document.getElementById('cue')?.addEventListener('click', enterField);
-      addEventListener('wheel', enterField, { once: true, passive: true });
-      addEventListener('touchstart', enterField, { once: true, passive: true });
-    }
-
-    initQuote(reduced, () => stopped);
-  }
-
-  // ================= the hero quote: reveal, rest, decay, repeat =================
-  // Ported from a second opinion's reference prototype (sopaldalanding.zip),
-  // adapted to this site's two-layer #frag-a/#frag-b markup, its own
-  // fragment pool (src/data/fragments.ts), and a #frag-source citation
-  // line the reference didn't have.
-  function initQuote(reduced: boolean, isStopped: () => boolean) {
-    const layers = [document.getElementById('frag-a'), document.getElementById('frag-b')].filter(
-      (el): el is HTMLParagraphElement => el instanceof HTMLParagraphElement
-    );
-    const sourceEl = document.getElementById('frag-source');
-    if (layers.length < 2) return;
-
-    // The manifesto is the site's own thesis, not an article fragment --
-    // shown first, every time, with no citation. Everything after it
-    // comes from the same pool Field.astro draws from.
-    const MANIFESTO = { text: 'Understand it first… then you decide if you trust it.', source: null as string | null };
-
-    let queue: number[] = [];
-    function shuffled(n: number) {
-      const arr = Array.from({ length: n }, (_, i) => i);
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-      return arr;
-    }
-    function next(): { text: string; source: string | null } {
-      if (queue.length === 0) queue = shuffled(FRAGS.length);
-      const f = FRAGS[queue.pop()!];
-      return { text: f.text, source: f.source };
-    }
-
-    function buildLetters(node: HTMLElement, text: string): HTMLElement[] {
-      node.innerHTML = '';
-      const made: HTMLElement[] = [];
-      text.split(/(\s+)/).forEach((tok) => {
-        if (/^\s+$/.test(tok)) {
-          node.appendChild(document.createTextNode(' '));
-          return;
-        }
-        const word = document.createElement('span');
-        word.className = 'word';
-        [...tok].forEach((ch) => {
-          const b = document.createElement('b');
-          b.textContent = ch;
-          b.style.opacity = '0';
-          word.appendChild(b);
-          made.push(b);
-        });
-        node.appendChild(word);
-      });
-      return made;
-    }
-
-    let live = 0;
-    let letters: HTMLElement[] = [];
-    let held = false;
-    let decaying = false;
-
-    function revealSourceFor(source: string | null) {
-      if (!sourceEl) return;
-      if (!source) {
-        sourceEl.classList.remove('is-visible');
-        return;
-      }
-      sourceEl.textContent = `— ${source}`;
-      // A beat behind the quote itself, same relationship as
-      // Field.astro's own quote/citation pairing.
-      setTimeout(() => sourceEl.classList.add('is-visible'), reduced ? 0 : 900);
-    }
-
-    function setLine(text: string, source: string | null, node: HTMLElement) {
-      decaying = false;
-      node.hidden = false;
-      node.classList.toggle('is-manifesto', text === MANIFESTO.text);
-      const made = buildLetters(node, text);
-      letters = made;
-      revealSourceFor(source);
-      made.forEach((b, i) => {
-        b.animate(
-          [
-            { opacity: 0, transform: 'translateY(10px)', filter: 'blur(8px)' },
-            { opacity: 1, transform: 'none', filter: 'blur(0)' },
-          ],
-          {
-            duration: reduced ? 1 : 1600,
-            delay: reduced ? 0 : 90 + i * 58,
-            easing: 'cubic-bezier(.22,.7,.2,1)',
-            fill: 'forwards',
-          }
-        );
-      });
-    }
-
-    // ---- decay: the same physical argument as Field.astro's own
-    // fragment decay, just applied to the one quote a visitor sees
-    // before they've even entered the field. Four modes, cycling in
-    // order, never repeating back-to-back. ----
-    const DEATHS = ['float', 'fall', 'explode', 'corrode'] as const;
-    let deathI = 0;
-    type Particle = {
-      el: HTMLElement; x: number; y: number; px: number; py: number;
-      rot: number; rotv: number; damp: number; life: number; fade: number;
-      wake: number; scale: number; link: boolean; rest: number; breakAt: number;
-    };
-    let phys: Particle[] = [];
-    let physMode: (typeof DEATHS)[number] | '' = '';
-    let physT = 0;
-    let physRunning = false;
-    let physLast = 0;
-    let physRaf = 0;
-
-    function stopPhys() {
-      physRunning = false;
-      phys = [];
-      if (physRaf) cancelAnimationFrame(physRaf);
-    }
-
-    function stepPhys(now: number) {
-      if (!physRunning || held) return;
-      const dt = Math.min(0.032, (now - physLast) / 1000) || 0.016;
-      physLast = now;
-      physT += dt;
-      const wind = Math.sin(physT * 0.7) * 22;
-
-      if (physMode === 'corrode') {
-        phys.forEach((p) => {
-          if (p.link && physT > p.breakAt) p.link = false;
-        });
-        for (let k = 0; k < 4; k++) {
-          for (let i = 0; i < phys.length - 1; i++) {
-            const p = phys[i], q = phys[i + 1];
-            if (!p.link) continue;
-            const dx = q.x - p.x, dy = q.y - p.y;
-            const d = Math.hypot(dx, dy) || 1;
-            const corr = (d - p.rest) * 0.18;
-            const nx = dx / d, ny = dy / d;
-            p.x += nx * corr * 0.5; p.y += ny * corr * 0.5;
-            q.x -= nx * corr * 0.5; q.y -= ny * corr * 0.5;
-          }
-        }
-      }
-
+    if (physMode === 'corrode') {
       phys.forEach((p) => {
-        if (physT < p.wake) return;
-        let ax = 0, ay = 0;
-        if (physMode === 'fall') ay = 380;
-        if (physMode === 'float') { ay = -28; ax = wind * 0.7; }
-        if (physMode === 'explode') ay = 12;
-        if (physMode === 'corrode') ay = 12;
-
-        const vx = p.x - p.px, vy = p.y - p.py;
-        const nx = p.x + vx * p.damp + ax * dt * dt;
-        const ny = p.y + vy * p.damp + ay * dt * dt;
-        p.px = p.x; p.py = p.y;
-        p.x = nx; p.y = ny;
-        p.rot += p.rotv * dt * 60;
-        p.life -= p.fade * dt * 60;
-        if (physMode === 'explode') p.scale = 1 + Math.min(0.55, physT * 0.35);
-        p.el.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${p.rot}deg) scale(${p.scale || 1})`;
-        p.el.style.opacity = String(Math.max(0, p.life));
-        if (physMode === 'corrode') {
-          const rust = Math.min(1, physT / 7);
-          p.el.style.filter = `blur(${rust * 4.5}px)`;
-          (p.el.style as any).color = rust > 0.35 ? '#2a160e' : '';
-        }
+        if (p.link && physT > p.breakAt) p.link = false;
       });
-      physRaf = requestAnimationFrame(stepPhys);
+      for (let k = 0; k < 4; k++) {
+        for (let i = 0; i < phys.length - 1; i++) {
+          const p = phys[i], q = phys[i + 1];
+          if (!p.link) continue;
+          const dx = q.x - p.x, dy = q.y - p.y;
+          const d = Math.hypot(dx, dy) || 1;
+          const corr = (d - p.rest) * 0.18;
+          const nx = dx / d, ny = dy / d;
+          p.x += nx * corr * 0.5; p.y += ny * corr * 0.5;
+          q.x -= nx * corr * 0.5; q.y -= ny * corr * 0.5;
+        }
+      }
     }
 
-    function decay() {
-      if (reduced || held || decaying || isStopped()) return;
-      decaying = true;
-      const mode = DEATHS[deathI % DEATHS.length];
-      deathI += 1;
-      physMode = mode;
-      physT = 0;
-      physLast = performance.now();
+    phys.forEach((p) => {
+      if (physT < p.wake) return;
+      let ax = 0, ay = 0;
+      if (physMode === 'fall') ay = 380;
+      if (physMode === 'float') { ay = -28; ax = wind * 0.7; }
+      if (physMode === 'explode') ay = 12;
+      if (physMode === 'corrode') ay = 12;
 
-      const origin = letters.map((b) => b.getBoundingClientRect());
-      phys = letters.map((b, i) => {
-        b.getAnimations().forEach((a) => a.cancel());
-        const ang = (i / Math.max(letters.length, 1)) * Math.PI * 2 + (Math.random() - 0.5) * 0.35;
-        const speed = mode === 'explode' ? 11 + Math.random() * 8 : 2.4 + Math.random() * 2;
-        let px = 0, py = 0;
-        if (mode === 'explode') {
-          px = -Math.cos(ang) * speed;
-          py = -Math.sin(ang) * speed;
-        }
-        const rest = origin[i + 1] ? origin[i + 1].left - origin[i].left : origin[i].width;
-        return {
-          el: b, x: 0, y: 0, px, py, rot: 0,
-          rotv: mode === 'explode' ? (Math.random() - 0.5) * 14 : (Math.random() - 0.5) * 0.4,
-          damp: mode === 'float' ? 0.965 : mode === 'fall' ? 0.996 : mode === 'explode' ? 0.986 : 0.978,
-          life: 1,
-          fade: mode === 'explode' ? 0.0055 : mode === 'fall' ? 0.0026 : mode === 'float' ? 0.0018 : 0.0022,
-          wake: mode === 'explode' ? 0.28 : mode === 'float' ? i * 0.12 : mode === 'corrode' ? i * 0.16 : mode === 'fall' ? i * 0.05 : 0,
-          scale: 1,
-          link: mode === 'corrode' && i < letters.length - 1,
-          rest,
-          breakAt: 0.35 + i * 0.16,
-        };
-      });
-      physRunning = true;
-      physRaf = requestAnimationFrame(stepPhys);
-      if (sourceEl) sourceEl.classList.remove('is-visible');
+      const vx = p.x - p.px, vy = p.y - p.py;
+      const nx = p.x + vx * p.damp + ax * dt * dt;
+      const ny = p.y + vy * p.damp + ay * dt * dt;
+      p.px = p.x; p.py = p.y;
+      p.x = nx; p.y = ny;
+      p.rot += p.rotv * dt * 60;
+      p.life -= p.fade * dt * 60;
+      if (physMode === 'explode') p.scale = 1 + Math.min(0.55, physT * 0.35);
+      p.el.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${p.rot}deg) scale(${p.scale || 1})`;
+      p.el.style.opacity = String(Math.max(0, p.life));
+      if (physMode === 'corrode') {
+        const rust = Math.min(1, physT / 7);
+        p.el.style.filter = `blur(${rust * 4.5}px)`;
+        (p.el.style as any).color = rust > 0.35 ? '#2a160e' : '';
+      }
+    });
+    requestAnimationFrame(stepPhys);
+  }
 
-      const dying = layers[live];
-      const nextLayer = layers[1 - live];
-      live = 1 - live;
-      const overlap = mode === 'explode' ? 3200 : 4200;
-      const clearAfter = mode === 'explode' ? 10000 : 14000;
-      setTimeout(() => {
-        if (isStopped()) return;
-        const f = next();
-        setLine(f.text, f.source, nextLayer);
-        // 16000, not the first call's 12000 -- the reference itself uses
-        // different values for the opening line vs. every repeat after
-        // it, not one flattened number for both.
-        setTimeout(scheduleDecay, 16000);
-      }, overlap);
-      setTimeout(() => {
-        if (dying !== layers[live]) {
-          dying.innerHTML = '';
-          dying.hidden = true;
-        }
-      }, clearAfter);
-    }
+  function decay() {
+    if (reduced || held || decaying) return;
+    decaying = true;
+    const mode = DEATHS[deathI % DEATHS.length];
+    deathI += 1;
+    physMode = mode;
+    physT = 0;
+    physLast = performance.now();
+    const origin = letters.map((b) => b.getBoundingClientRect());
+    phys = letters.map((b, i) => {
+      b.getAnimations().forEach((a) => a.cancel());
+      const ang = (i / Math.max(letters.length, 1)) * Math.PI * 2 + (Math.random() - 0.5) * 0.35;
+      const speed = mode === 'explode' ? 11 + Math.random() * 8 : 2.4 + Math.random() * 2;
+      let px = 0, py = 0;
+      if (mode === 'explode') {
+        px = -Math.cos(ang) * speed;
+        py = -Math.sin(ang) * speed;
+      }
+      const rest = origin[i + 1] ? origin[i + 1].left - origin[i].left : origin[i].width;
+      return {
+        el: b, x: 0, y: 0, px, py, rot: 0,
+        rotv: mode === 'explode' ? (Math.random() - 0.5) * 14 : (Math.random() - 0.5) * 0.4,
+        damp: mode === 'float' ? 0.965 : mode === 'fall' ? 0.996 : mode === 'explode' ? 0.986 : 0.978,
+        life: 1,
+        fade: mode === 'explode' ? 0.0055 : mode === 'fall' ? 0.0026 : mode === 'float' ? 0.0018 : 0.0022,
+        wake: mode === 'explode' ? 0.28 : mode === 'float' ? i * 0.12 : mode === 'corrode' ? i * 0.16 : mode === 'fall' ? i * 0.05 : 0,
+        scale: 1,
+        link: mode === 'corrode' && i < letters.length - 1,
+        rest,
+        breakAt: 0.35 + i * 0.16,
+      };
+    });
+    physRunning = true;
+    requestAnimationFrame(stepPhys);
+    if (sourceEl) sourceEl.classList.remove('is-visible');
 
-    function scheduleDecay() {
-      if (reduced || isStopped()) return;
-      decay();
-    }
+    const dying = layers[live];
+    const next = layers[1 - live];
+    live = 1 - live;
+    const overlap = mode === 'explode' ? 3200 : 4200;
+    const clearAfter = mode === 'explode' ? 10000 : 14000;
+    setTimeout(() => {
+      if (docked) return;
+      const f = nextFrag();
+      setLine(f.text, f.source, next);
+      setTimeout(decay, reduced ? 999999 : 16000);
+    }, overlap);
+    setTimeout(() => {
+      if (dying !== layers[live]) {
+        dying.innerHTML = '';
+        dying.hidden = true;
+      }
+    }, clearAfter);
+  }
 
-    // Touching the quote holds it against its own death -- the
-    // reference prototype's own framing ("tocarla la sostiene, para la
-    // muerte"). Once held, it stays held: nothing brings a death cycle
-    // back on its own, same as the reference (only re-entering fresh,
-    // i.e. a reload, resets it).
-    layers.forEach((node) => {
-      node.addEventListener('pointerdown', () => {
-        held = true;
-        stopPhys();
-        letters.forEach((b) => {
-          b.getAnimations().forEach((a) => a.cancel());
-          b.style.transition = 'transform 1.1s ease, opacity 1.1s ease, color 1.1s ease, filter 1.1s ease';
-          b.style.transform = 'none';
-          b.style.opacity = '1';
-          (b.style as any).color = '';
-          b.style.filter = 'none';
-        });
-      });
+  function firstRects(nodes: HTMLElement[]) {
+    return nodes.map((n) => n.getBoundingClientRect());
+  }
+
+  // ================= dock: FLIP the wordmark + tagline to the corner =================
+  function dock() {
+    if (docked) return;
+    docked = true;
+    held = false;
+
+    document.body.setAttribute('data-landing', 'field');
+
+    const tag = document.querySelector('.tagline') as HTMLElement;
+    const firstG = firstRects(givenLetters);
+    const firstF = firstRects(familyLetters);
+    const firstT = tag.getBoundingClientRect();
+    document.body.classList.add('is-docked');
+    const lastG = firstRects(givenLetters);
+    const lastF = firstRects(familyLetters);
+    const lastT = tag.getBoundingClientRect();
+
+    givenLetters.forEach((b, i) => {
+      const dx = firstG[i].left - lastG[i].left;
+      const dy = firstG[i].top - lastG[i].top;
+      const sx = firstG[i].width / Math.max(lastG[i].width, 1);
+      const sy = firstG[i].height / Math.max(lastG[i].height, 1);
+      b.animate(
+        [
+          { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` },
+          { transform: 'translate(0,0) scale(1)' },
+        ],
+        { duration: reduced ? 1 : 3400, delay: i * 55, easing: 'cubic-bezier(.22,.7,.2,1)', fill: 'both' }
+      );
     });
 
-    setLine(MANIFESTO.text, MANIFESTO.source, layers[0]);
-    // 12000 for this first line only -- the reference's own two
-    // different constants (12000 to start, 16000 every cycle after),
-    // not one number standing in for both.
-    if (!reduced) setTimeout(scheduleDecay, 12000);
+    {
+      const dx = firstT.left - lastT.left;
+      const dy = firstT.top - lastT.top;
+      const sx = firstT.width / Math.max(lastT.width, 1);
+      const sy = firstT.height / Math.max(lastT.height, 1);
+      tag.animate(
+        [
+          { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`, opacity: '1' },
+          { transform: 'translate(0,0) scale(1)', opacity: '1' },
+        ],
+        { duration: reduced ? 1 : 3800, delay: 120, easing: 'cubic-bezier(.22,.65,.2,1)', fill: 'both' }
+      );
+    }
+
+    familyLetters.forEach((b, i) => {
+      const dx = firstF[i].left - lastF[i].left;
+      const dy = firstF[i].top - lastF[i].top;
+      const sx = firstF[i].width / Math.max(lastF[i].width, 1);
+      const sy = firstF[i].height / Math.max(lastF[i].height, 1);
+      const wanderX = dx + (Math.random() - 0.4) * 70;
+      const wanderY = dy + (Math.random() > 0.5 ? -36 - Math.random() * 40 : 28 + Math.random() * 36);
+      const rot = (Math.random() - 0.5) * 12;
+      b.animate(
+        [
+          { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy}) rotate(0deg)` },
+          { transform: `translate(${wanderX}px, ${wanderY}px) scale(${sx}, ${sy}) rotate(${rot}deg)`, offset: 0.48 },
+          { transform: 'translate(0,0) scale(1) rotate(0deg)' },
+        ],
+        { duration: reduced ? 1 : 6800, delay: 280 + i * 180, easing: 'cubic-bezier(.18,.2,.2,1)', fill: 'both' }
+      );
+    });
   }
 
-  initLanding();
+  setLine(MANIFESTO.text, MANIFESTO.source, layers[0]);
+  if (!reduced) setTimeout(decay, 12000);
+
+  layers.forEach((node) => {
+    node.addEventListener('pointerdown', () => {
+      held = true;
+      stopPhys();
+      letters.forEach((b) => {
+        b.getAnimations().forEach((a) => a.cancel());
+        b.style.transition = 'transform 1.1s ease, opacity 1.1s ease, color 1.1s ease, filter 1.1s ease';
+        b.style.transform = 'none';
+        b.style.opacity = '1';
+        (b.style as any).color = '';
+        b.style.filter = 'none';
+      });
+    });
+  });
+
+  // Deliberate only -- nothing times out and forces this on its own,
+  // and plain pointer movement doesn't count. Scroll/touch are the
+  // low-friction fallback, since both are already an act of trying to
+  // move past this screen.
+  document.getElementById('cue')?.addEventListener('click', dock);
+  document.getElementById('mark')?.addEventListener('click', dock);
+  if (!reduced) {
+    addEventListener('wheel', dock, { once: true, passive: true });
+    addEventListener('touchstart', dock, { once: true, passive: true });
+  } else {
+    dock();
+  }
 </script>

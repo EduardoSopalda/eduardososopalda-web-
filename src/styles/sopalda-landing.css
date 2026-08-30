@@ -1,0 +1,379 @@
+/* Landing's Act I: mark, wordmark, rotating quote, cue. Ported from the
+   reference prototype's own stylesheet -- canvas.nerve and #tank/.spec
+   removed entirely, since Field.astro is the one nerve canvas and the
+   one specimen field now; duplicating either here was the actual bug
+   (two #nerve elements, two draw loops).
+
+   Colour and font values route through tokens.css's custom properties
+   rather than the reference's own literal strings in two places where
+   that matters concretely, not as a style preference:
+   - .family's font was "Outfit" in the reference. This project never
+     added Outfit's files (only Italiana, Glacial Indifference, Fraunces,
+     IBM Plex Mono are self-hosted -- see the build output), so "Outfit"
+     here would silently fall back to system Gill Sans/sans-serif rather
+     than actually rendering as intended. --font-wordmark (Glacial
+     Indifference) is what's real.
+   - .frag's font-variation-settings stays at "WONK" 0, not the
+     reference's "WONK" 1 -- fixed earlier this session after being
+     called out directly as looking bad on quote text, not reverted
+     back by this port.
+   Everything else here is the reference's own values as written. */
+
+* {
+  box-sizing: border-box;
+}
+
+.landing {
+  position: relative;
+  width: 100%;
+  height: 100svh;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.landing .mark,
+.landing .frag,
+.landing .cue,
+.landing #li {
+  pointer-events: auto;
+}
+
+/* Not part of the reference -- a frozen top wash added earlier this
+   session so the corner mark has a persistent home. Kept as-is. */
+.top-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: clamp(4.5rem, 12vh, 7rem);
+  background: linear-gradient(180deg, rgba(230, 203, 155, 0.32) 0%, rgba(230, 203, 155, 0.12) 55%, transparent 100%);
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 2.4s var(--ease);
+}
+
+body[data-landing='field'] .top-bar {
+  opacity: 1;
+}
+
+.stage {
+  position: relative;
+  z-index: 5;
+  height: 100svh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: calc(18px + env(safe-area-inset-top)) 22px calc(18px + env(safe-area-inset-bottom));
+}
+
+.mark {
+  text-align: center;
+  padding-top: 8vh;
+  cursor: pointer;
+}
+
+.mark h1 {
+  margin: 0;
+  line-height: 0.88;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.given,
+.family {
+  white-space: nowrap;
+}
+
+.given b,
+.family b {
+  display: inline-block;
+  font-weight: inherit;
+  will-change: transform;
+  opacity: 0;
+  animation: rise-in 2.4s cubic-bezier(.22, .7, .2, 1) forwards;
+}
+
+.given b:nth-child(1) { animation-delay: .15s; }
+.given b:nth-child(2) { animation-delay: .22s; }
+.given b:nth-child(3) { animation-delay: .29s; }
+.given b:nth-child(4) { animation-delay: .36s; }
+.given b:nth-child(5) { animation-delay: .43s; }
+.given b:nth-child(6) { animation-delay: .50s; }
+.given b:nth-child(7) { animation-delay: .57s; }
+
+.family b:nth-child(1) { animation-delay: .85s; }
+.family b:nth-child(2) { animation-delay: .96s; }
+.family b:nth-child(3) { animation-delay: 1.07s; }
+.family b:nth-child(4) { animation-delay: 1.18s; }
+.family b:nth-child(5) { animation-delay: 1.29s; }
+.family b:nth-child(6) { animation-delay: 1.40s; }
+.family b:nth-child(7) { animation-delay: 1.51s; }
+
+.given {
+  font-family: var(--font-wordmark-given);
+  font-weight: 400;
+  font-size: clamp(1.7rem, 8vw, 3.2rem);
+  letter-spacing: .14em;
+  color: var(--bronze);
+}
+
+.family {
+  font-family: var(--font-wordmark);
+  font-weight: 700;
+  font-size: clamp(2.4rem, 12vw, 4.6rem);
+  letter-spacing: -.02em;
+  color: var(--flesh);
+}
+
+.tagline {
+  margin-top: 14px;
+  font-family: var(--font-mono);
+  font-size: clamp(.58rem, 2.7vw, .72rem);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--champagne);
+  white-space: normal;
+  text-wrap: balance;
+  opacity: 0;
+  animation: fade-in 1.8s ease 1.7s forwards;
+}
+
+.tagline .amp {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.2em;
+  letter-spacing: 0;
+  opacity: 0.85;
+}
+
+body.is-docked .mark {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 16px;
+  padding: 0;
+  text-align: left;
+  z-index: 4;
+  height: 0;
+  overflow: visible;
+}
+
+body.is-docked .mark h1 {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0;
+}
+
+body.is-docked .given {
+  font-size: clamp(.95rem, 3.1vw, 1.2rem);
+  letter-spacing: .1em;
+}
+
+body.is-docked .family {
+  font-size: clamp(1.28rem, 4.1vw, 1.65rem);
+  letter-spacing: 0;
+}
+
+body.is-docked .tagline {
+  margin-top: 4px;
+  font-size: clamp(.42rem, 1.7vw, .52rem);
+  letter-spacing: .1em;
+  text-align: left;
+  max-width: 16rem;
+}
+
+body.is-docked .cue {
+  opacity: .35;
+}
+
+.slot {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  padding: 22vh 0 18vh;
+  align-self: stretch;
+}
+
+.frag {
+  grid-area: 1 / 1;
+  max-width: 22rem;
+  text-align: center;
+  font-size: clamp(1.15rem, 4.6vw, 1.55rem);
+  font-variation-settings: "SOFT" 60, "WONK" 0;
+  line-height: 1.28;
+  color: var(--oxide-lit);
+  cursor: pointer;
+  opacity: 0;
+  animation: rise-in 2.2s cubic-bezier(.22, .7, .2, 1) 2.2s forwards;
+}
+
+/* Eduardo's own thesis, not an article fragment -- shown first, no
+   citation, a warmer tone than the rotating fragments after it. Not in
+   the reference (its own LINES has no manifesto concept); this is real
+   site content established earlier this session, kept as-is. */
+.frag.is-manifesto {
+  color: var(--champagne);
+}
+
+.frag .word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.frag b {
+  display: inline-block;
+  font-weight: 400;
+  color: inherit;
+  will-change: transform, opacity, color;
+}
+
+/* Not in the reference (its LINES carry no citation) -- the article
+   each rotating fragment was lifted from, same citation Field.astro
+   shows next to its own fragments. Absent for the manifesto and any
+   sourceless fragment. */
+.frag-source {
+  grid-area: 1 / 1;
+  align-self: end;
+  margin: 0 0 -2.6em;
+  max-width: min(85vw, 34rem);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-align: center;
+  color: rgba(227, 175, 149, 0.55);
+  opacity: 0;
+  transition: opacity 0.8s var(--ease);
+}
+
+.frag-source.is-visible {
+  opacity: 1;
+}
+
+/* Field.astro's own many fragments take over the quote's job once
+   docked, so the landing's single quote steps back rather than run a
+   second, redundant decay system underneath it. Not in the
+   reference -- it never had a Field.astro to hand off to.
+   !important because setLine (ported as-is, see the script) sets this
+   same element's opacity as an inline style -- an inline style always
+   wins over a plain class rule regardless of selector specificity, so
+   without it the quote stayed visible, overlapping Field's own
+   fragments, confirmed directly in a screenshot. */
+body[data-landing='field'] .frag,
+body[data-landing='field'] .frag-source {
+  opacity: 0 !important;
+  pointer-events: none;
+  transition: opacity 1.2s var(--ease);
+}
+
+.foot {
+  position: relative;
+  opacity: 0;
+  animation: fade-in 2s ease 2.4s forwards;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+}
+
+/* Real content (Barcelona / LinkedIn), not the reference's own
+   placeholder footer text -- that text ("Berlin · Oct 2026") was
+   demo copy from wherever this prototype was last shown, not
+   anything Eduardo wrote. */
+.meta {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: .55rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: rgba(227, 175, 149, .45);
+  text-align: right;
+  line-height: 1.8;
+}
+
+.meta a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(227, 175, 149, 0.25);
+}
+
+.meta a:hover {
+  color: var(--gold);
+}
+
+.cue {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  border: 0;
+  background: none;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  color: var(--gold);
+  cursor: pointer;
+  padding: 0.9rem;
+  margin: -0.9rem;
+}
+
+.cue-line {
+  width: 1px;
+  height: 28px;
+  background: var(--gold);
+  animation: pulse 5.6s ease-in-out infinite;
+}
+
+.cue-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 10px var(--gold);
+  animation: pulse 5.6s ease-in-out infinite .8s;
+}
+
+/* Real word ("Continue"), same aria-label the button already carries --
+   the reference's cue is a bare line + dot with no word at all. */
+.cue-word {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: rgba(227, 175, 149, .45);
+}
+
+.cue:focus-visible {
+  outline: 1.5px solid var(--gold);
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+@keyframes pulse {
+  50% { opacity: .28; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(14px); filter: blur(10px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cue-line,
+  .cue-dot {
+    animation: none;
+  }
+  .given b,
+  .family b,
+  .tagline,
+  .frag,
+  .foot {
+    animation: none;
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}
