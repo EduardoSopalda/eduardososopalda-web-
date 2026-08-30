@@ -382,6 +382,14 @@
     // watches rather than swims toward the cursor. Cuts the lean-toward-
     // pointer response instead of sharing goldfish's full reach.
     witness?: boolean;
+    // Per-specimen size multiplier on top of its role's SCALE_VW range,
+    // default 1. Direct feedback: piglet's own mesa-floor size ("don't
+    // make it too small") read too small for a specimen the spec calls
+    // "obligatorio" -- a per-specimen bump, not a change to mesa's
+    // shared range/floor, which stays exactly as specified for every
+    // other mesa specimen (jellyfish, goldfish, seaweed, brain,
+    // bluefish, jellyfish2).
+    sizeMul?: number;
   };
 
   // Shared by specimen placement (below) and fragment placement
@@ -437,7 +445,14 @@
     // seaweed, brain, bluefish, piglet"). witness:true per direct
     // feedback -- a watcher, not a second swimming goldfish; leanMul is
     // 0 for witness specimens (see "Lean ≈ 0" below), not just reduced.
-    { vid: '/specimens/piglet.webm', poster: '/specimens/piglet-poster.png', w: 300, d: 0.74, tag: 'No.05 · MEANING · PIGLET', band: 'baja', scale: 'mesa', witness: true, cutout: true },
+    // sizeMul 1.2 per direct feedback ("don't make it too small") --
+    // piglet only, mesa's own range/floor is untouched for every other
+    // mesa specimen. Capped at 1.2 rather than higher: mesa's own
+    // range sits close under dominant's (mobile mesa tops out at 42vw,
+    // dominant starts at 48vw), so a bigger multiplier would have
+    // pushed piglet into reading as large as a dominant specimen,
+    // undermining the tier distinction the budget/hierarchy depends on.
+    { vid: '/specimens/piglet.webm', poster: '/specimens/piglet-poster.png', w: 300, d: 0.74, tag: 'No.05 · MEANING · PIGLET', band: 'baja', scale: 'mesa', witness: true, cutout: true, sizeMul: 1.2 },
     { img: '/specimens/eyefish.png', w: 260, d: 0.58, boost: 1.15, band: 'nervio', scale: 'perdido' },
     { vid: '/specimens/seaweed.mp4', w: 300, d: 0.5, band: 'baja', scale: 'mesa' },
     // Both genuinely alpha-cut (verified same as the others: canvas
@@ -1410,6 +1425,10 @@
         const [vlo, vhi] = isMobileScale ? SCALE_VW[tier].mobile : SCALE_VW[tier].desktop;
         let w = (vlo + dofT * (vhi - vlo)) * W;
         if (isMobileScale && SCALE_FLOOR_MOBILE[tier]) w = Math.max(w, SCALE_FLOOR_MOBILE[tier]);
+        // Applied after the role range AND its floor, so a per-specimen
+        // bump (see Specimen.sizeMul) scales the whole result rather
+        // than getting clamped away by the floor it's meant to clear.
+        if (n.s.sizeMul) w *= n.s.sizeMul;
 
         const baseX = wrap(n.xn * WORLD_W - worldX * n.s.d, WORLD_W) - Math.min(520, W * 0.4);
         const anchorX = baseX + w * 0.5;
