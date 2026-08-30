@@ -444,11 +444,28 @@
     const N = 56, MARGIN = 240;
     type Pt = { x: number; y: number };
     let chain: Pt[] = [];
+    // Real spring-mass state per chain point, layered ON TOP of the
+    // closed-form base wave below -- direct feedback that a purely
+    // sinusoidal nerve "feels pre-recorded." Cursor proximity pushes a
+    // point away (repulsion, not attraction: the earlier version pulled
+    // the curve toward the cursor, which reads as the wire chasing the
+    // pointer rather than being disturbed by it), then stiffness pulls
+    // it back and damping bleeds the energy off -- genuine overshoot and
+    // settle, not an instant snap-back. Each point also couples to its
+    // two neighbours' current offset, so a poke at one spot visibly
+    // propagates along the wire before dying out, the actual mechanism
+    // behind "transfers energy to adjacent nodes like a cello string."
+    let springY: number[] = [];
+    let springV: number[] = [];
     function buildChain() {
       chain = [];
+      springY = [];
+      springV = [];
       for (let i = 0; i < N; i++) {
         const x = (i / (N - 1)) * (W + MARGIN * 2) - MARGIN;
         chain.push({ x, y: H * 0.55 });
+        springY.push(0);
+        springV.push(0);
       }
     }
 
@@ -518,15 +535,55 @@
       );
     }
 
-    function chainYAt(x: number): number {
-      let y = nerveBaseY(x);
-      if (hasPointer) {
-        const d = Math.abs(x - px);
-        if (d < 560) {
-          const f = 1 - d / 560;
-          y += (py - y) * f * f * 0.8;
+    // springY is stored per discrete chain index, evenly spaced across
+    // [-MARGIN, W+MARGIN] -- interpolating between the two nearest
+    // indices gives a smooth value at any arbitrary x (specimens,
+    // connectors, pulses, stops all query chainYAt at x's that don't
+    // land on the grid).
+    function springAt(x: number): number {
+      const span = W + MARGIN * 2;
+      const fi = ((x + MARGIN) / span) * (N - 1);
+      const i0 = Math.max(0, Math.min(N - 1, Math.floor(fi)));
+      const i1 = Math.min(N - 1, i0 + 1);
+      const frac = fi - i0;
+      return springY[i0] * (1 - frac) + springY[i1] * frac;
+    }
+
+    // Underdamped mass-spring per point (stiffness pulls back toward 0,
+    // damping bleeds the energy off slower than critical, so a poke
+    // genuinely overshoots and settles rather than snapping straight
+    // back), each also coupled to its two immediate neighbours' current
+    // offset -- a disturbance at one point visibly travels along the
+    // chain before dying out, instead of every point reacting only to
+    // its own isolated distance from the cursor.
+    function stepSprings(dt: number) {
+      if (reduced || dt <= 0) return;
+      const STIFF = 90, DAMP = 7, COUPLE = 55, RADIUS = 220, PUSH = 4000;
+      for (let i = 0; i < N; i++) {
+        const x = chain[i].x;
+        let force = 0;
+        if (hasPointer && !isTouch) {
+          const baseY = nerveBaseY(x);
+          const dist = Math.hypot(x - px, baseY - py);
+          if (dist < RADIUS) {
+            const f = (1 - dist / RADIUS) * PUSH;
+            // Repulsion, not attraction: the wire is disturbed BY the
+            // cursor (deforms away from it), rather than chasing the
+            // cursor's position -- the actual behaviour asked for.
+            force += py > baseY ? -f : f;
+          }
         }
+        const left = i > 0 ? springY[i - 1] : springY[i];
+        const right = i < N - 1 ? springY[i + 1] : springY[i];
+        force += COUPLE * ((left + right) * 0.5 - springY[i]);
+        const accel = force - STIFF * springY[i] - DAMP * springV[i];
+        springV[i] += accel * dt;
+        springY[i] += springV[i] * dt;
       }
+    }
+
+    function chainYAt(x: number): number {
+      const y = nerveBaseY(x) + springAt(x);
       // The corner mark, top bar, tagline, purpose line, and meta live
       // in Landing.astro's own stacking context, which paints above
       // this whole canvas regardless of the nerve's z-index -- that
@@ -539,12 +596,10 @@
       return Math.max(nerveMin, Math.min(nerveMax, y));
     }
 
-    function stepChain(_dt: number) {
-      // No more spring state to integrate -- every point is a fresh,
-      // stateless sample of chainYAt(x) at the current t. Kept as its
-      // own function (rather than inlining into frame()) since it's
-      // called once per frame right before the points are drawn, same
-      // as the spring version it replaced.
+    function stepChain(dt: number) {
+      stepSprings(dt);
+      // Base wave: a fresh, stateless sample of nerveBaseY(x) each
+      // frame. The spring layer above is the only stateful part now.
       for (const p of chain) p.y = chainYAt(p.x);
     }
 
@@ -590,6 +645,11 @@
         flareIn: 6 + Math.random() * 14,
         flareT: -1, // -1 = not currently flaring
         pulsePhase: Math.random() * Math.PI * 2,
+        // Last frame's anchor X, used to derive real per-frame velocity
+        // for the connector filament's lagging control point (see the
+        // connector-drawing block in frame()) rather than assuming a
+        // fixed drift direction.
+        prevAnchorX: 0,
       };
       if (isTouch) {
         el.style.pointerEvents = 'auto';
@@ -928,6 +988,14 @@
 
       // ---- specimens: position by depth, wake near cursor, play video on approach ----
       const flareLines: { x: number; y1: number; y2: number; o: number }[] = [];
+      // Always-on connector filaments -- one per visible specimen, not
+      // just the ones currently flaring (flareLines above stays a
+      // separate, brighter overlay for that moment). Per direct
+      // feedback: a straight canvas line read as rigid; drawn as a
+      // quadratic Bezier instead, its control point offset opposite the
+      // specimen's own current horizontal velocity, so the curve reads
+      // as trailing/dragging behind motion rather than a static prop.
+      const connectors: { sx: number; sy: number; cx: number; cy: number; nx: number; ny: number; o: number; pulse: number }[] = [];
       for (const n of specNodes) {
         // Scale floor was 0.48 with no cap, so on a 375px phone a
         // 380-460px specimen (octopus, chimp) still rendered at
@@ -936,9 +1004,37 @@
         // (found by actually measuring a mobile screenshot, not by
         // assumption) keeps any single specimen from dominating a
         // narrow screen.
-        const w = Math.min(n.s.w * Math.min(1, Math.max(0.32, W / 1300)), W * 0.42);
+        const w0 = Math.min(n.s.w * Math.min(1, Math.max(0.32, W / 1300)), W * 0.42);
+        // Depth of field: d spans roughly 0.42-1.0 across the roster.
+        // Interpolated into scale/blur/speed rather than a hard
+        // foreground/background split, since d itself is continuous --
+        // shallow-d specimens read smaller, softer and drift slower
+        // (0.65x, blur 2px), deep-d ones read larger and sharp (1.1x,
+        // no blur), per the diorama note. Speed itself was already
+        // depth-scaled via worldX * n.s.d below; unchanged.
+        const dofT = Math.max(0, Math.min(1, (n.s.d - 0.42) / (1.0 - 0.42)));
+        const scaleDof = 0.65 + dofT * (1.1 - 0.65);
+        const blurPx = (1 - dofT) * 2;
+        const w = w0 * scaleDof;
+
         const baseX = wrap(n.xn * WORLD_W - worldX * n.s.d, WORLD_W) - Math.min(520, W * 0.4);
-        const baseY = n.s.y * H - w * 0.3 + worldYoff * n.s.d;
+        const anchorX = baseX + w * 0.5;
+        // Anchored to the nerve's own live curve rather than a fixed
+        // fraction of H -- each specimen orbits a set offset above or
+        // below wherever the nerve actually is right now, so the two
+        // move together instead of drifting as unrelated layers. The
+        // side and offset magnitude come from each specimen's own
+        // original y (its established compositional role -- upper vs
+        // lower half, how far from center), so the roster's tuned
+        // placements carry over; only the anchor mechanism changes.
+        // worldYoff's own contribution moves here too, folded into the
+        // orbit term below, since the nerve's own mid-line already
+        // carries worldYoff*0.06 -- adding the old full worldYoff*d on
+        // top of that double-counted the same drift.
+        const nerveYHere = chainYAt(anchorX);
+        const side = n.s.y < 0.5 ? -1 : 1;
+        const orbitOffset = Math.abs(n.s.y - 0.5) * H * 1.3 + Math.sin(t * 0.09 + n.pulsePhase) * H * 0.02;
+        const baseY = nerveYHere + side * orbitOffset - w * 0.3;
         const bsx = baseX + w * 0.5, bsy = baseY + w * 0.28;
 
         // Lean toward the cursor within a wider radius than the wake
@@ -980,9 +1076,31 @@
           : (2.6 - n.flareT) / 0.8;
         n.el.style.setProperty('--flare', flareEnv.toFixed(3));
 
-        if (!on) continue;
-        n.el.style.transform = `translate3d(${X}px, ${Y}px, 0)`;
+        // Pause only when actually off-screen, purely to save decode
+        // work on something nobody can see -- never as a reaction to
+        // proximity/hover. Every specimen video is meant to be a
+        // continuous, unprompted animation, not something that starts
+        // moving only once someone finds it.
+        if (!on) {
+          if (n.video && n.playing) { n.video.pause(); n.playing = false; }
+          continue;
+        }
+
+        // Secondary motion -- a static specimen next to looping video
+        // read as a flat cutout, not a living thing. Independent
+        // levitation bob (own period, phase-offset per specimen so the
+        // roster doesn't bob in lockstep) plus a slow breathing scale
+        // pulse, both layered on top of the drift/lean transform rather
+        // than replacing it.
+        const bob = Math.sin(t * 0.7 + n.pulsePhase * 1.7) * (w * 0.015 + 3);
+        const breatheScale = 1 + 0.015 * Math.sin((t * Math.PI * 2) / 4.5 + n.pulsePhase);
+        n.el.style.transform = `translate3d(${X}px, ${(Y + bob).toFixed(1)}px, 0) scale(${breatheScale.toFixed(4)})`;
         n.el.style.width = w + 'px';
+        // Depth-of-field blur on the specimen's own wrapper -- the child
+        // img/video already carries brightness/contrast/saturate via
+        // the CSS rule (see .spec img/video), so this composes with
+        // that rather than overriding it (different elements).
+        n.el.style.filter = blurPx > 0.05 ? `blur(${blurPx.toFixed(2)}px)` : '';
 
         // Slow, independent breathing -- 18s period, phase-offset per
         // specimen so two pulsing specimens (if there ever are more
@@ -994,6 +1112,24 @@
           const cyc = 0.5 + 0.5 * Math.sin((t * Math.PI * 2) / 18 + n.pulsePhase);
           n.el.style.opacity = (0.06 + cyc * 0.94).toFixed(3);
         }
+
+        // Always-on connector filament, per specimen -- not just while
+        // flaring. The Bezier control point lags opposite the
+        // specimen's own real per-frame velocity (not an assumed fixed
+        // direction), so the curve reads as trailing through something
+        // viscous rather than a rigid prop; capped so a resize's first
+        // frame (a large, spurious "jump") can't produce a wild curve.
+        const velocity = Math.max(-40, Math.min(40, anchorX - n.prevAnchorX));
+        n.prevAnchorX = anchorX;
+        const nx = anchorX, ny = nerveYHere;
+        connectors.push({
+          sx, sy,
+          cx: sx - velocity * 2.2,
+          cy: (sy + ny) / 2,
+          nx, ny,
+          o: 0.16 + dofT * 0.14,
+          pulse: n.pulsePhase,
+        });
 
         if (flareEnv > 0.02) {
           flareLines.push({ x: sx, y1: sy, y2: chainYAt(sx), o: flareEnv * 0.7 });
@@ -1010,11 +1146,43 @@
         n.el.dataset.awake = n.awake > 0.5 ? '1' : '0';
         n.el.style.setProperty('--awake', n.awake.toFixed(3));
 
-        if (n.video) {
-          const shouldPlay = n.awake > 0.4;
-          if (shouldPlay && !n.playing) { n.video.play().catch(() => {}); n.playing = true; }
-          if (!shouldPlay && n.playing) { n.video.pause(); n.playing = false; }
+        // Every video specimen is a continuous animation, not a still
+        // waiting to be woken -- was gated on n.awake > 0.4 (proximity/
+        // hover), so a video sat frozen on its poster frame until
+        // someone found it, called out directly as looking static.
+        // --awake above still drives brightness/glow (that reactivity
+        // is real and stays); playback itself no longer depends on it.
+        if (n.video && !n.playing) {
+          n.video.play().catch(() => {});
+          n.playing = true;
         }
+      }
+
+      // Connector filaments -- one per visible specimen, always drawn
+      // (not just while flaring; see flareLines just below for that
+      // brighter, separate overlay). Quadratic Bezier, not a straight
+      // line, its control point already offset opposite the specimen's
+      // own real velocity when pushed above -- reads as dragging
+      // through something viscous rather than a rigid prop. A small
+      // pulsing "suture" node marks where the filament actually meets
+      // the nerve, drawn after the curve so it sits on top of it.
+      for (const c of connectors) {
+        ctx!.beginPath();
+        ctx!.moveTo(c.sx, c.sy);
+        ctx!.quadraticCurveTo(c.cx, c.cy, c.nx, c.ny);
+        ctx!.strokeStyle = `rgba(247, 197, 106, ${c.o})`;
+        ctx!.lineWidth = 1;
+        ctx!.stroke();
+
+        const nodePulse = 0.5 + 0.5 * Math.sin(t * 1.6 + c.pulse);
+        const nodeR = 1.4 + nodePulse * 1.1;
+        ctx!.beginPath();
+        ctx!.arc(c.nx, c.ny, nodeR, 0, Math.PI * 2);
+        ctx!.fillStyle = `rgba(255, 235, 190, ${0.35 + nodePulse * 0.4})`;
+        ctx!.shadowBlur = 6;
+        ctx!.shadowColor = 'rgba(247, 197, 106, 0.8)';
+        ctx!.fill();
+        ctx!.shadowBlur = 0;
       }
 
       // The flare's "gold line dropped to the nerve" -- drawn after the
