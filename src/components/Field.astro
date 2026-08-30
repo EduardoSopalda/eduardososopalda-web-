@@ -369,6 +369,15 @@
     // time. Different y/d from the existing jellyfish so the two don't
     // habitually overlap.
     { vid: '/specimens/jellyfish2.webm', w: 460, y: 0.62, d: 0.42, tag: 'No.08 · TRUST · JELLYFISH', pulse: true, cutout: true },
+    // Second goldfish -- Eduardo sent a new render, genuinely alpha-cut
+    // this time (verified directly: sampled the decoded video frame's
+    // own alpha channel in a real browser, not just the file's
+    // metadata tag -- corner pixels read alpha 0, the fish itself 255).
+    // A separate entry, not a replacement for the existing goldfish.mp4,
+    // same precedent as jellyfish2 above: same thread (MEMORY), a new
+    // catalog number, different y/d so the two don't habitually overlap
+    // or read as one duplicated fish.
+    { vid: '/specimens/goldfish2.webm', w: 520, y: 0.24, d: 0.78, tag: 'No.09 · MEMORY · GOLDFISH', cutout: true },
   ];
 
   const STOPS: [string, string][] = [
