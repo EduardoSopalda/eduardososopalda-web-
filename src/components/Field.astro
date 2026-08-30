@@ -243,9 +243,20 @@
        every chair. */
     font-size: clamp(1.05rem, 3.4vw, 1.45rem);
     line-height: 1.4;
-    border-left: 1px solid rgba(247, 197, 106, 0.22);
+    /* Was a gold-tinted border-left (rgba(247,197,106,...), the nerve's
+       own color) -- direct color spec: "Oro... Nunca el cuerpo de la
+       frase." A quote's own accent border is part of its body, not the
+       nerve/tag/cue trio gold is reserved for, so it's the flesh/oxide
+       tone instead. */
+    border-left: 1px solid rgba(227, 175, 149, 0.22);
     padding-left: 0.85em;
     transition: border-color 0.7s var(--ease);
+    /* Void halo, same pattern as .stop below -- a quote drifting over a
+       lit specimen needs the same protection a stop label already has,
+       per direct spec ("Halo void en la quote (como .stop)"). */
+    text-shadow:
+      0 0 1px var(--void), 0 0 2px var(--void), 0 0 4px var(--void),
+      0 0 8px var(--void), 0 0 14px var(--void), 0 0 20px var(--void);
   }
 
   .frag-quote b {
@@ -271,7 +282,7 @@
        too faint to read." Applied as specified; flagged to Eduardo
        rather than silently overridden, since it undoes that earlier
        direct correction. */
-    font-size: 0.62rem;
+    font-size: 0.6rem;
     letter-spacing: 0.07em;
     color: rgba(227, 175, 149, 0.4);
     line-height: 1.3;
@@ -336,6 +347,10 @@
     img?: string;
     vid?: string;
     poster?: string;
+    // No longer used for render size -- SCALE_VW below sizes purely by
+    // role (dominant/mesa/perdido) as a viewport-width fraction, per
+    // direct spec ("Escala... se reconocen; no confeti"). Kept on the
+    // data itself only as a rough real-asset-size reference.
     w: number;
     d: number;
     tag?: string;
@@ -372,6 +387,25 @@
     baja: [0.24, 0.4],
   };
 
+  // Direct spec's scale table -- size reads by role, not by each
+  // specimen's own natural pixel width. Replaces the old
+  // width-times-multiplier system (w0/scaleDof/tierMul/capFrac)
+  // entirely: a role now maps straight to a viewport-width fraction,
+  // per breakpoint, full stop. Values are [lo, hi] fractions of W,
+  // interpolated by depth (dofT) below for some variety within a role
+  // rather than every specimen in a tier reading as the exact same
+  // size.
+  const SCALE_VW: Record<ScaleTier, { mobile: [number, number]; desktop: [number, number] }> = {
+    dominant: { mobile: [0.48, 0.56], desktop: [0.28, 0.34] },
+    mesa: { mobile: [0.34, 0.42], desktop: [0.18, 0.24] },
+    perdido: { mobile: [0.22, 0.26], desktop: [0.12, 0.16] },
+  };
+  // Mobile-only floors in real px -- "se reconocen; no confeti." A
+  // vw-only mesa/perdido could still shrink to a smudge on a very
+  // narrow phone; desktop needs no floor since its vw range never gets
+  // that small in practice.
+  const SCALE_FLOOR_MOBILE: Record<ScaleTier, number> = { dominant: 0, mesa: 140, perdido: 96 };
+
   const SPECIMENS: Specimen[] = [
     { img: '/specimens/chimp.png', w: 460, d: 1.0, tag: 'No.04 · PROXIMITY · CHIMP', vignette: true, cutout: true, band: 'alta', scale: 'dominant' },
     // Replaced the static PNG with a looping animation Eduardo sent --
@@ -385,11 +419,21 @@
     { vid: '/specimens/goldfish.mp4', poster: '/specimens/goldfish.png', w: 400, d: 0.94, tag: 'No.01 · MEMORY · GOLDFISH', boost: 1.2, band: 'nervio', scale: 'mesa' },
     // Replaces the old static pig.png -- an animated piglet (turns to
     // face camera, sits) with the same "DATA" motif as the other
-    // specimens. Not a cutout (plain mp4, opaque, near-black background
-    // matching the old still almost pixel-for-pixel), so it gets the
-    // standard static treatment, same as goldfish/seaweed. witness:true
-    // per direct feedback -- a watcher, not a second swimming goldfish.
-    { vid: '/specimens/piglet.mp4', poster: '/specimens/piglet-poster.png', w: 300, d: 0.74, tag: 'No.05 · MEANING · PIGLET', band: 'nervio', scale: 'mesa', witness: true },
+    // specimens. band moved nervio -> baja per direct spec ("Baja:
+    // seaweed, brain, bluefish, piglet"). cutout is deliberately NOT
+    // set here even though the spec's piglet block asks for cutout:
+    // true -- that's specified alongside a real alpha asset
+    // (piglet.webm from cleaned_transparent_2) this repo doesn't have.
+    // The current file is a plain opaque mp4 with a near-black
+    // background; setting cutout:true on it would apply the reactive
+    // wake-brightness CSS meant for genuine alpha footage and light up
+    // a visible rectangle -- exactly what the spec's own piglet note
+    // warns against ("Si se ve rectángulo: el archivo está mal — no
+    // subas brightness"). Flagged to Eduardo rather than faked.
+    // witness:true per direct feedback -- a watcher, not a second
+    // swimming goldfish; leanMul is 0 for witness specimens (see
+    // "Lean ≈ 0" below), not just reduced.
+    { vid: '/specimens/piglet.mp4', poster: '/specimens/piglet-poster.png', w: 300, d: 0.74, tag: 'No.05 · MEANING · PIGLET', band: 'baja', scale: 'mesa', witness: true },
     { img: '/specimens/eyefish.png', w: 260, d: 0.58, boost: 1.15, band: 'nervio', scale: 'perdido' },
     { vid: '/specimens/seaweed.mp4', w: 300, d: 0.5, band: 'baja', scale: 'mesa' },
     // Both genuinely alpha-cut (verified same as the others: canvas
@@ -681,12 +725,21 @@
         // Belt-and-suspenders alongside the CSS pointer-events:none on
         // .spec video (see that rule's own comment for the actual bug
         // this addresses) -- explicit JS properties rather than relying
-        // on attribute parsing alone.
+        // on attribute parsing alone, per direct spec's exact list.
         video.controls = false;
+        video.muted = true;
+        video.loop = true;
+        video.playsInline = true;
+        video.setAttribute('playsinline', '');
+        video.setAttribute('webkit-playsinline', '');
         video.disablePictureInPicture = true;
         video.disableRemotePlayback = true;
+        // nofullscreen: browsers that do render a controls affordance
+        // (some Android WebViews ignore `controls=false` entirely)
+        // can't offer a fullscreen button in the first place.
+        video.setAttribute('controlsList', 'nodownload nofullscreen noremoteplayback');
+        video.playbackRate = 0.45; // slowed for drama, per Eduardo's note
       }
-      if (video) video.playbackRate = 0.45; // slowed for drama, per Eduardo's note
       el.style.zIndex = String(Math.round(s.d * 100));
       if (s.vignette) el.dataset.vignette = '1';
       if (s.cutout) el.dataset.cutout = '1';
@@ -747,14 +800,14 @@
     // several lines tall) simply don't fit in the compressed vertical
     // range a short mobile viewport leaves -- window.innerWidth here,
     // not the closure W, since W isn't set until the first resize()
-    // call, which happens after this. 2 -> 3: with only 2, both chairs
-    // being off-screen (or mid-decay) at the same moment left long
-    // real stretches with zero fragment text visible on a phone --
-    // confirmed directly by tracking chair visibility over time. A
-    // third chair makes that overlap much less likely without
-    // approaching the "mosaic" density the field spec explicitly rules
-    // out.
-    const SLOT_COUNT = window.innerWidth < 500 ? 3 : 4;
+    // call, which happens after this. Direct spec's own cupo table is
+    // explicit: mobile gets exactly 2 chairs (had been bumped to 3 to
+    // fight empty stretches, but "no improvises... el cupo" -- back to
+    // 2. That earlier emptiness problem is addressed instead by the
+    // offscreenTime mechanism below (a chair that drifts out of view
+    // respawns within ~3.5s instead of waiting out its whole lifespan
+    // unseen), not by adding a chair the spec doesn't call for.
+    const SLOT_COUNT = window.innerWidth < 500 ? 2 : 4;
     type Dir = 'left' | 'right' | 'top' | 'bottom';
     const DIRS: Dir[] = ['left', 'right', 'top', 'bottom'];
 
@@ -777,8 +830,22 @@
     // alive/decaying neighbour's -- "Nunca dos extractos del mismo
     // artículo vecinos." Falls back to whatever's next once the queue
     // has no untried alternative left, rather than stalling.
-    function nextFragIndex(excludeSources: Set<string | null>): number {
+    // avoidWeight: "no dos tramas del mismo peso seguidas (frase+frase)"
+    // -- two short-weight (or two long-weight) quotes showing at once
+    // read as the same weft repeating. Tried first alongside the
+    // existing same-source exclusion; falls back to just source-clean,
+    // then to whatever's next, rather than ever stalling.
+    function nextFragIndex(excludeSources: Set<string | null>, avoidWeight: 'short' | 'long' | null): number {
       if (fragQueue.length === 0) fragQueue = shuffledIndices(FIELD_FRAGS.length);
+      for (let attempt = 0; attempt < fragQueue.length; attempt++) {
+        const i = fragQueue.length - 1 - attempt;
+        const cand = FIELD_FRAGS[fragQueue[i]];
+        if (!excludeSources.has(cand.source) && cand.weight !== avoidWeight) {
+          const idx = fragQueue[i];
+          fragQueue.splice(i, 1);
+          return idx;
+        }
+      }
       for (let attempt = 0; attempt < fragQueue.length; attempt++) {
         const i = fragQueue.length - 1 - attempt;
         if (!excludeSources.has(FIELD_FRAGS[fragQueue[i]].source)) {
@@ -864,12 +931,15 @@
     });
 
     function assignFragment(slot: typeof fragSlots[number]) {
-      const neighborSources = new Set(
-        fragSlots
-          .filter((s) => s !== slot && (s.state === 'alive' || s.state === 'decaying'))
-          .map((s) => FIELD_FRAGS[s.fragIndex]?.source ?? null)
-      );
-      const idx = nextFragIndex(neighborSources);
+      const liveSiblings = fragSlots.filter((s) => s !== slot && (s.state === 'alive' || s.state === 'decaying'));
+      const neighborSources = new Set(liveSiblings.map((s) => FIELD_FRAGS[s.fragIndex]?.source ?? null));
+      // Weave rule: avoid whichever weight is currently the majority
+      // among live siblings, so a respawning chair tends to alternate
+      // short/long rather than piling onto whatever's already showing.
+      const shortCount = liveSiblings.filter((s) => FIELD_FRAGS[s.fragIndex]?.weight === 'short').length;
+      const longCount = liveSiblings.length - shortCount;
+      const avoidWeight = liveSiblings.length === 0 ? null : shortCount > longCount ? 'short' : longCount > shortCount ? 'long' : null;
+      const idx = nextFragIndex(neighborSources, avoidWeight);
       const f = FIELD_FRAGS[idx];
       slot.fragIndex = idx;
       slot.deathI = 0;
@@ -1052,16 +1122,33 @@
       // direct spec ("las cortas y contundentes aguantan mas").
       slot.decayAfter = isTouch ? (isLong ? 45 : 55) + Math.random() * 15 : (isLong ? 20 : 30) + Math.random() * 10;
       slot.state = 'alive';
-      slot.el.style.zIndex = String(Math.round(slot.depth * 100));
+      // Floor of 150 -- specimens top out at z-index 100 (Math.round(s.d
+      // * 100), d never exceeds 1.0), and the nerve canvas sits at 250.
+      // Direct spec: ".frag-slot z-index > .spec, < nervio" -- this
+      // range (150-191, still varying with depth for stacking among
+      // fragments themselves) guarantees a fragment always draws above
+      // every specimen and below the wire, not just usually.
+      slot.el.style.zIndex = String(150 + Math.round(slot.depth * 50));
+    }
+
+    // Death color, per direct spec: "#8f4e2c -> #2a160e. Nunca gold,
+    // nunca gris." Gold is reserved for the nerve/tags/cue -- never the
+    // decaying letters (an earlier pass here used var(--gold) for
+    // exactly that, "small gold particles," which the new spec
+    // explicitly rules out: gold never touches a fragment's body).
+    // Interpolated by decay progress (0..1) rather than a hard switch.
+    function deathColor(progress: number): string {
+      const p = Math.max(0, Math.min(1, progress));
+      const r = Math.round(0x8f + (0x2a - 0x8f) * p);
+      const g = Math.round(0x4e + (0x16 - 0x4e) * p);
+      const b = Math.round(0x2c + (0x0e - 0x2c) * p);
+      return `rgb(${r}, ${g}, ${b})`;
     }
 
     // Per-chair Verlet integrator -- identical formulas to Landing's own
     // stepPhys, operating on this slot's own phys/physMode/physT instead
     // of module-level singletons, since up to SLOT_COUNT chairs can be
-    // mid-decay at once here (Landing only ever has one). Letters turn
-    // gold as they come apart -- Eduardo's "small gold particles" image,
-    // made literal -- layered on top of the ported physics rather than
-    // part of it, since Landing's own hero quote never does this.
+    // mid-decay at once here (Landing only ever has one).
     function stepPhysFor(slot: typeof fragSlots[number], now: number) {
       if (!slot.physRunning) return;
       const dt = Math.min(0.032, (now - slot.physLast) / 1000) || 0.016;
@@ -1107,12 +1194,13 @@
         if (mode === 'explode') p.scale = 1 + Math.min(0.55, slot.physT * 0.35);
         p.el.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${p.rot}deg) scale(${p.scale || 1})`;
         p.el.style.opacity = String(Math.max(0, p.life));
+        const progress = 1 - Math.max(0, Math.min(1, p.life));
         if (mode === 'corrode') {
           const rust = Math.min(1, slot.physT / 7);
           p.el.style.filter = `blur(${rust * 4.5}px)`;
-          (p.el.style as any).color = rust > 0.35 ? 'var(--gold)' : '';
-        } else if (p.life < 0.94) {
-          (p.el.style as any).color = 'var(--gold)';
+          p.el.style.color = rust > 0.1 ? deathColor(rust) : '';
+        } else if (progress > 0.04) {
+          p.el.style.color = deathColor(progress);
         }
         if (p.life > 0) allSettled = false;
       });
@@ -1245,7 +1333,7 @@
         ctx!.fill();
       }
 
-      // ---- specimens: budget to ≤4 visible (one dominant), band-anchored to the nerve, wake near cursor ----
+      // ---- specimens: per-role cupo (see ROLE_BUDGET below), band-anchored to the nerve, wake near cursor ----
       const flareLines: { x: number; y1: number; y2: number; o: number }[] = [];
       // Always-on connector filaments -- one per visible specimen, not
       // just the ones currently flaring (flareLines above stays a
@@ -1275,6 +1363,7 @@
       type Candidate = {
         n: (typeof specNodes)[number]; w: number; X: number; Y: number; sx: number; sy: number;
         anchorX: number; nerveYHere: number; dofT: number; blurPx: number; centerDist: number; isDominant: boolean;
+        tier: ScaleTier;
       };
       const candidates: Candidate[] = specNodes.map((n) => {
         const isDominant = n === dominantNow;
@@ -1282,39 +1371,24 @@
         // at mesa scale instead, same as everyone else in that tier.
         const tier: ScaleTier = n.s.scale === 'dominant' && !isDominant ? 'mesa' : n.s.scale;
 
-        // Scale floor was 0.48 with no cap, so on a 375px phone a
-        // 380-460px specimen (octopus, chimp) still rendered at
-        // ~180-220px -- roughly half the screen width for one
-        // creature. Lower floor plus an explicit viewport-relative cap
-        // (found by actually measuring a mobile screenshot, not by
-        // assumption) keeps any single specimen from dominating a
-        // narrow screen -- raised for the dominant tier specifically,
-        // per direct spec ("~0.5-0.7 del viewport en un eje").
-        const capFrac = tier === 'dominant' ? 0.68 : 0.42;
-        // Floor raised 0.32 -> 0.36 after direct feedback that fish
-        // were unreadably small on a real phone -- measured directly on
-        // a 390px viewport: eyefish (perdido, w:260) was rendering at
-        // ~33x19 CSS px, a smudge rather than a recognizable creature.
-        const w0 = Math.min(n.s.w * Math.min(1, Math.max(0.36, W / 1300)), W * capFrac);
         // Depth of field: d spans roughly 0.42-1.0 across the roster.
         // Interpolated into scale/blur/speed rather than a hard
         // foreground/background split, since d itself is continuous --
         // shallow-d specimens read smaller, softer and drift slower
-        // (0.65x, blur 2px), deep-d ones read larger and sharp (1.1x,
-        // no blur), per the diorama note. Speed itself was already
-        // depth-scaled via worldX * n.s.d below; unchanged.
+        // (blur 2px), deep-d ones read larger and sharp (no blur), per
+        // the diorama note. Speed itself was already depth-scaled via
+        // worldX * n.s.d below; unchanged.
         const dofT = Math.max(0, Math.min(1, (n.s.d - 0.42) / (1.0 - 0.42)));
-        const scaleDof = 0.65 + dofT * (1.1 - 0.65);
-        // Three scales, per direct spec: dominant reads large, mesa is
-        // the baseline (unchanged), perdido is small on purpose --
-        // eyefish and the new goldfish, easy to miss, not a third
-        // showpiece competing with the roster's real cast. 0.52 -> 0.65
-        // after direct feedback ("can't see any of the fishes") --
-        // still clearly the smallest tier, just no longer past the
-        // point of reading as a creature at all.
-        const tierMul = tier === 'dominant' ? 1.3 : tier === 'perdido' ? 0.65 : 1;
         const blurPx = tier === 'perdido' ? 1.1 : (1 - dofT) * 2;
-        const w = w0 * scaleDof * tierMul;
+        // Size by role, per direct spec's own table -- a viewport-width
+        // fraction, not the specimen's own natural pixel width times a
+        // multiplier. dofT still gives some variety within a role
+        // rather than every mesa specimen reading as the identical
+        // size.
+        const isMobileScale = W < 500;
+        const [vlo, vhi] = isMobileScale ? SCALE_VW[tier].mobile : SCALE_VW[tier].desktop;
+        let w = (vlo + dofT * (vhi - vlo)) * W;
+        if (isMobileScale && SCALE_FLOOR_MOBILE[tier]) w = Math.max(w, SCALE_FLOOR_MOBILE[tier]);
 
         const baseX = wrap(n.xn * WORLD_W - worldX * n.s.d, WORLD_W) - Math.min(520, W * 0.4);
         const anchorX = baseX + w * 0.5;
@@ -1338,10 +1412,10 @@
         // Lean toward the cursor within a wider radius than the wake
         // threshold -- a specimen reaches slightly before it fully
         // wakes, rather than snapping straight from asleep to awake.
-        // Witness specimens (piglet) get a fraction of the normal
-        // reach -- "testigo, no nada como el goldfish": it watches,
+        // Witness specimens (piglet) don't lean at all -- "testigo, no
+        // nada como el goldfish" / direct spec "Lean ≈ 0": it watches,
         // it doesn't swim toward the pointer the way goldfish does.
-        const leanMul = n.s.witness ? 0.22 : 1;
+        const leanMul = n.s.witness ? 0 : 1;
         let wantLeanX = 0, wantLeanY = 0;
         if (!isTouch && hasPointer) {
           const d = Math.hypot(px - bsx, py - bsy);
@@ -1359,18 +1433,30 @@
         const X = baseX + n.leanX, Y = baseY + n.leanY;
         const sx = X + w * 0.5, sy = Y + w * 0.28;
         const centerDist = Math.abs(sx - W / 2) + Math.abs(sy - H / 2) * 0.5;
-        return { n, w, X, Y, sx, sy, anchorX, nerveYHere, dofT, blurPx, centerDist, isDominant };
+        return { n, w, X, Y, sx, sy, anchorX, nerveYHere, dofT, blurPx, centerDist, isDominant, tier };
       });
 
-      // Visibility budget: at most 4 concurrently visible, the dominant
-      // candidate first if it's on-screen at all, everything else
-      // ranked by distance from the viewport's own center -- direct
-      // spec: "a la vez, máximo 4 especímenes visibles de verdad (uno
-      // dominante)." The rest of the roster exists off-screen in the
-      // wide world, not hidden-but-still-there in the same viewport.
+      // Visibility budget, per direct spec's own cupo table -- a cap
+      // PER ROLE, not one flat top-N across the whole roster. A mobile
+      // screen that already has its one dominant and one mesa doesn't
+      // get a second mesa just because there's still room in a flat
+      // budget of 4; a desktop's extra mesa slot doesn't let a THIRD
+      // mesa in either. "Si no cabe, no montes el siguiente" -- once a
+      // role's cap is full, the next candidate for that role simply
+      // doesn't mount, it isn't shrunk or substituted.
+      const isMobileBudget = W < 500;
+      const ROLE_BUDGET: Record<ScaleTier, number> = isMobileBudget
+        ? { dominant: 1, mesa: 1, perdido: 1 }
+        : { dominant: 1, mesa: 2, perdido: 1 };
       const onScreen = candidates.filter((c) => c.X > -(c.w + 300) && c.X < W + 300 && c.Y > -c.w && c.Y < H + c.w);
-      onScreen.sort((a, b) => (a.isDominant === b.isDominant ? a.centerDist - b.centerDist : a.isDominant ? -1 : 1));
-      const shown = new Set(onScreen.slice(0, 4).map((c) => c.n));
+      const shown = new Set<(typeof specNodes)[number]>();
+      (['dominant', 'mesa', 'perdido'] as ScaleTier[]).forEach((role) => {
+        onScreen
+          .filter((c) => c.tier === role)
+          .sort((a, b) => (a.isDominant === b.isDominant ? a.centerDist - b.centerDist : a.isDominant ? -1 : 1))
+          .slice(0, ROLE_BUDGET[role])
+          .forEach((c) => shown.add(c.n));
+      });
 
       // Specimen DATA tags: max 3 visible at once, per direct spec --
       // a wake state that would show a tag past that budget still
@@ -1412,17 +1498,19 @@
 
         // Secondary motion -- stills only (chimp, eyefish). A static
         // image next to looping video read as a flat cutout, not a
-        // living thing, hence the levitation bob + breathing scale
-        // pulse -- but a VIDEO specimen already has its own internal
-        // motion, and animating its wrapper on top read as jitter, not
-        // life. Direct spec: "sin animar el wrapper" for video.
-        let bob = 0, breatheScale = 1;
+        // living thing, hence the levitation bob -- but a VIDEO
+        // specimen already has its own internal motion, and animating
+        // its wrapper on top read as jitter, not life. Direct spec:
+        // "sin animar el wrapper" for video. The breathing scale() this
+        // used to carry alongside the bob is gone entirely now --
+        // direct spec: "Prohibido: transform: scale() en .spec." Size
+        // comes from width alone (set just below); transform is
+        // translate-only.
+        let bob = 0;
         if (n.s.img) {
           bob = Math.sin(t * 0.7 + n.pulsePhase * 1.7) * (w * 0.015 + 3);
-          breatheScale = 1 + 0.015 * Math.sin((t * Math.PI * 2) / 4.5 + n.pulsePhase);
         }
-        const scalePart = breatheScale !== 1 ? ` scale(${breatheScale.toFixed(4)})` : '';
-        n.el.style.transform = `translate3d(${X}px, ${(Y + bob).toFixed(1)}px, 0)${scalePart}`;
+        n.el.style.transform = `translate3d(${X}px, ${(Y + bob).toFixed(1)}px, 0)`;
         n.el.style.width = w + 'px';
         visibleSpecRects.push({ x: X, y: Y, w, h: w * 0.7 });
         // Depth-of-field blur on the specimen's own wrapper -- the child
@@ -1442,20 +1530,25 @@
           n.el.style.opacity = (0.06 + cyc * 0.94).toFixed(3);
         }
 
-        // Always-on connector filament, per specimen -- not just while
-        // flaring. The Bezier control point lags opposite the
-        // specimen's own real per-frame velocity (not an assumed fixed
-        // direction), so the curve reads as trailing through something
-        // viscous rather than a rigid prop; capped so a resize's first
-        // frame (a large, spurious "jump") can't produce a wild curve.
+        // Connector filament, per specimen -- gauze, not a permanent
+        // cable. Direct spec: "Filamento vertical = gasa: se tuerce,
+        // atrapa, suelta. Nunca HDMI permanente." A fixed opacity read
+        // as exactly that permanent HDMI cable regardless of the
+        // Bezier curve underneath it; gasaCycle instead slowly releases
+        // toward near-invisible and catches back into view, phase-offset
+        // per specimen so they don't breathe in unison, and a second,
+        // faster-frequency wobble on the control point reads as the
+        // filament twisting rather than just trailing.
         const velocity = Math.max(-40, Math.min(40, anchorX - n.prevAnchorX));
         n.prevAnchorX = anchorX;
+        const gasaCycle = 0.5 + 0.5 * Math.sin(t * 0.12 + n.pulsePhase * 1.7);
+        const twist = Math.sin(t * 0.31 + n.pulsePhase * 2.3) * 14;
         connectors.push({
           sx, sy,
-          cx: sx - velocity * 2.2,
+          cx: sx - velocity * 2.2 + twist,
           cy: (sy + nerveYHere) / 2,
           nx: anchorX, ny: nerveYHere,
-          o: 0.16 + dofT * 0.14,
+          o: (0.05 + gasaCycle * 0.2) + dofT * 0.08,
           pulse: n.pulsePhase,
         });
 
@@ -1701,7 +1794,12 @@
                 rotv: mode === 'explode' ? (Math.random() - 0.5) * 14 : (Math.random() - 0.5) * 0.4,
                 damp: mode === 'float' ? 0.965 : mode === 'fall' ? 0.996 : mode === 'explode' ? 0.986 : 0.978,
                 life: 1,
-                fade: mode === 'explode' ? 0.0055 : mode === 'fall' ? 0.0026 : mode === 'float' ? 0.0018 : 0.0022,
+                // Scaled to ~0.6x Landing's own rates -- ported literally
+                // at first ("misma física"), but direct tempo spec now
+                // wants Field's decay specifically slower than Landing's
+                // ("Verlet ... más lento que Landing"). Same relative
+                // ordering between modes, just stretched out.
+                fade: mode === 'explode' ? 0.0033 : mode === 'fall' ? 0.0016 : mode === 'float' ? 0.0011 : 0.0013,
                 wake: mode === 'explode' ? 0.28 : mode === 'float' ? i * 0.12 : mode === 'corrode' ? i * 0.16 : mode === 'fall' ? i * 0.05 : 0,
                 scale: 1,
                 link: mode === 'corrode' && i < slot.chars.length - 1,
