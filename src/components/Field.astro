@@ -758,7 +758,7 @@
         // (some Android WebViews ignore `controls=false` entirely)
         // can't offer a fullscreen button in the first place.
         video.setAttribute('controlsList', 'nodownload nofullscreen noremoteplayback');
-        video.playbackRate = 0.45; // slowed for drama, per Eduardo's note
+        video.playbackRate = 1;
       }
       el.style.zIndex = String(Math.round(s.d * 100));
       if (s.vignette) el.dataset.vignette = '1';
@@ -1387,9 +1387,16 @@
       };
       const candidates: Candidate[] = specNodes.map((n) => {
         const isDominant = n === dominantNow;
-        // A dominant candidate not currently holding the slot renders
-        // at mesa scale instead, same as everyone else in that tier.
-        const tier: ScaleTier = n.s.scale === 'dominant' && !isDominant ? 'mesa' : n.s.scale;
+        // tier used to downgrade a dominant candidate not currently
+        // holding the slot to mesa scale -- which meant octopus/chimp
+        // visibly regrew/shrank every time dominantNow alternated
+        // between them (their width recomputed from a different
+        // SCALE_VW tier). Direct fix: dominantNow only decides
+        // visibility (which one is shown at all, via ROLE_BUDGET's own
+        // isDominant-first sort below) -- it no longer touches size.
+        // Each specimen's tier, and therefore its width, is always its
+        // own declared scale from the SPECIMENS array.
+        const tier: ScaleTier = n.s.scale;
 
         // Depth of field: d spans roughly 0.42-1.0 across the roster.
         // Interpolated into scale/blur/speed rather than a hard
