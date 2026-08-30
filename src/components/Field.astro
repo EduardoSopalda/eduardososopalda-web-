@@ -120,20 +120,30 @@
     /* --boost is set once at creation (not per-frame) for specimens
        whose source is inherently pale/low-contrast -- see Specimen.boost. */
     filter: brightness(calc(0.82 * var(--boost, 1))) contrast(1.24) saturate(0.92);
-    /* A raw <video> is directly tappable by default -- on iOS Safari a
-       tap that lands on it (not on a wrapping element) can trigger the
-       browser's own native video UI (a play button, then a fullscreen
-       player with scrubber/controls), taking over the whole screen.
-       Reported directly: "the website stops and you get a specimen
-       full screen and a play button." None of these videos are meant
-       to be interactive at all -- playback is driven entirely by JS,
-       proximity/tap-to-wake is handled by the .spec wrapper (see
-       isTouch's click listener below) -- so the media element itself
-       has no reason to receive pointer events. Long-press's preview/
-       context menu is a separate iOS affordance from the same root
-       cause; -webkit-touch-callout blocks that too. */
+    /* A raw <video> or <img> is directly tappable/draggable by default
+       -- on iOS Safari a tap or touch-drag that lands on it (not on a
+       wrapping element) can trigger the browser's own native media UI:
+       a fullscreen video player, or -- confirmed directly on a real
+       phone recording, AFTER pointer-events/touch-callout were already
+       set here -- a native image "lift and preview" / share-sheet
+       overlay on a touch that moves slightly while down (a screen
+       recording's thumb drift is enough). pointer-events:none and
+       touch-callout:none stop the tap-driven cases; they do NOT stop
+       that drag-to-preview gesture, which Safari drives off the
+       element's native drag/"lift" behaviour, not off DOM pointer
+       events or the long-press callout -- a completely different
+       mechanism, hence user-drag:none here too. None of these videos
+       or stills are meant to be interactive at all -- playback is
+       driven entirely by JS, proximity/tap-to-wake is handled by the
+       .spec wrapper (see isTouch's click listener below) -- so the
+       media element itself has no reason to receive any native
+       gesture, tap or drag alike. */
     pointer-events: none;
     -webkit-touch-callout: none;
+    -webkit-user-drag: none;
+    user-drag: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
 
   /* --awake and --flare are both set per-frame in JS (0 to 1 floats).
@@ -703,7 +713,7 @@
       const el = document.createElement('div');
       el.className = 'spec';
       if (s.img) {
-        el.innerHTML = `<img src="${s.img}" alt="" loading="lazy" />`;
+        el.innerHTML = `<img src="${s.img}" alt="" loading="lazy" draggable="false" />`;
       } else if (s.vid) {
         const posterAttr = s.poster ? ` poster="${s.poster}"` : '';
         // webkit-playsinline is the legacy (pre-iOS10) spelling of the
@@ -711,7 +721,7 @@
         // alongside it defensively, since these are exactly the videos
         // that were observed taking over the whole screen as a native
         // fullscreen player.
-        el.innerHTML = `<video src="${s.vid}" muted loop playsinline webkit-playsinline preload="metadata"${posterAttr}></video>`;
+        el.innerHTML = `<video src="${s.vid}" muted loop playsinline webkit-playsinline preload="metadata" draggable="false"${posterAttr}></video>`;
       }
       if (s.tag) {
         const tag = document.createElement('span');
@@ -719,6 +729,16 @@
         tag.textContent = s.tag;
         el.appendChild(tag);
       }
+      // Belt-and-suspenders alongside pointer-events/touch-callout/
+      // user-drag in the CSS (see .spec img/video's own comment) --
+      // confirmed directly on a real phone recording that CSS alone
+      // wasn't enough: a touch that drifted slightly while down (a
+      // screen recording's own thumb movement) still triggered iOS's
+      // native "lift and preview" share-sheet overlay on the image
+      // underneath. Blocking the drag/context-menu events themselves,
+      // not just their CSS-level affordances, closes that gap.
+      el.addEventListener('dragstart', (e) => e.preventDefault());
+      el.addEventListener('contextmenu', (e) => e.preventDefault());
       world!.appendChild(el);
       const video = el.querySelector('video') as HTMLVideoElement | null;
       if (video) {
