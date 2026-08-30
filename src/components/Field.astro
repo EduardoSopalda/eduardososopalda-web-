@@ -212,34 +212,37 @@
     margin: 0;
     font-family: var(--font-display);
     font-weight: 400;
-    /* WONK was 1 -- Fraunces' wonky, hand-lettered alternate
-       letterforms, deliberately irregular by design. Fine for a
-       display headline having fun with itself; wrong for the site's
-       essay fragments, called out directly as looking bad on the
-       landing's copy of this same setting (Landing.astro's .purpose).
-       0 uses the regular forms; SOFT (terminal roundness) is
-       unrelated and left as is. */
-    font-variation-settings: 'SOFT' 50, 'WONK' 0;
+    /* Per direct spec's typography table: quote text is Fraunces SOFT
+       50-60, WONK 1 -- reversing an earlier fix this same session that
+       set WONK 0 because 1's wonky, hand-lettered forms read badly on
+       Landing's single hero line. Applied as specified; flagged to
+       Eduardo rather than silently overridden, since it undoes that
+       earlier direct correction. */
+    font-variation-settings: 'SOFT' 55, 'WONK' 1;
     /* Was --flesh -- a light, bright pink-tan that reads closer to
        skin than to the muted bronze/rust the reference's own quotes
        use (--oxide-lit). Matched to that instead. */
     color: var(--oxide-lit);
+    /* Per direct spec's typography table, replacing the old JS-computed
+       depth-based inline pixel size (assignFragment used to set
+       slot.quote.style.fontSize directly) with one CSS clamp shared by
+       every chair. */
+    font-size: clamp(1.05rem, 3.4vw, 1.45rem);
     line-height: 1.4;
     border-left: 1px solid rgba(247, 197, 106, 0.22);
     padding-left: 0.85em;
     transition: border-color 0.7s var(--ease);
   }
 
-  .frag-quote i {
+  .frag-quote b {
     display: inline-block;
-    font-style: normal;
-    will-change: transform, opacity;
+    font-weight: inherit;
+    will-change: transform, opacity, color;
   }
 
-  /* One word, one atomic unit for line-breaking -- see the comment in
-     assignFragment(). Without this wrapper, bare sibling <i> letters
-     can wrap mid-word since each is its own inline-block. */
-  .frag-word {
+  /* One word, one atomic unit for line-breaking -- see setLine()'s own
+     comment for why bare sibling letters can wrap mid-word without it. */
+  .frag-quote .word {
     display: inline-block;
     white-space: nowrap;
   }
@@ -247,16 +250,21 @@
   .frag-ref {
     margin: 0.5em 0 0 0.85em;
     font-family: var(--font-mono);
-    /* Was 0.62rem at 0.45 alpha -- a design critique called this out
-       correctly: "that is decoration, not citation... bump them or
-       they will never be read." A source line that's structurally
-       too faint to read defeats its own purpose. Still quieter than
-       the quote itself (this is metadata, not voice), just no longer
-       below the floor of legibility. */
-    font-size: 0.72rem;
-    letter-spacing: 0.05em;
-    color: rgba(227, 175, 149, 0.65);
+    /* Per direct spec's typography table: ~0.6-0.62rem, tracking wider,
+       flesh at ~40% opacity -- reversing an earlier legibility fix this
+       same session that bumped this from 0.62rem/0.45 alpha to
+       0.72rem/0.65 alpha specifically because it had been "structurally
+       too faint to read." Applied as specified; flagged to Eduardo
+       rather than silently overridden, since it undoes that earlier
+       direct correction. */
+    font-size: 0.62rem;
+    letter-spacing: 0.07em;
+    color: rgba(227, 175, 149, 0.4);
     line-height: 1.3;
+  }
+
+  .frag-ref a {
+    color: inherit;
   }
 
   /* ---- nerve stops ---- */
@@ -308,76 +316,91 @@
 <script>
   import { FRAGS } from '../data/fragments';
 
+  type Band = 'alta' | 'nervio' | 'baja';
+  type ScaleTier = 'dominant' | 'mesa' | 'perdido';
   type Specimen = {
     img?: string;
     vid?: string;
     poster?: string;
     w: number;
-    y: number;
     d: number;
     tag?: string;
     vignette?: boolean; // true = source has a soft dark edge, not flat black — fade it via mask instead of showing a rectangle
     cutout?: boolean; // true = source has a genuine alpha-cut background — safe to brighten/glow on wake without lighting up a visible rectangle
     boost?: number; // static brightness multiplier on top of the base 0.82 -- compensates for a source that's inherently pale/low-contrast (not a real fix; that's a re-shoot), default 1
     pulse?: boolean; // true = fades slowly in and out on its own, independent of awake/flare -- per Eduardo's note for the second jellyfish
+    // Explicit vertical band per direct spec, replacing the old y-fraction-
+    // of-viewport placement: alta rides well above the nerve (no fragments
+    // allowed there -- it collides with the docked mark), nervio sits close
+    // beside the wire, baja well below it with the long fragments.
+    band: Band;
+    // Dominant candidates (octopus, chimp) alternate which one actually
+    // renders large -- only one at a time, see chooseDominant() below.
+    // Everything else is fixed: mesa (the readable, mid-size cast) or
+    // perdido (small, easy to miss on purpose).
+    scale: ScaleTier;
+    // Piglet only: "testigo, no nada como el goldfish" -- a witness that
+    // watches rather than swims toward the cursor. Cuts the lean-toward-
+    // pointer response instead of sharing goldfish's full reach.
+    witness?: boolean;
+  };
+
+  // Shared by specimen placement (below) and fragment placement
+  // (assignFragment, further down) -- both anchor to the live nerve
+  // curve rather than a fixed fraction of viewport height, and both
+  // need the same three vertical ranges to stay in the same visual
+  // register. Magnitudes are a fraction of "channel" (nerveMax -
+  // nerveMin). Fragments only ever draw from nervio/baja -- alta stays
+  // specimen-only, per direct spec ("alta band has no fragments").
+  const BAND_RANGE: Record<Band, [number, number]> = {
+    alta: [0.24, 0.4],
+    nervio: [0.05, 0.13],
+    baja: [0.24, 0.4],
   };
 
   const SPECIMENS: Specimen[] = [
-    { img: '/specimens/chimp.png', w: 460, y: 0.28, d: 1.0, tag: 'No.04 · PROXIMITY · CHIMP', vignette: true, cutout: true },
-    // Still big and near-load-visible (xn≈0.21 resolves near the
-    // left-center of the screen at load), but moved to the lower half --
-    // y was 0.2, same band as the chimp (0.28) and the first jellyfish
-    // (0.2), leaving three of ten specimens stacked in the top quarter
-    // of the screen and almost nothing below center besides the
-    // goldfish. At this y and size the tentacles can drift close to the
-    // permanent purpose-line text (worked out: the existing vertical
-    // sine drift, worldYoff, moves every specimen by up to ±144px*d --
-    // not unique to this one), but that's not the corner-mark bug from
-    // earlier: Landing.astro's content always paints above the whole
-    // field regardless of what's behind it, so the text stays fully
-    // legible either way. A specimen drifting near it is the same
-    // "chaos" every other specimen already has.
+    { img: '/specimens/chimp.png', w: 460, d: 1.0, tag: 'No.04 · PROXIMITY · CHIMP', vignette: true, cutout: true, band: 'alta', scale: 'dominant' },
     // Replaced the static PNG with a looping animation Eduardo sent --
     // genuinely alpha-cut this time (verified the same way as the
     // others: canvas pixel sampling and a real <video> tag against
     // both red and true-black test backgrounds), so vignette is
     // dropped -- the old PNG's soft dark edge needed that mask, this
     // one blends into true black cleanly on its own.
-    { vid: '/specimens/octopus.webm', w: 640, y: 0.66, d: 0.97, tag: 'No.02 · GOVERNANCE · OCTOPUS', cutout: true },
-    { vid: '/specimens/jellyfish.webm', w: 560, y: 0.2, d: 0.66, tag: 'No.03 · TRUST · JELLYFISH', cutout: true },
-    { vid: '/specimens/goldfish.mp4', poster: '/specimens/goldfish.png', w: 400, y: 0.7, d: 0.94, tag: 'No.01 · MEMORY · GOLDFISH', boost: 1.2 },
+    { vid: '/specimens/octopus.webm', w: 640, d: 0.97, tag: 'No.02 · GOVERNANCE · OCTOPUS', cutout: true, band: 'alta', scale: 'dominant' },
+    { vid: '/specimens/jellyfish.webm', w: 560, d: 0.66, tag: 'No.03 · TRUST · JELLYFISH', cutout: true, band: 'alta', scale: 'mesa' },
+    { vid: '/specimens/goldfish.mp4', poster: '/specimens/goldfish.png', w: 400, d: 0.94, tag: 'No.01 · MEMORY · GOLDFISH', boost: 1.2, band: 'nervio', scale: 'mesa' },
     // Replaces the old static pig.png -- an animated piglet (turns to
     // face camera, sits) with the same "DATA" motif as the other
     // specimens. Not a cutout (plain mp4, opaque, near-black background
     // matching the old still almost pixel-for-pixel), so it gets the
-    // standard static treatment, same as goldfish/seaweed.
-    { vid: '/specimens/piglet.mp4', poster: '/specimens/piglet-poster.png', w: 300, y: 0.42, d: 0.74, tag: 'No.05 · MEANING · PIGLET' },
-    { img: '/specimens/eyefish.png', w: 260, y: 0.54, d: 0.58, boost: 1.15 },
-    { vid: '/specimens/seaweed.mp4', w: 300, y: 0.34, d: 0.5 },
+    // standard static treatment, same as goldfish/seaweed. witness:true
+    // per direct feedback -- a watcher, not a second swimming goldfish.
+    { vid: '/specimens/piglet.mp4', poster: '/specimens/piglet-poster.png', w: 300, d: 0.74, tag: 'No.05 · MEANING · PIGLET', band: 'nervio', scale: 'mesa', witness: true },
+    { img: '/specimens/eyefish.png', w: 260, d: 0.58, boost: 1.15, band: 'nervio', scale: 'perdido' },
+    { vid: '/specimens/seaweed.mp4', w: 300, d: 0.5, band: 'baja', scale: 'mesa' },
     // Both genuinely alpha-cut (verified same as the others: canvas
     // pixel sampling and a real <video> tag against a red test
     // background), appended rather than reordered so they don't shift
     // the octopus/chimp's tuned load-time positions.
-    { vid: '/specimens/brain.webm', w: 480, y: 0.46, d: 0.9, tag: 'No.06 · CURIOSITY · BRAIN', cutout: true },
-    { vid: '/specimens/bluefish.webm', w: 420, y: 0.58, d: 0.62, tag: 'No.07 · GOVERNANCE · BLUE FISH', cutout: true },
+    { vid: '/specimens/brain.webm', w: 480, d: 0.9, tag: 'No.06 · CURIOSITY · BRAIN', cutout: true, band: 'baja', scale: 'mesa' },
+    { vid: '/specimens/bluefish.webm', w: 420, d: 0.62, tag: 'No.07 · GOVERNANCE · BLUE FISH', cutout: true, band: 'baja', scale: 'mesa' },
     // Second jellyfish -- was a still, now a looping animation Eduardo
     // sent, genuinely alpha-cut (verified against both red and true-
     // black test backgrounds, same as the octopus above), so cutout:
     // true now too. Still fades in and out very slowly on its own
     // (pulse: true) on top of that -- the two are independent, so it
     // both swims in its own loop and breathes in and out at the same
-    // time. Different y/d from the existing jellyfish so the two don't
-    // habitually overlap.
-    { vid: '/specimens/jellyfish2.webm', w: 460, y: 0.62, d: 0.42, tag: 'No.08 · TRUST · JELLYFISH', pulse: true, cutout: true },
+    // time.
+    { vid: '/specimens/jellyfish2.webm', w: 460, d: 0.42, tag: 'No.08 · TRUST · JELLYFISH', pulse: true, cutout: true, band: 'alta', scale: 'mesa' },
     // Second goldfish -- Eduardo sent a new render, genuinely alpha-cut
     // this time (verified directly: sampled the decoded video frame's
     // own alpha channel in a real browser, not just the file's
     // metadata tag -- corner pixels read alpha 0, the fish itself 255).
     // A separate entry, not a replacement for the existing goldfish.mp4,
-    // same precedent as jellyfish2 above: same thread (MEMORY), a new
-    // catalog number, different y/d so the two don't habitually overlap
-    // or read as one duplicated fish.
-    { vid: '/specimens/goldfish2.webm', w: 520, y: 0.24, d: 0.78, tag: 'No.09 · MEMORY · GOLDFISH', cutout: true },
+    // same thread (MEMORY), a new catalog number. "Casi perdido" tier
+    // per direct feedback -- small and easy to miss on purpose, paired
+    // with eyefish rather than competing with the original goldfish.
+    { vid: '/specimens/goldfish2.webm', w: 520, d: 0.78, tag: 'No.09 · MEMORY · GOLDFISH', cutout: true, band: 'nervio', scale: 'perdido' },
   ];
 
   const STOPS: [string, string][] = [
@@ -659,6 +682,11 @@
         // connector-drawing block in frame()) rather than assuming a
         // fixed drift direction.
         prevAnchorX: 0,
+        // Fixed once, not re-rolled per frame -- this specimen's own
+        // resting position within its band's offset range (see the
+        // band offset table in frame()), so it has a stable "home" to
+        // gently orbit rather than jittering to a new spot every tick.
+        bandT: Math.random(),
       };
       if (isTouch) {
         el.style.pointerEvents = 'auto';
@@ -667,29 +695,29 @@
       return node;
     });
 
-    // ================= fragments =================
-    // Only a handful exist on screen at once -- an infinite pool of 50,
-    // shown a few at a time, staggered in over the first ~20s rather
-    // than all appearing together. When one decays and dies, that slot
-    // (after a pause) picks the next fragment from a shuffled queue and
-    // arrives fresh: from a random edge (left/right/top/bottom), never
-    // just sliding in with the horizontal drift like everything else.
-    // Depth is shared with specimens for z-index, so fragments genuinely
-    // interleave in front of and behind them rather than always sitting
-    // on top.
-    // Fewer concurrent slots on narrow screens: 6 quote blocks (each up
-    // to several lines tall) simply don't fit in the compressed vertical
-    // range a short mobile viewport leaves once the bottom marks are
-    // excluded -- window.innerWidth here, not the closure W, since W
-    // isn't set until the first resize() call, which happens after this.
-    // Was 6, then 4 -- reduced again after the menagerie grew to 9
-    // specimens (brain, blue fish added since) and a friend's screenshot
-    // still showed a quote, a specimen, and a stop all crammed into one
-    // spot, illegible. Fewer concurrent fragments gives the rest of the
-    // field -- now genuinely dense on its own -- more room to be seen.
-    const SLOT_COUNT = window.innerWidth < 500 ? 2 : 3;
+    // ================= fragments: sillas, no feed =================
+    // "Hay 4 sillas. El resto espera en el corpus." -- four physical
+    // chairs, an infinite pool of 50 behind them. When one decays and
+    // dies, that chair (after a pause) picks the next fragment from a
+    // shuffled queue and arrives fresh: from a random edge (left/right/
+    // top/bottom), never just sliding in with the horizontal drift like
+    // everything else. Depth is shared with specimens for z-index, so
+    // fragments genuinely interleave in front of and behind them rather
+    // than always sitting on top.
+    // Fewer chairs on narrow screens: 4 quote blocks (each up to
+    // several lines tall) simply don't fit in the compressed vertical
+    // range a short mobile viewport leaves -- window.innerWidth here,
+    // not the closure W, since W isn't set until the first resize()
+    // call, which happens after this.
+    const SLOT_COUNT = window.innerWidth < 500 ? 2 : 4;
     type Dir = 'left' | 'right' | 'top' | 'bottom';
     const DIRS: Dir[] = ['left', 'right', 'top', 'bottom'];
+
+    // Field's own card only mounts fragments with a real article behind
+    // them -- "Sin source, esa frase no se monta." The one sourceless
+    // "site" line (Landing's own manifesto pool) stays exclusive to
+    // Landing, which never shows a ficha anyway.
+    const FIELD_FRAGS = FRAGS.filter((f) => f.source !== null);
 
     let fragQueue: number[] = [];
     function shuffledIndices(n: number) {
@@ -700,10 +728,36 @@
       }
       return arr;
     }
-    function nextFragIndex() {
-      if (fragQueue.length === 0) fragQueue = shuffledIndices(FRAGS.length);
+    // Tries a few draws for one whose source doesn't match a currently
+    // alive/decaying neighbour's -- "Nunca dos extractos del mismo
+    // artículo vecinos." Falls back to whatever's next once the queue
+    // has no untried alternative left, rather than stalling.
+    function nextFragIndex(excludeSources: Set<string | null>): number {
+      if (fragQueue.length === 0) fragQueue = shuffledIndices(FIELD_FRAGS.length);
+      for (let attempt = 0; attempt < fragQueue.length; attempt++) {
+        const i = fragQueue.length - 1 - attempt;
+        if (!excludeSources.has(FIELD_FRAGS[fragQueue[i]].source)) {
+          const idx = fragQueue[i];
+          fragQueue.splice(i, 1);
+          return idx;
+        }
+      }
       return fragQueue.pop()!;
     }
+
+    // Same four-mode Verlet death as Landing.astro's own hero quote
+    // (setLine/decay/stepPhys), ported directly rather than reinvented
+    // -- "Porta setLine / decay / stepPhys para las sillas del field
+    // (misma física)." Each chair cycles its own DEATHS rotation
+    // independently, since up to four can be alive/decaying at once
+    // here (Landing only ever has one).
+    const DEATHS = ['float', 'fall', 'explode', 'corrode'] as const;
+    type DeathMode = (typeof DEATHS)[number] | '';
+    type Particle = {
+      el: HTMLElement; x: number; y: number; px: number; py: number;
+      rot: number; rotv: number; damp: number; life: number; fade: number;
+      wake: number; scale: number; link: boolean; rest: number; breakAt: number;
+    };
 
     const fragSlots = Array.from({ length: SLOT_COUNT }, (_, slotI) => {
       const el = document.createElement('div');
@@ -720,146 +774,184 @@
       return {
         el, quote, ref, slotI,
         chars: [] as HTMLElement[],
-        parts: [] as { vx: number; vy: number; baseX: number; baseY: number }[],
         fragIndex: -1,
         depth: 0.5,
         xn: 0, y: 0.5,
         entryDir: 'left' as Dir,
         entryAmt: 0, // 1 = fully off-screen at entry point, eases to 0
         aloneTime: 0,
+        // "Viva en el field: 20-40s" -- rolled per fragment on
+        // assignment, not a single shared constant, so chairs don't
+        // all turn over in lockstep. "Punch de una tónica se sostiene
+        // más": a short/punchy line gets the upper part of the range,
+        // a long one the lower part.
+        decayAfter: 30,
         state: 'pending' as 'pending' | 'alive' | 'decaying' | 'dead',
         pendingT: slotI * 3 + Math.random() * 3, // staggered first appearance
         decayT: 0,
         respawnDelay: 0,
+        // How long this chair's current quote has sat overlapping a
+        // visible specimen's bounding box -- "el texto espera o se
+        // va" -- accumulated so a one-frame graze doesn't trigger it.
+        collideTime: 0,
+        // Verlet death state -- see DEATHS above.
+        deathI: 0,
+        phys: [] as Particle[],
+        physMode: '' as DeathMode,
+        physT: 0,
+        physRunning: false,
+        physLast: 0,
       };
     });
 
     function assignFragment(slot: typeof fragSlots[number]) {
-      const idx = nextFragIndex();
-      const f = FRAGS[idx];
+      const neighborSources = new Set(
+        fragSlots
+          .filter((s) => s !== slot && (s.state === 'alive' || s.state === 'decaying'))
+          .map((s) => FIELD_FRAGS[s.fragIndex]?.source ?? null)
+      );
+      const idx = nextFragIndex(neighborSources);
+      const f = FIELD_FRAGS[idx];
       slot.fragIndex = idx;
+      slot.deathI = 0;
+      slot.physRunning = false;
+      slot.phys = [];
       // The one Spanish line in the set ("No se puede empezar...")
       // was inheriting the page's lang="en" like every other fragment
       // -- wrong for assistive tech and translate tooling reading the
       // page, per the design critique's craft checklist.
       slot.quote.lang = f.lang || 'en';
-      slot.quote.textContent = '';
-      // Each letter is its own inline-block <i> so the decay physics can
-      // move it independently -- but adjacent inline-blocks each carry
-      // their own implicit line-break opportunity regardless of word
-      // boundaries, so a word rendered as bare sibling <i>s can wrap
-      // mid-letter ("penthouse" -> "penthous" / "e"), found by actually
-      // screenshotting a fragment and seeing it happen. Fixed by
-      // grouping each word's letters inside a nowrap wrapper, so the
-      // wrapper -- not each letter -- is the atomic breakable unit;
-      // breaks can then only fall where a real space does.
+      slot.quote.innerHTML = '';
+      slot.quote.style.fontSize = '';
+      // Ported literally from Landing's own setLine() -- same markup
+      // (span.word > b, one b per letter, a real text-node space
+      // between words), same birth reveal. A bare space as a lone
+      // inline-block's content used to collapse to zero width, which
+      // is what the old per-letter <i> version worked around with a
+      // literal non-breaking space; a plain text node between the word
+      // spans doesn't have that problem at all, so there is nothing to
+      // work around here.
       slot.chars = [];
-      const tokens = f.text.match(/\S+|\s+/g) || [];
-      for (const token of tokens) {
-        const isSpace = token[0] === ' ';
-        const container = isSpace ? slot.quote : document.createElement('span');
-        if (!isSpace) container.className = 'frag-word';
-        for (const ch of token) {
-          const s = document.createElement('i');
-          // A plain space as the sole content of an inline-block collapses
-          // to zero width -- browsers trim it as leading/trailing
-          // whitespace in the inline formatting context. A non-breaking
-          // space renders as a real, breakable-adjacent gap instead.
-          s.textContent = ch === ' ' ? ' ' : ch;
-          container.appendChild(s);
-          slot.chars.push(s);
+      f.text.split(/(\s+)/).forEach((tok) => {
+        if (/^\s+$/.test(tok)) {
+          slot.quote.appendChild(document.createTextNode(' '));
+          return;
         }
-        if (!isSpace) slot.quote.appendChild(container);
-      }
-      slot.parts = slot.chars.map(() => ({ vx: 0, vy: 0, baseX: 0, baseY: 0 }));
-      slot.ref.textContent = f.source ? `— ${f.source}` : '';
-      slot.ref.style.display = f.source ? '' : 'none';
+        const word = document.createElement('span');
+        word.className = 'word';
+        [...tok].forEach((ch) => {
+          const b = document.createElement('b');
+          b.textContent = ch;
+          b.style.opacity = '0';
+          word.appendChild(b);
+          slot.chars.push(b);
+        });
+        slot.quote.appendChild(word);
+      });
+      slot.chars.forEach((b, i) => {
+        b.animate(
+          [
+            { opacity: 0, transform: 'translateY(10px)', filter: 'blur(8px)' },
+            { opacity: 1, transform: 'none', filter: 'blur(0)' },
+          ],
+          {
+            duration: reduced ? 1 : 2200,
+            delay: reduced ? 0 : 120 + i * 80,
+            easing: 'cubic-bezier(.22,.7,.2,1)',
+            fill: 'forwards',
+          }
+        );
+      });
+
+      // Ficha (citation card) reveals a beat after the quote itself,
+      // not simultaneously -- per direct spec, the source is metadata
+      // read second, not a label glued to the quote's own entrance.
+      // Bails if this slot has already moved on to a different
+      // fragment by the time the timeout fires (a fast decay-and-
+      // respawn cycle on a short-lived slot).
       slot.ref.style.transition = '';
-      slot.ref.style.opacity = '1';
+      slot.ref.style.opacity = '0';
+      slot.ref.innerHTML = '';
+      slot.ref.style.display = f.source ? '' : 'none';
+      if (f.source) {
+        const revealIdx = idx;
+        const cite = f.year ? `${f.source} \u00b7 ${f.year}` : f.source;
+        setTimeout(() => {
+          if (slot.fragIndex !== revealIdx) return;
+          slot.ref.innerHTML = '';
+          if (f.href) {
+            const a = document.createElement('a');
+            a.href = f.href;
+            a.textContent = cite;
+            slot.ref.appendChild(a);
+          } else {
+            slot.ref.appendChild(document.createTextNode(`\u2014 ${cite}`));
+          }
+          slot.ref.style.transition = 'opacity 0.6s ease';
+          slot.ref.style.opacity = '1';
+        }, 400 + Math.random() * 400);
+      }
+
       slot.depth = f.weight === 'long' ? 0.6 + Math.random() * 0.22 : 0.3 + Math.random() * 0.3;
-      // Font-size depends only on depth, so it's set here rather than at
-      // the very end of this function -- moved up because the shelf
-      // jitter below needs the block's REAL rendered height, which
-      // needs the real font-size already applied first.
-      slot.quote.style.fontSize = (14 + (1 - Math.abs(slot.depth - 0.7)) * 8) + 'px';
+
       // Spawn where it can actually be seen: solve for the xn that puts
       // it inside the current viewport right now, rather than a random
-      // point across the whole ~4000px world (which, at 6 slots vs. a
-      // world wider than the screen, would spawn most fragments
-      // somewhere nobody will ever scroll to before they decay unseen).
+      // point across the whole ~4000px world (which, at a handful of
+      // slots vs. a world wider than the screen, would spawn most
+      // fragments somewhere nobody will ever scroll to before they
+      // decay unseen).
       const depthFactor = 0.3 + slot.depth * 0.7;
-      // Kept out of the bottom ~35% of the viewport on purpose -- the
-      // purpose line and the Barcelona/LinkedIn mark both live down
-      // there and are permanent fixtures, not other field objects a
-      // fragment is allowed to drift behind. Within that, each slot
-      // gets its own dedicated vertical band rather than a fully
-      // random y -- random placement let multiple 3-6-line quote
-      // blocks land on the same rows and pile up unreadably, most
-      // visible on short mobile viewports where the usable range is
-      // small to begin with. One slot, one shelf.
-      const bandH = 0.55 / SLOT_COUNT;
-      // Slot 0's band starts at the same corner as the permanent
-      // wordmark -- found by screenshotting it and seeing a quote
-      // rendered directly on top of "EDUARDO sopalda," both illegible.
-      // An X-only push (tried first) doesn't work on narrow viewports,
-      // where the mark can span most of the width and there's no safe
-      // column to its right at all -- so this measures the mark's own
-      // rendered bottom edge and pushes the top band BELOW it instead,
-      // which holds regardless of viewport width.
-      // Only while actually docked, though -- slot 0's own pendingT (up
-      // to 3s) means it often first spawns during the hero, where .mark
-      // is still the huge, centered hero wordmark, not the small corner
-      // mark this push exists for. Measuring THAT bottom edge inflated
-      // topBandStart hugely, and since it's only recalculated on this
-      // slot's next (rare, decay-gated) respawn, slot 0's whole shelf
-      // stayed pushed for its next 40-70+ seconds -- confirmed directly
-      // as the actual cause of slot 0 landing on top of slot 2's shelf,
-      // not the "long quote overflows its own shelf" case this file
-      // used to blame.
-      let topBandStart = 0.08;
-      if (slot.slotI === 0 && document.body.dataset.landing === 'field') {
-        const markEl = document.querySelector('.mark');
-        if (markEl) topBandStart = Math.max(topBandStart, (markEl.getBoundingClientRect().bottom + 20) / H);
-      }
-      // Jitter within the band was up to 0.5*bandH, then a flat 0.25 --
-      // both assumed every quote was short enough to fit its shelf with
-      // room to spare. A "long"-weight quote can wrap to 3-4 lines,
-      // tall enough to reach into the next shelf even parked at the very
-      // top of its own band -- confirmed directly: a long and a short
-      // quote in adjacent shelves rendering on top of each other for
-      // their entire shared lifetime, not just a passing brush during
-      // drift. The block already has its real text and font-size, so
-      // its real rendered height is measurable now -- cap the downward
-      // jitter by whatever room that leaves, instead of a fixed fraction
-      // that assumes a height no quote here actually has.
-      const measuredH = slot.el.offsetHeight || 80;
-      const roomFrac = Math.max(0, bandH - measuredH / H - 0.01);
-      const jitter = Math.min(bandH * 0.25, roomFrac);
-      slot.y = slot.slotI === 0 ? topBandStart + Math.random() * jitter : 0.08 + slot.slotI * bandH + Math.random() * jitter;
-      // Bands only ever kept fragments from piling on EACH OTHER --
-      // nothing kept a fragment from spawning right on top of a
-      // specimen that happened to be drifting through that same screen
-      // area, which a friend's screenshot caught directly (a quote
-      // rendered right across a specimen's face, both unreadable). Since
-      // specimens keep drifting independently after a fragment spawns,
-      // this can't be fully solved, but retrying the X position a few
-      // times against every specimen's ACTUAL current on-screen rect
-      // avoids spawning directly into a collision at least.
-      const candidateY = slot.y * H;
-      function collidesWithSpecimen(x: number) {
+
+      // Y is nerve-relative now, not a fixed shelf fraction of the
+      // viewport -- replaces the old per-slot band system entirely, per
+      // direct spec ("posicionado relativo al nervio, no shelf fijo").
+      // A one-time snapshot of the live nerve curve at spawn (same
+      // pattern the old shelf system used: computed once, reused every
+      // frame via slot.y * H), not tracked live every frame -- the
+      // nerve's own drift is gentle enough that a fixed offset from its
+      // position at spawn time stays coherent for one fragment's whole
+      // lifetime. Short fragments ride close to the wire (BAND_RANGE.
+      // nervio, split above/below); long ones sit in the lower band
+      // (BAND_RANGE.baja, always below) -- weight-to-band linkage, per
+      // spec. Alta is never used here on purpose: that band is
+      // specimen-only (the docked mark lives up there), so fragments
+      // simply never draw from it.
+      const isLong = f.weight === 'long';
+      const channel = Math.max(1, nerveMax - nerveMin);
+      const nerveRef = chainYAt(W * 0.5);
+      const [lo, hi] = isLong ? BAND_RANGE.baja : BAND_RANGE.nervio;
+      const side = isLong ? 1 : (Math.random() < 0.5 ? -1 : 1);
+      const mag = (lo + Math.random() * (hi - lo)) * channel;
+      const candidateY = Math.max(nerveMin + 20, Math.min(nerveMax - 20, nerveRef + side * mag));
+      slot.y = candidateY / H;
+
+      // Retried against both other specimens' AND sibling fragments'
+      // actual current on-screen rects -- specimens keep drifting
+      // independently after a fragment spawns so this can't be fully
+      // solved, but avoids spawning directly into a collision at least.
+      // Bounding boxes are estimated (real layout isn't known until
+      // this slot is positioned in the frame loop) -- generous enough
+      // that a near-miss still counts as a hit.
+      function collidesAt(x: number, y: number) {
+        const bw = 320, bh = 90, pad = 24;
         for (const n of specNodes) {
           const r = n.el.getBoundingClientRect();
           if (r.width < 10) continue;
-          const pad = 24;
-          if (x > r.left - pad && x < r.right + pad && candidateY > r.top - pad && candidateY < r.bottom + pad) return true;
+          if (x < r.right + pad && x + bw > r.left - pad && y < r.bottom + pad && y + bh > r.top - pad) return true;
+        }
+        for (const s of fragSlots) {
+          if (s === slot || s.state === 'pending' || s.state === 'dead') continue;
+          const r = s.el.getBoundingClientRect();
+          if (r.width < 10) continue;
+          if (x < r.right + pad && x + bw > r.left - pad && y < r.bottom + pad && y + bh > r.top - pad) return true;
         }
         return false;
       }
       // Leaves room on the right for the quote block's own width (up to
-      // 24em) so it doesn't spawn overflowing off the viewport edge —
+      // 24em) so it doesn't spawn overflowing off the viewport edge --
       // the first version placed it anywhere up to 0.84W and clipped.
       let targetScreenX = W * 0.06 + Math.random() * W * 0.5;
-      for (let attempt = 0; attempt < 6 && collidesWithSpecimen(targetScreenX); attempt++) {
+      for (let attempt = 0; attempt < 6 && collidesAt(targetScreenX, candidateY); attempt++) {
         targetScreenX = W * 0.06 + Math.random() * W * 0.5;
       }
       const offset = Math.min(520, W * 0.4);
@@ -867,8 +959,84 @@
       slot.entryDir = DIRS[Math.floor(Math.random() * DIRS.length)];
       slot.entryAmt = 1;
       slot.aloneTime = 0;
+      slot.collideTime = 0;
+      // Touch users can't rest a cursor near a fragment to hold it the
+      // way a mouse user can, so they'd otherwise lose every fragment to
+      // decay regardless of attention. Longer base life, not proximity,
+      // is the touch equivalent -- unconditional rather than earned.
+      // Punchy short fragments hold a little longer than long ones, per
+      // direct spec ("las cortas y contundentes aguantan mas").
+      slot.decayAfter = isTouch ? (isLong ? 45 : 55) + Math.random() * 15 : (isLong ? 20 : 30) + Math.random() * 10;
       slot.state = 'alive';
       slot.el.style.zIndex = String(Math.round(slot.depth * 100));
+    }
+
+    // Per-chair Verlet integrator -- identical formulas to Landing's own
+    // stepPhys, operating on this slot's own phys/physMode/physT instead
+    // of module-level singletons, since up to SLOT_COUNT chairs can be
+    // mid-decay at once here (Landing only ever has one). Letters turn
+    // gold as they come apart -- Eduardo's "small gold particles" image,
+    // made literal -- layered on top of the ported physics rather than
+    // part of it, since Landing's own hero quote never does this.
+    function stepPhysFor(slot: typeof fragSlots[number], now: number) {
+      if (!slot.physRunning) return;
+      const dt = Math.min(0.032, (now - slot.physLast) / 1000) || 0.016;
+      slot.physLast = now;
+      slot.physT += dt;
+      const wind = Math.sin(slot.physT * 0.7) * 22;
+      const mode = slot.physMode;
+
+      if (mode === 'corrode') {
+        slot.phys.forEach((p) => {
+          if (p.link && slot.physT > p.breakAt) p.link = false;
+        });
+        for (let k = 0; k < 4; k++) {
+          for (let i = 0; i < slot.phys.length - 1; i++) {
+            const p = slot.phys[i], q = slot.phys[i + 1];
+            if (!p.link) continue;
+            const dx = q.x - p.x, dy = q.y - p.y;
+            const d = Math.hypot(dx, dy) || 1;
+            const corr = (d - p.rest) * 0.18;
+            const nx = dx / d, ny = dy / d;
+            p.x += nx * corr * 0.5; p.y += ny * corr * 0.5;
+            q.x -= nx * corr * 0.5; q.y -= ny * corr * 0.5;
+          }
+        }
+      }
+
+      let allSettled = true;
+      slot.phys.forEach((p) => {
+        if (slot.physT < p.wake) { allSettled = false; return; }
+        let ax = 0, ay = 0;
+        if (mode === 'fall') ay = 380;
+        if (mode === 'float') { ay = -28; ax = wind * 0.7; }
+        if (mode === 'explode') ay = 12;
+        if (mode === 'corrode') ay = 12;
+
+        const vx = p.x - p.px, vy = p.y - p.py;
+        const nx = p.x + vx * p.damp + ax * dt * dt;
+        const ny = p.y + vy * p.damp + ay * dt * dt;
+        p.px = p.x; p.py = p.y;
+        p.x = nx; p.y = ny;
+        p.rot += p.rotv * dt * 60;
+        p.life -= p.fade * dt * 60;
+        if (mode === 'explode') p.scale = 1 + Math.min(0.55, slot.physT * 0.35);
+        p.el.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${p.rot}deg) scale(${p.scale || 1})`;
+        p.el.style.opacity = String(Math.max(0, p.life));
+        if (mode === 'corrode') {
+          const rust = Math.min(1, slot.physT / 7);
+          p.el.style.filter = `blur(${rust * 4.5}px)`;
+          (p.el.style as any).color = rust > 0.35 ? 'var(--gold)' : '';
+        } else if (p.life < 0.94) {
+          (p.el.style as any).color = 'var(--gold)';
+        }
+        if (p.life > 0) allSettled = false;
+      });
+      if (allSettled) {
+        slot.physRunning = false;
+        slot.state = 'dead';
+        slot.respawnDelay = 1 + Math.random() * 2.5;
+      }
     }
 
     // ================= stops =================
@@ -888,11 +1056,9 @@
       return { el, name: s[0], xn: (i + 0.5) / STOPS.length, near: 0 };
     });
 
-    // Touch users can't rest a cursor near a fragment to hold it the
-    // way a mouse user can, so they'd otherwise lose every fragment to
-    // decay regardless of attention. Longer base life, not proximity,
-    // is the touch equivalent -- unconditional rather than earned.
-    const DECAY_AFTER = isTouch ? 70 : 40, DECAY_TIME = 10;
+    // Per-fragment decay timing (decayAfter) and touch-vs-pointer base
+    // life now live on each slot itself, rolled fresh in assignFragment
+    // -- see the comment there.
 
     let channelT = 0;
     function frame() {
@@ -995,7 +1161,7 @@
         ctx!.fill();
       }
 
-      // ---- specimens: position by depth, wake near cursor, play video on approach ----
+      // ---- specimens: budget to ≤4 visible (one dominant), band-anchored to the nerve, wake near cursor ----
       const flareLines: { x: number; y1: number; y2: number; o: number }[] = [];
       // Always-on connector filaments -- one per visible specimen, not
       // just the ones currently flaring (flareLines above stays a
@@ -1005,15 +1171,43 @@
       // specimen's own current horizontal velocity, so the curve reads
       // as trailing/dragging behind motion rather than a static prop.
       const connectors: { sx: number; sy: number; cx: number; cy: number; nx: number; ny: number; o: number; pulse: number }[] = [];
-      for (const n of specNodes) {
+      // Read by the fragments loop below: "una frase no entra en el
+      // bounding box de un video. Si el pez cruza, el texto ... se va."
+      // Only currently-shown specimens count as obstacles.
+      const visibleSpecRects: { x: number; y: number; w: number; h: number }[] = [];
+
+      // Only one of the dominant candidates (octopus, chimp) actually
+      // renders large at any moment -- alternates slowly (not picked by
+      // proximity, which would flicker) rather than both competing for
+      // the screen's one "dominant" slot at once.
+      const dominantCandidates = specNodes.filter((n) => n.s.scale === 'dominant');
+      const dominantNow = dominantCandidates.length ? dominantCandidates[Math.floor(t / 45) % dominantCandidates.length] : null;
+
+      const channel = Math.max(1, nerveMax - nerveMin);
+      // BAND_RANGE itself is hoisted to module scope now -- assignFragment
+      // needs the same ranges to place fragments nerve-relative, and a
+      // function-local const here wasn't visible to it.
+
+      type Candidate = {
+        n: (typeof specNodes)[number]; w: number; X: number; Y: number; sx: number; sy: number;
+        anchorX: number; nerveYHere: number; dofT: number; blurPx: number; centerDist: number; isDominant: boolean;
+      };
+      const candidates: Candidate[] = specNodes.map((n) => {
+        const isDominant = n === dominantNow;
+        // A dominant candidate not currently holding the slot renders
+        // at mesa scale instead, same as everyone else in that tier.
+        const tier: ScaleTier = n.s.scale === 'dominant' && !isDominant ? 'mesa' : n.s.scale;
+
         // Scale floor was 0.48 with no cap, so on a 375px phone a
         // 380-460px specimen (octopus, chimp) still rendered at
         // ~180-220px -- roughly half the screen width for one
         // creature. Lower floor plus an explicit viewport-relative cap
         // (found by actually measuring a mobile screenshot, not by
         // assumption) keeps any single specimen from dominating a
-        // narrow screen.
-        const w0 = Math.min(n.s.w * Math.min(1, Math.max(0.32, W / 1300)), W * 0.42);
+        // narrow screen -- raised for the dominant tier specifically,
+        // per direct spec ("~0.5-0.7 del viewport en un eje").
+        const capFrac = tier === 'dominant' ? 0.68 : 0.42;
+        const w0 = Math.min(n.s.w * Math.min(1, Math.max(0.32, W / 1300)), W * capFrac);
         // Depth of field: d spans roughly 0.42-1.0 across the roster.
         // Interpolated into scale/blur/speed rather than a hard
         // foreground/background split, since d itself is continuous --
@@ -1023,32 +1217,40 @@
         // depth-scaled via worldX * n.s.d below; unchanged.
         const dofT = Math.max(0, Math.min(1, (n.s.d - 0.42) / (1.0 - 0.42)));
         const scaleDof = 0.65 + dofT * (1.1 - 0.65);
-        const blurPx = (1 - dofT) * 2;
-        const w = w0 * scaleDof;
+        // Three scales, per direct spec: dominant reads large, mesa is
+        // the baseline (unchanged), perdido is small on purpose --
+        // eyefish and the new goldfish, easy to miss, not a third
+        // showpiece competing with the roster's real cast.
+        const tierMul = tier === 'dominant' ? 1.3 : tier === 'perdido' ? 0.52 : 1;
+        const blurPx = tier === 'perdido' ? 1.1 : (1 - dofT) * 2;
+        const w = w0 * scaleDof * tierMul;
 
         const baseX = wrap(n.xn * WORLD_W - worldX * n.s.d, WORLD_W) - Math.min(520, W * 0.4);
         const anchorX = baseX + w * 0.5;
         // Anchored to the nerve's own live curve rather than a fixed
-        // fraction of H -- each specimen orbits a set offset above or
-        // below wherever the nerve actually is right now, so the two
-        // move together instead of drifting as unrelated layers. The
-        // side and offset magnitude come from each specimen's own
-        // original y (its established compositional role -- upper vs
-        // lower half, how far from center), so the roster's tuned
-        // placements carry over; only the anchor mechanism changes.
-        // worldYoff's own contribution moves here too, folded into the
-        // orbit term below, since the nerve's own mid-line already
-        // carries worldYoff*0.06 -- adding the old full worldYoff*d on
-        // top of that double-counted the same drift.
+        // fraction of H -- each specimen orbits a fixed offset above or
+        // below wherever the nerve actually is right now, inside its
+        // assigned band, so the two move together instead of drifting
+        // as unrelated layers. worldYoff's own contribution lives here
+        // too, folded into the small orbit term below, since the
+        // nerve's own mid-line already carries worldYoff*0.06 --
+        // adding the old full worldYoff*d on top of that double-
+        // counted the same drift.
         const nerveYHere = chainYAt(anchorX);
-        const side = n.s.y < 0.5 ? -1 : 1;
-        const orbitOffset = Math.abs(n.s.y - 0.5) * H * 1.3 + Math.sin(t * 0.09 + n.pulsePhase) * H * 0.02;
-        const baseY = nerveYHere + side * orbitOffset - w * 0.3;
+        const [lo, hi] = BAND_RANGE[n.s.band];
+        const mag = (lo + n.bandT * (hi - lo)) * channel;
+        const side = n.s.band === 'alta' ? -1 : n.s.band === 'baja' ? 1 : n.bandT < 0.5 ? -1 : 1;
+        const orbit = Math.sin(t * 0.09 + n.pulsePhase) * channel * 0.015;
+        const baseY = nerveYHere + side * mag + orbit - w * 0.3;
         const bsx = baseX + w * 0.5, bsy = baseY + w * 0.28;
 
         // Lean toward the cursor within a wider radius than the wake
         // threshold -- a specimen reaches slightly before it fully
         // wakes, rather than snapping straight from asleep to awake.
+        // Witness specimens (piglet) get a fraction of the normal
+        // reach -- "testigo, no nada como el goldfish": it watches,
+        // it doesn't swim toward the pointer the way goldfish does.
+        const leanMul = n.s.witness ? 0.22 : 1;
         let wantLeanX = 0, wantLeanY = 0;
         if (!isTouch && hasPointer) {
           const d = Math.hypot(px - bsx, py - bsy);
@@ -1056,8 +1258,8 @@
           if (d < leanRadius) {
             const f = 1 - d / leanRadius;
             const dx = px - bsx, dy = py - bsy, dl = Math.hypot(dx, dy) || 1;
-            wantLeanX = (dx / dl) * f * f * 14;
-            wantLeanY = (dy / dl) * f * f * 9;
+            wantLeanX = (dx / dl) * f * f * 14 * leanMul;
+            wantLeanY = (dy / dl) * f * f * 9 * leanMul;
           }
         }
         n.leanX += (wantLeanX - n.leanX) * 0.08;
@@ -1065,7 +1267,29 @@
 
         const X = baseX + n.leanX, Y = baseY + n.leanY;
         const sx = X + w * 0.5, sy = Y + w * 0.28;
-        const on = X > -(w + 300) && X < W + 300 && Y > -w && Y < H + w;
+        const centerDist = Math.abs(sx - W / 2) + Math.abs(sy - H / 2) * 0.5;
+        return { n, w, X, Y, sx, sy, anchorX, nerveYHere, dofT, blurPx, centerDist, isDominant };
+      });
+
+      // Visibility budget: at most 4 concurrently visible, the dominant
+      // candidate first if it's on-screen at all, everything else
+      // ranked by distance from the viewport's own center -- direct
+      // spec: "a la vez, máximo 4 especímenes visibles de verdad (uno
+      // dominante)." The rest of the roster exists off-screen in the
+      // wide world, not hidden-but-still-there in the same viewport.
+      const onScreen = candidates.filter((c) => c.X > -(c.w + 300) && c.X < W + 300 && c.Y > -c.w && c.Y < H + c.w);
+      onScreen.sort((a, b) => (a.isDominant === b.isDominant ? a.centerDist - b.centerDist : a.isDominant ? -1 : 1));
+      const shown = new Set(onScreen.slice(0, 4).map((c) => c.n));
+
+      // Specimen DATA tags: max 3 visible at once, per direct spec --
+      // a wake state that would show a tag past that budget still
+      // brightens/glows normally, it just doesn't add a fourth label
+      // to read at the same time.
+      let tagsShown = 0;
+
+      for (const c of candidates) {
+        const { n, w, X, Y, sx, sy, anchorX, nerveYHere, dofT, blurPx } = c;
+        const on = shown.has(n);
         n.el.style.visibility = on ? 'visible' : 'hidden';
 
         // Flare cycle runs regardless of on-screen visibility (a
@@ -1085,26 +1309,31 @@
           : (2.6 - n.flareT) / 0.8;
         n.el.style.setProperty('--flare', flareEnv.toFixed(3));
 
-        // Pause only when actually off-screen, purely to save decode
-        // work on something nobody can see -- never as a reaction to
-        // proximity/hover. Every specimen video is meant to be a
-        // continuous, unprompted animation, not something that starts
-        // moving only once someone finds it.
+        // Pause only when actually off-screen or over budget, purely to
+        // save decode work on something nobody can see -- never as a
+        // reaction to proximity/hover. Every specimen video is meant to
+        // be a continuous, unprompted animation, not something that
+        // starts moving only once someone finds it.
         if (!on) {
           if (n.video && n.playing) { n.video.pause(); n.playing = false; }
           continue;
         }
 
-        // Secondary motion -- a static specimen next to looping video
-        // read as a flat cutout, not a living thing. Independent
-        // levitation bob (own period, phase-offset per specimen so the
-        // roster doesn't bob in lockstep) plus a slow breathing scale
-        // pulse, both layered on top of the drift/lean transform rather
-        // than replacing it.
-        const bob = Math.sin(t * 0.7 + n.pulsePhase * 1.7) * (w * 0.015 + 3);
-        const breatheScale = 1 + 0.015 * Math.sin((t * Math.PI * 2) / 4.5 + n.pulsePhase);
-        n.el.style.transform = `translate3d(${X}px, ${(Y + bob).toFixed(1)}px, 0) scale(${breatheScale.toFixed(4)})`;
+        // Secondary motion -- stills only (chimp, eyefish). A static
+        // image next to looping video read as a flat cutout, not a
+        // living thing, hence the levitation bob + breathing scale
+        // pulse -- but a VIDEO specimen already has its own internal
+        // motion, and animating its wrapper on top read as jitter, not
+        // life. Direct spec: "sin animar el wrapper" for video.
+        let bob = 0, breatheScale = 1;
+        if (n.s.img) {
+          bob = Math.sin(t * 0.7 + n.pulsePhase * 1.7) * (w * 0.015 + 3);
+          breatheScale = 1 + 0.015 * Math.sin((t * Math.PI * 2) / 4.5 + n.pulsePhase);
+        }
+        const scalePart = breatheScale !== 1 ? ` scale(${breatheScale.toFixed(4)})` : '';
+        n.el.style.transform = `translate3d(${X}px, ${(Y + bob).toFixed(1)}px, 0)${scalePart}`;
         n.el.style.width = w + 'px';
+        visibleSpecRects.push({ x: X, y: Y, w, h: w * 0.7 });
         // Depth-of-field blur on the specimen's own wrapper -- the child
         // img/video already carries brightness/contrast/saturate via
         // the CSS rule (see .spec img/video), so this composes with
@@ -1130,12 +1359,11 @@
         // frame (a large, spurious "jump") can't produce a wild curve.
         const velocity = Math.max(-40, Math.min(40, anchorX - n.prevAnchorX));
         n.prevAnchorX = anchorX;
-        const nx = anchorX, ny = nerveYHere;
         connectors.push({
           sx, sy,
           cx: sx - velocity * 2.2,
-          cy: (sy + ny) / 2,
-          nx, ny,
+          cy: (sy + nerveYHere) / 2,
+          nx: anchorX, ny: nerveYHere,
           o: 0.16 + dofT * 0.14,
           pulse: n.pulsePhase,
         });
@@ -1152,8 +1380,13 @@
           want = d < w * 0.62 ? 1 : 0;
         }
         n.awake += (want - n.awake) * 0.1;
-        n.el.dataset.awake = n.awake > 0.5 ? '1' : '0';
+        // --awake (brightness/glow) always reflects the real value;
+        // only the TAG's own visibility is budgeted to 3 concurrent.
         n.el.style.setProperty('--awake', n.awake.toFixed(3));
+        const wantsTag = n.awake > 0.5 && !!n.s.tag;
+        const showTag = wantsTag && tagsShown < 3;
+        if (wantsTag && showTag) tagsShown++;
+        n.el.dataset.awake = showTag ? '1' : '0';
 
         // Every video specimen is a continuous animation, not a still
         // waiting to be woken -- was gated on n.awake > 0.4 (proximity/
@@ -1161,7 +1394,11 @@
         // someone found it, called out directly as looking static.
         // --awake above still drives brightness/glow (that reactivity
         // is real and stays); playback itself no longer depends on it.
-        if (n.video && !n.playing) {
+        // Gated on data-landing='field' too now, per direct spec
+        // ("autoplay tras dock") -- previously a specimen already
+        // geometrically on-screen at load could start decoding/playing
+        // during the hero, before anyone had actually docked.
+        if (n.video && !n.playing && document.body.dataset.landing === 'field') {
           n.video.play().catch(() => {});
           n.playing = true;
         }
@@ -1228,17 +1465,16 @@
 
         const depthFactor = 0.3 + slot.depth * 0.7;
         const baseX = wrap(slot.xn * WORLD_W - worldX * depthFactor, WORLD_W) - Math.min(520, W * 0.4);
-        // Quotes sit on dedicated vertical shelves specifically so they
-        // never overlap each other (see assignFragment's own comment on
-        // bandH) -- but scaling worldYoff by the same per-fragment
-        // depthFactor used for specimens' parallax meant two shelves
-        // drifted by a DIFFERENT amount depending on which fragment each
-        // had been assigned, since worldYoff's own swing (±0.16H) is
-        // nearly as large as the gap between shelves. Confirmed directly:
-        // two quotes' text rendered on top of each other mid-drift, well
-        // after both had spawned cleanly separated. A small, flat sway
-        // (not depth-scaled) keeps some ambient life without threatening
-        // the separation the shelves exist for.
+        // slot.y is a one-time snapshot of the live nerve curve taken at
+        // spawn (see assignFragment) -- but scaling worldYoff by the
+        // same per-fragment depthFactor used for specimens' parallax
+        // meant two chairs drifted by a DIFFERENT amount depending on
+        // which fragment each had been assigned, since worldYoff's own
+        // swing (±0.16H) is nearly as large as the gap between bands.
+        // Confirmed directly: two quotes' text rendered on top of each
+        // other mid-drift, well after both had spawned cleanly
+        // separated. A small, flat sway (not depth-scaled) keeps some
+        // ambient life without threatening that separation.
         const baseY = slot.y * H + worldYoff * 0.05;
 
         // Entry offset decays toward 0 each frame -- this is what makes
@@ -1288,44 +1524,67 @@
           const opacity = (0.5 + (1 - slot.depth) * 0.15 + (near ? 0.3 : 0)) * (1 - slot.entryAmt * 0.85);
           slot.el.style.opacity = String(Math.min(0.92, opacity));
 
-          if (slot.aloneTime >= DECAY_AFTER) {
+          // "El texto espera o se va" -- a live quote that overlaps a
+          // currently-shown specimen's real bounding box gets pushed
+          // toward early decay instead of sitting drawn across a fish's
+          // face. Accumulated (not instant) so a one-frame graze from a
+          // specimen drifting past doesn't trigger it; recovers if the
+          // overlap clears before it fires.
+          if (on) {
+            let colliding = false;
+            for (const r of visibleSpecRects) {
+              if (X < r.x + r.w && X + bw > r.x && Y < r.y + r.h && Y + bh > r.y) { colliding = true; break; }
+            }
+            slot.collideTime = colliding ? slot.collideTime + dt : Math.max(0, slot.collideTime - dt * 2);
+          }
+          const forcedByCollision = slot.collideTime >= 0.4;
+
+          // Reduced motion: no death at all, per direct spec -- a
+          // fragment just stays put, static, its own citation card
+          // already showing, rather than ever coming apart.
+          if (!reduced && (slot.aloneTime >= slot.decayAfter || forcedByCollision)) {
             slot.state = 'decaying'; slot.decayT = 0;
-            // Capture each letter's real on-screen position right now,
-            // before any decay transform is applied -- the fall target
-            // is the nerve's actual curve at THIS letter's x, not one
-            // shared point for the whole fragment, so letters land
-            // along the wire's shape rather than dropping to one spot.
-            slot.chars.forEach((c, i) => {
-              const r = c.getBoundingClientRect();
-              slot.parts[i] = {
-                vx: (Math.random() - 0.5) * 44,
-                vy: 6 + Math.random() * 18,
-                baseX: r.left + r.width / 2,
-                baseY: r.top,
+            const mode = DEATHS[slot.deathI % DEATHS.length];
+            slot.deathI += 1;
+            slot.physMode = mode;
+            slot.physT = 0;
+            slot.physLast = performance.now();
+            // Same formulas as Landing's own decay() -- each letter is a
+            // Verlet particle displaced by a transform relative to its
+            // own normal-flow position, not repositioned to an absolute
+            // screen coordinate, so this ports unchanged onto a <b> that
+            // already sits correctly inside its word span.
+            const origin = slot.chars.map((b) => b.getBoundingClientRect());
+            slot.phys = slot.chars.map((b, i) => {
+              b.getAnimations().forEach((a) => a.cancel());
+              const ang = (i / Math.max(slot.chars.length, 1)) * Math.PI * 2 + (Math.random() - 0.5) * 0.35;
+              const speed = mode === 'explode' ? 11 + Math.random() * 8 : 2.4 + Math.random() * 2;
+              let px = 0, py = 0;
+              if (mode === 'explode') {
+                px = -Math.cos(ang) * speed;
+                py = -Math.sin(ang) * speed;
+              }
+              const rest = origin[i + 1] ? origin[i + 1].left - origin[i].left : origin[i].width;
+              return {
+                el: b, x: 0, y: 0, px, py, rot: 0,
+                rotv: mode === 'explode' ? (Math.random() - 0.5) * 14 : (Math.random() - 0.5) * 0.4,
+                damp: mode === 'float' ? 0.965 : mode === 'fall' ? 0.996 : mode === 'explode' ? 0.986 : 0.978,
+                life: 1,
+                fade: mode === 'explode' ? 0.0055 : mode === 'fall' ? 0.0026 : mode === 'float' ? 0.0018 : 0.0022,
+                wake: mode === 'explode' ? 0.28 : mode === 'float' ? i * 0.12 : mode === 'corrode' ? i * 0.16 : mode === 'fall' ? i * 0.05 : 0,
+                scale: 1,
+                link: mode === 'corrode' && i < slot.chars.length - 1,
+                rest,
+                breakAt: 0.35 + i * 0.16,
               };
             });
-            slot.ref.style.transition = `opacity ${DECAY_TIME}s linear`;
+            slot.physRunning = true;
+            slot.ref.style.transition = 'opacity 0.6s linear';
             slot.ref.style.opacity = '0';
           }
         } else if (slot.state === 'decaying') {
-          slot.decayT += dt;
-          const prog = Math.min(1, slot.decayT / DECAY_TIME);
           slot.el.style.opacity = '1';
-          slot.chars.forEach((c, i) => {
-            const p = slot.parts[i];
-            const targetY = chainYAt(p.baseX) - p.baseY;
-            const x = p.vx * slot.decayT * 0.5;
-            const y = p.vy * slot.decayT * 0.7 + targetY * Math.min(1, slot.decayT / 3.5);
-            c.style.transform = `translate(${x}px, ${y}px) rotate(${p.vx * Math.min(1, prog * 1.3)}deg)`;
-            c.style.opacity = String(Math.max(0, 1 - prog));
-            // The letters turn gold as they come apart -- Eduardo's
-            // "small gold particles" image, made literal.
-            c.style.color = prog > 0.15 ? 'var(--gold)' : '';
-          });
-          if (slot.decayT >= DECAY_TIME) {
-            slot.state = 'dead';
-            slot.respawnDelay = 1 + Math.random() * 2.5;
-          }
+          stepPhysFor(slot, performance.now());
         } else {
           // dead -- waiting to respawn as a different fragment
           slot.el.style.opacity = '0';
