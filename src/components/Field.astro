@@ -634,6 +634,15 @@
     if (!root || !world || !canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    // Landing's own persistent chrome -- specifically the "Continue"
+    // cue, which CLAUDE.md/direct feedback keeps visible (at reduced
+    // opacity) even once docked, not just during the hero. Fragments
+    // had zero awareness of it: nothing stopped a quote from spawning
+    // or drifting right through it. Queried once here (its own layout
+    // barely moves -- flex-end pinned within a 100svh section) and
+    // refreshed each frame in frame() itself, same pattern as every
+    // other collision rect below.
+    const cueEl = document.getElementById('cue');
 
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     // Almost everything in the field -- specimens waking, fragments
@@ -926,6 +935,13 @@
         // and its network fetch begins. See the lazy-mount block in
         // the per-frame specimen loop.
         mounted: false,
+        // wasOn/fadeOutUntil: tracks the CSS fade-out grace window so
+        // a specimen dropping out of ROLE_BUDGET stays a real collision
+        // obstacle for as long as it's still visibly fading, not just
+        // while it holds a budget slot. See the visuallyPresent note
+        // in the per-frame specimen loop.
+        wasOn: false,
+        fadeOutUntil: 0,
         // Throttles retrying .play() on a video that's still paused --
         // was a fire-once flag (set to true right after calling .play(),
         // regardless of whether that promise resolved or rejected), so
@@ -1277,6 +1293,10 @@
           if (r.width < 10) continue;
           if (x < r.right + pad && x + bw > r.left - pad && y < r.bottom + pad && y + bh > r.top - pad) return true;
         }
+        if (cueEl) {
+          const r = cueEl.getBoundingClientRect();
+          if (r.width >= 10 && x < r.right + pad && x + bw > r.left - pad && y < r.bottom + pad && y + bh > r.top - pad) return true;
+        }
         return false;
       }
       // Leaves room on the right for the quote block's own width (up to
@@ -1436,6 +1456,10 @@
     function frame() {
       const dt = reduced ? 0 : 1 / 60;
       t += dt;
+      // Read once per frame, reused by both the specimen-tag-style
+      // spawn check and the runtime forced-decay check below -- same
+      // rect either way, no reason to force the layout read twice.
+      const cueRect = cueEl ? cueEl.getBoundingClientRect() : null;
 
       if (!drag) targetX += reduced ? 0 : 0.34;
       worldX += (targetX - worldX) * 0.06;
@@ -1678,6 +1702,24 @@
       for (const c of candidates) {
         const { n, w, X, Y, sx, sy, anchorX, nerveYHere, dofT, blurPx } = c;
         const on = shown.has(n);
+        // The CSS fade (see .spec[data-shown='0'], 1.1s opacity
+        // transition) means a specimen dropping out of ROLE_BUDGET
+        // stays visibly on screen for another second-plus after `on`
+        // itself flips false. Before that fade existed, on/hidden was
+        // instant, so gating the collision-rect push and video pause
+        // below on raw `on` was harmless -- there was nothing left to
+        // collide with the same frame it vanished. Now there is: a
+        // fragment could spawn or drift onto a specimen that's still
+        // clearly visible mid-fade, with nothing stopping it because
+        // that specimen had already dropped out of visibleSpecRects.
+        // Reported directly: a quote sitting right on top of piglet
+        // while piglet still looked fully present. fadeOutUntil keeps
+        // it a real obstacle (and keeps its position/tag/flare
+        // updating, not frozen) for exactly as long as the CSS fade
+        // itself takes.
+        if (n.wasOn && !on) n.fadeOutUntil = t + 1.15;
+        n.wasOn = on;
+        const visuallyPresent = on || t < n.fadeOutUntil;
         n.el.dataset.shown = on ? '1' : '0';
 
         // Lazy mount: assign the real src (and poster) only now, the
@@ -1711,12 +1753,15 @@
           : (2.6 - n.flareT) / 0.8;
         n.el.style.setProperty('--flare', flareEnv.toFixed(3));
 
-        // Pause only when actually off-screen or over budget, purely to
-        // save decode work on something nobody can see -- never as a
-        // reaction to proximity/hover. Every specimen video is meant to
-        // be a continuous, unprompted animation, not something that
-        // starts moving only once someone finds it.
-        if (!on) {
+        // Pause only once the fade-out has actually finished, purely
+        // to save decode work on something nobody can see any more --
+        // never as a reaction to proximity/hover, and not the instant
+        // it loses its budget slot (see visuallyPresent above: it's
+        // still on screen, fading, for another ~1.1s after that).
+        // Every specimen video is meant to be a continuous, unprompted
+        // animation, not something that starts moving only once
+        // someone finds it, or freezes mid-fade on its way out.
+        if (!visuallyPresent) {
           if (n.video && n.playing) { n.video.pause(); n.playing = false; }
           continue;
         }
@@ -1988,6 +2033,12 @@
                 if (r.slot === slot) continue;
                 if (X < r.x + r.w && X + bw > r.x && Y < r.y + r.h && Y + bh > r.y) { colliding = true; break; }
               }
+            }
+            // Landing's "Continue" cue -- fixed chrome, not part of
+            // specNodes/fragSlots, so it needs its own check. Reported
+            // directly: a citation line sitting right through it.
+            if (!colliding && cueRect && cueRect.width >= 10) {
+              if (X < cueRect.right && X + bw > cueRect.left && Y < cueRect.bottom && Y + bh > cueRect.top) colliding = true;
             }
             slot.collideTime = colliding ? slot.collideTime + dt : Math.max(0, slot.collideTime - dt * 2);
           }
