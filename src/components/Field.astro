@@ -242,8 +242,20 @@
      same visual result, without touching pixels. Mask-image, not
      mix-blend-mode: the design system specifically rules out blend
      modes on specimen images (stacking contexts trap the blend); a
-     mask has no such restriction. */
-  .spec[data-vignette='1'] img {
+     mask has no such restriction.
+
+     Extended to video, not just img: brain.webm genuinely does carry
+     a real alpha channel (verified the same way as every other cutout
+     asset -- decoded via canvas.drawImage/getImageData in a real
+     browser, corners read [0,0,0,0]) but a plain <video> tag only
+     composites WebM/VP9 alpha in Chromium-family browsers. Safari and
+     Firefox ignore it and play the opaque color planes underneath,
+     which is exactly the solid rectangle reported on an iPhone. The
+     mask works identically everywhere since it doesn't depend on the
+     browser's own alpha support at all -- it fades the rendered
+     rectangle's edges regardless of what's under them. */
+  .spec[data-vignette='1'] img,
+  .spec[data-vignette='1'] video {
     -webkit-mask-image: radial-gradient(ellipse 60% 60% at 50% 48%, black 58%, transparent 100%);
     mask-image: radial-gradient(ellipse 60% 60% at 50% 48%, black 58%, transparent 100%);
   }
@@ -502,14 +514,22 @@
 
   const SPECIMENS: Specimen[] = [
     { img: '/specimens/chimp.png', w: 460, d: 1.0, tag: 'No.04 · PROXIMITY · CHIMP', vignette: true, cutout: true, band: 'alta', scale: 'dominant' },
-    // Replaced the static PNG with a looping animation Eduardo sent --
-    // genuinely alpha-cut this time (verified the same way as the
-    // others: canvas pixel sampling and a real <video> tag against
-    // both red and true-black test backgrounds), so vignette is
-    // dropped -- the old PNG's soft dark edge needed that mask, this
-    // one blends into true black cleanly on its own.
-    { vid: '/specimens/octopus.webm', w: 640, d: 0.97, tag: 'No.02 · GOVERNANCE · OCTOPUS', cutout: true, band: 'alta', scale: 'dominant' },
-    { vid: '/specimens/jellyfish.webm', w: 560, d: 0.66, tag: 'No.03 · TRUST · JELLYFISH', cutout: true, band: 'alta', scale: 'mesa' },
+    // Every webm below was confirmed genuinely alpha-cut by decoding a
+    // real frame via canvas + getImageData in a browser -- but that
+    // canvas test only ever ran in this sandbox's Chromium, and WebM/
+    // VP9 alpha compositing in a plain <video> tag is a Chromium-family
+    // feature. Safari (and Firefox) don't composite that channel at
+    // all -- they play the opaque color planes underneath, which is a
+    // solid rectangle regardless of how clean the file's own alpha is.
+    // Confirmed directly: brain.webm read alpha 0 at every corner in
+    // this sandbox, yet showed as a hard box on a real iPhone. vignette
+    // (a CSS radial mask, browser-alpha-support-independent) was
+    // previously dropped here on the assumption octopus "blends into
+    // true black cleanly on its own" -- that assumption predates this
+    // finding and wasn't Safari-tested either, so vignette goes back on
+    // every cutout video, not just the one that got caught.
+    { vid: '/specimens/octopus.webm', w: 640, d: 0.97, tag: 'No.02 · GOVERNANCE · OCTOPUS', vignette: true, cutout: true, band: 'alta', scale: 'dominant' },
+    { vid: '/specimens/jellyfish.webm', w: 560, d: 0.66, tag: 'No.03 · TRUST · JELLYFISH', vignette: true, cutout: true, band: 'alta', scale: 'mesa' },
     { vid: '/specimens/goldfish.mp4', poster: '/specimens/goldfish.png', w: 400, d: 0.94, tag: 'No.01 · MEMORY · GOLDFISH', boost: 1.2, band: 'nervio', scale: 'mesa' },
     // Real alpha now -- piglet.webm (VP9 + alpha, 512x512, no audio),
     // sent to replace the old opaque piglet.mp4 that couldn't carry
@@ -528,15 +548,15 @@
     // dominant starts at 48vw), so a bigger multiplier would have
     // pushed piglet into reading as large as a dominant specimen,
     // undermining the tier distinction the budget/hierarchy depends on.
-    { vid: '/specimens/piglet.webm', poster: '/specimens/piglet-poster.png', w: 300, d: 0.74, tag: 'No.05 · MEANING · PIGLET', band: 'baja', scale: 'mesa', witness: true, cutout: true, sizeMul: 1.2 },
+    { vid: '/specimens/piglet.webm', poster: '/specimens/piglet-poster.png', w: 300, d: 0.74, tag: 'No.05 · MEANING · PIGLET', vignette: true, band: 'baja', scale: 'mesa', witness: true, cutout: true, sizeMul: 1.2 },
     { img: '/specimens/eyefish.png', w: 260, d: 0.58, boost: 1.15, band: 'nervio', scale: 'perdido' },
     { vid: '/specimens/seaweed.mp4', w: 300, d: 0.5, band: 'baja', scale: 'mesa' },
     // Both genuinely alpha-cut (verified same as the others: canvas
     // pixel sampling and a real <video> tag against a red test
     // background), appended rather than reordered so they don't shift
     // the octopus/chimp's tuned load-time positions.
-    { vid: '/specimens/brain.webm', w: 480, d: 0.9, tag: 'No.06 · CURIOSITY · BRAIN', cutout: true, band: 'baja', scale: 'mesa' },
-    { vid: '/specimens/bluefish.webm', w: 420, d: 0.62, tag: 'No.07 · GOVERNANCE · BLUE FISH', cutout: true, band: 'baja', scale: 'mesa' },
+    { vid: '/specimens/brain.webm', w: 480, d: 0.9, tag: 'No.06 · CURIOSITY · BRAIN', vignette: true, cutout: true, band: 'baja', scale: 'mesa' },
+    { vid: '/specimens/bluefish.webm', w: 420, d: 0.62, tag: 'No.07 · GOVERNANCE · BLUE FISH', vignette: true, cutout: true, band: 'baja', scale: 'mesa' },
     // Second jellyfish -- was a still, now a looping animation Eduardo
     // sent, genuinely alpha-cut (verified against both red and true-
     // black test backgrounds, same as the octopus above), so cutout:
@@ -544,7 +564,7 @@
     // (pulse: true) on top of that -- the two are independent, so it
     // both swims in its own loop and breathes in and out at the same
     // time.
-    { vid: '/specimens/jellyfish2.webm', w: 460, d: 0.42, tag: 'No.08 · TRUST · JELLYFISH', pulse: true, cutout: true, band: 'alta', scale: 'mesa' },
+    { vid: '/specimens/jellyfish2.webm', w: 460, d: 0.42, tag: 'No.08 · TRUST · JELLYFISH', pulse: true, vignette: true, cutout: true, band: 'alta', scale: 'mesa' },
     // Second goldfish -- Eduardo sent a new render, genuinely alpha-cut
     // this time (verified directly: sampled the decoded video frame's
     // own alpha channel in a real browser, not just the file's
@@ -553,7 +573,7 @@
     // same thread (MEMORY), a new catalog number. "Casi perdido" tier
     // per direct feedback -- small and easy to miss on purpose, paired
     // with eyefish rather than competing with the original goldfish.
-    { vid: '/specimens/goldfish2.webm', w: 520, d: 0.78, tag: 'No.09 · MEMORY · GOLDFISH', cutout: true, band: 'nervio', scale: 'perdido' },
+    { vid: '/specimens/goldfish2.webm', w: 520, d: 0.78, tag: 'No.09 · MEMORY · GOLDFISH', vignette: true, cutout: true, band: 'nervio', scale: 'perdido' },
   ];
 
   // Third element is the real route slug, per CLAUDE.md's own repo
