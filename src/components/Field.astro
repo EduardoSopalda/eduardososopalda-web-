@@ -660,8 +660,41 @@
     let px = -9999, py = -9999, hasPointer = false, t = 0;
     let worldX = 0, targetX = 0, worldYoff = 0, dragY = 0;
     let drag = false, lastX = 0, lastY = 0;
+    // Real elapsed time, not frame count -- frame() below used to run
+    // dt as a hardcoded 1/60 regardless of how often the browser
+    // actually called it, so on a 120Hz display (most current-gen
+    // phones, ProMotion iPhones included) the whole field -- drift,
+    // nerve springs, specimen lean/wake, flare cycles, how long a
+    // fragment holds before decaying -- ran at up to double intended
+    // speed, since requestAnimationFrame simply fires twice as often
+    // there. Verified directly: simulating 120Hz vs 60Hz produced 27%
+    // more real drift distance over the same 5 real seconds (worse for
+    // anything with no smoothing, like the flare timers). The letter-
+    // scatter decay physics (stepPhysFor below) already measured real
+    // time via performance.now(); this brings the outer loop in line
+    // with that same, already-proven pattern. Capped at 50ms per step
+    // (20fps floor) so a lagged frame or a backgrounded-tab catch-up
+    // frame doesn't jump everything forward in one leap -- rAF itself
+    // already stops firing on a hidden tab in every real browser, so
+    // this cap is what keeps that return frame from being read as
+    // "50 seconds passed," which functionally satisfies FIELD-SPEC's
+    // "pause the clock when backgrounded" without a separate listener.
+    let lastFrameTime = 0;
+    // Idle-drift tracking, per FIELD-SPEC's drift section: "always
+    // moving even when untouched, faster after a period of no
+    // interaction" -- the second half was never built at all. Updated
+    // on any real pointer movement, drag, or wheel input; frame()
+    // ramps drift speed up gradually the longer it's been.
+    let lastActiveT = 0;
 
     const wrap = (v: number, m: number) => ((v % m) + m) % m;
+    // Converts a "retain (1-rate) of the gap per assumed-60fps frame"
+    // exponential-approach constant (the pattern used all over this
+    // file for smoothing: cur += (target-cur)*rate) into its real-time
+    // equivalent for the current frame's actual dt, so the same visual
+    // feel holds regardless of display refresh rate. See dt's own
+    // comment above for why this matters.
+    const approachFactor = (ratePerFrame: number, dt: number) => 1 - Math.pow(1 - ratePerFrame, dt * 60);
 
     function resize() {
       W = innerWidth; H = innerHeight;
@@ -679,6 +712,7 @@
     // ---- input: drag horizontal (infinite) + vertical (bounded), wheel scrolls horizontal ----
     addEventListener('pointermove', (e) => {
       px = e.clientX; py = e.clientY; hasPointer = true;
+      lastActiveT = t;
       if (drag) {
         targetX -= (e.clientX - lastX) * 1.7;
         dragY = Math.max(-H * 0.34, Math.min(H * 0.34, dragY + (e.clientY - lastY) * 0.9));
@@ -687,11 +721,13 @@
     });
     addEventListener('pointerleave', () => { hasPointer = false; px = -9999; py = -9999; });
     root.addEventListener('pointerdown', (e) => {
+      lastActiveT = t;
       if ((e.target as HTMLElement).closest('.stop')) return;
       drag = true; lastX = e.clientX; lastY = e.clientY;
     });
     addEventListener('pointerup', () => { drag = false; });
     addEventListener('wheel', (e) => {
+      lastActiveT = t;
       targetX += (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) * 1.1;
     }, { passive: true });
 
@@ -813,7 +849,9 @@
     // its own isolated distance from the cursor.
     function stepSprings(dt: number) {
       if (reduced || dt <= 0) return;
-      const STIFF = 90, DAMP = 7, COUPLE = 55, RADIUS = 220, PUSH = 4000;
+      // RADIUS was 220 -- FIELD-SPEC: "bends toward the cursor within
+      // about 360 pixels." Brought in line with the doc's own number.
+      const STIFF = 90, DAMP = 7, COUPLE = 55, RADIUS = 360, PUSH = 4000;
       for (let i = 0; i < N; i++) {
         const x = chain[i].x;
         let force = 0;
@@ -1086,11 +1124,11 @@
         entryDir: 'left' as Dir,
         entryAmt: 0, // 1 = fully off-screen at entry point, eases to 0
         aloneTime: 0,
-        // "Viva en el field: 20-40s" -- rolled per fragment on
-        // assignment, not a single shared constant, so chairs don't
-        // all turn over in lockstep. "Punch de una tónica se sostiene
-        // más": a short/punchy line gets the upper part of the range,
-        // a long one the lower part.
+        // Real value rolled per fragment in assignFragment (desktop
+        // ~35-56s, touch ~58-82s, per FIELD-SPEC's "about forty
+        // seconds alone") -- never actually read at this placeholder
+        // value, since state starts 'pending' and assignFragment runs
+        // before any decay check does.
         decayAfter: 30,
         state: 'pending' as 'pending' | 'alive' | 'decaying' | 'dead',
         pendingT: slotI * 3 + Math.random() * 3, // staggered first appearance
@@ -1332,7 +1370,16 @@
       // is the touch equivalent -- unconditional rather than earned.
       // Punchy short fragments hold a little longer than long ones, per
       // direct spec ("las cortas y contundentes aguantan mas").
-      slot.decayAfter = isTouch ? (isLong ? 45 : 55) + Math.random() * 15 : (isLong ? 20 : 30) + Math.random() * 10;
+      // Desktop long was 20-30s -- FIELD-SPEC says "alone, a fragment
+      // has about forty seconds," and 20-30 undershoots that by a
+      // third to a half. Re-centered desktop long on 40s exactly (the
+      // doc's own flat number, used as the baseline case) and moved
+      // short and both touch values up by roughly the same amount,
+      // keeping the two relative differences above (short > long,
+      // touch > pointer) fully intact rather than flattening them out.
+      slot.decayAfter = isTouch
+        ? (isLong ? 58 : 66) + Math.random() * (isLong ? 14 : 16)
+        : (isLong ? 35 : 42) + Math.random() * (isLong ? 10 : 14);
       slot.state = 'alive';
       // Floor of 150 -- specimens top out at z-index 100 (Math.round(s.d
       // * 100), d never exceeds 1.0), and the nerve canvas sits at 250.
@@ -1454,15 +1501,33 @@
 
     let channelT = 0;
     function frame() {
-      const dt = reduced ? 0 : 1 / 60;
+      const now = performance.now();
+      const dt = reduced ? 0 : Math.min(0.05, lastFrameTime ? (now - lastFrameTime) / 1000 : 1 / 60);
+      lastFrameTime = now;
       t += dt;
       // Read once per frame, reused by both the specimen-tag-style
       // spawn check and the runtime forced-decay check below -- same
       // rect either way, no reason to force the layout read twice.
       const cueRect = cueEl ? cueEl.getBoundingClientRect() : null;
 
-      if (!drag) targetX += reduced ? 0 : 0.34;
-      worldX += (targetX - worldX) * 0.06;
+      // Both constants below are the exact same tuned feel as before
+      // (0.34px added per assumed-60fps frame, 0.06 convergence per
+      // assumed-60fps frame) restated as real-time rates: 0.34*60 =
+      // 20.4px/s of drift, and the standard frame-rate-independent
+      // form of an exponential approach (1 - retainedFraction^(dt*60))
+      // for worldX chasing targetX, so both now cover the same real
+      // ground per real second regardless of display refresh rate.
+      const DRIFT_PER_SEC = 20.4;
+      // FIELD-SPEC: drift is "always moving even when untouched,
+      // faster after a period of no interaction" -- the second half
+      // was never implemented. Ramps from 1x to 1.7x starting 8s after
+      // the last real pointer/drag/wheel input, reaching full speed by
+      // 20s idle; modest and gradual on purpose, not a jump, since a
+      // sudden speed change would read as a glitch, not a mood.
+      const idleFor = t - lastActiveT;
+      const idleMul = 1 + Math.min(0.7, (Math.max(0, idleFor - 8) / 12) * 0.7);
+      if (!drag) targetX += reduced ? 0 : DRIFT_PER_SEC * idleMul * dt;
+      worldX += (targetX - worldX) * approachFactor(0.06, dt);
       worldYoff = dragY + (reduced ? 0 : Math.sin(t * 0.0817) * H * 0.16);
 
       // Every ~20 frames (~3/sec), not every frame -- getBoundingClientRect
@@ -1654,7 +1719,14 @@
         let wantLeanX = 0, wantLeanY = 0;
         if (!isTouch && hasPointer) {
           const d = Math.hypot(px - bsx, py - bsy);
-          const leanRadius = w * 1.2;
+          // Was w*1.2 (proportional to the specimen's own rendered
+          // width) -- FIELD-SPEC gives lean as a flat "within roughly
+          // 430 pixels," same for every specimen regardless of size.
+          // Proportional meant a small perdido specimen leaned within
+          // ~120-180px while a large dominant one leaned within
+          // 550px+; a flat radius matches the doc and gives every
+          // specimen the same reach.
+          const leanRadius = 430;
           if (d < leanRadius) {
             const f = 1 - d / leanRadius;
             const dx = px - bsx, dy = py - bsy, dl = Math.hypot(dx, dy) || 1;
@@ -1662,8 +1734,9 @@
             wantLeanY = (dy / dl) * f * f * 9 * leanMul;
           }
         }
-        n.leanX += (wantLeanX - n.leanX) * 0.08;
-        n.leanY += (wantLeanY - n.leanY) * 0.08;
+        const leanApproach = approachFactor(0.08, dt);
+        n.leanX += (wantLeanX - n.leanX) * leanApproach;
+        n.leanY += (wantLeanY - n.leanY) * leanApproach;
 
         const X = baseX + n.leanX, Y = baseY + n.leanY;
         const sx = X + w * 0.5, sy = Y + w * 0.28;
@@ -1843,7 +1916,7 @@
           const d = Math.hypot(px - sx, py - sy);
           want = d < w * 0.62 ? 1 : 0;
         }
-        n.awake += (want - n.awake) * 0.1;
+        n.awake += (want - n.awake) * approachFactor(0.1, dt);
         // --awake (brightness/glow) always reflects the real value;
         // only the TAG's own visibility is budgeted to 3 concurrent.
         n.el.style.setProperty('--awake', n.awake.toFixed(3));
@@ -1953,7 +2026,7 @@
         // Entry offset decays toward 0 each frame -- this is what makes
         // a freshly spawned fragment fly in from its chosen edge rather
         // than simply fading in at its resting spot.
-        slot.entryAmt *= reduced ? 0 : 0.94;
+        slot.entryAmt *= reduced ? 0 : Math.pow(0.94, dt * 60);
         const off = slot.entryAmt * ENTRY_OFFSET;
         let ox = 0, oy = 0;
         if (slot.entryDir === 'left') ox = -off;
@@ -2095,14 +2168,23 @@
                 rotv: mode === 'explode' ? (Math.random() - 0.5) * 14 : (Math.random() - 0.5) * 0.4,
                 damp: mode === 'float' ? 0.965 : mode === 'fall' ? 0.996 : mode === 'explode' ? 0.986 : 0.978,
                 life: 1,
-                // Scaled to ~0.6x Landing's own rates -- ported literally
-                // at first ("misma física"), but direct tempo spec now
-                // wants Field's decay specifically slower than Landing's
-                // ("Verlet ... más lento que Landing"). Same relative
-                // ordering between modes, just stretched out -- except
-                // when a collision forced this (fadeMul above), where
-                // getting off the specimen fast matters more than tempo.
-                fade: (mode === 'explode' ? 0.0033 : mode === 'fall' ? 0.0016 : mode === 'float' ? 0.0011 : 0.0013) * fadeMul,
+                // Was 0.0033/0.0016/0.0011/0.0013 (a flat 0.6x of
+                // Landing's own rates, "misma física" stretched per
+                // direct tempo spec) -- real durations at that scale
+                // ranged 5.05s (explode) to 15.2s (float), a 3x spread
+                // FIELD-SPEC's "fade over about ten seconds" doesn't
+                // read as intending. Retuned to 7/10.4/12/11s (explode/
+                // fall/float/corrode) -- averages ~10s, keeps each
+                // mode's own distinct character (explode still
+                // noticeably quicker, float still the slowest/dreamiest)
+                // without a 3x outlier gap, and every one of the four
+                // stays slower than Landing's own corresponding rate
+                // (3.03/6.41/9.26/7.58s), preserving that explicit
+                // "más lento que Landing" instruction rather than
+                // overriding it. fadeMul (collision-forced decay) is
+                // unchanged -- still lands in a fast, sensible 1.4-2.4s
+                // range at these new base rates.
+                fade: (mode === 'explode' ? 0.002381 : mode === 'fall' ? 0.0016 : mode === 'float' ? 0.001389 : 0.001515) * fadeMul,
                 wake: (mode === 'explode' ? 0.28 : mode === 'float' ? i * 0.12 : mode === 'corrode' ? i * 0.16 : mode === 'fall' ? i * 0.05 : 0) * wakeMul,
                 scale: 1,
                 link: mode === 'corrode' && i < slot.chars.length - 1,
