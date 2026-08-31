@@ -171,6 +171,27 @@
     left: 0;
     line-height: 0;
     will-change: transform;
+    /* ROLE_BUDGET (see the per-frame specimen loop below) rotates
+       which specimens are actually shown -- was a straight
+       visibility:visible/hidden swap in JS, which is instant, no
+       transition possible on visibility alone. A specimen dropping
+       out of budget or off-screen popped out of existence outright,
+       reported directly as specimens "disappearing abruptly" --
+       exactly the kind of thing CLAUDE.md's "reader is calm" rules
+       out. opacity fades over 1.1s; visibility's own transition is
+       delayed to match, so it only actually leaves the accessibility/
+       interaction tree once the fade has finished, not before.
+       data-shown defaults to shown (no attribute set = the base rule
+       below applies) so a specimen's very first frame isn't a
+       fade-in from nothing. */
+    opacity: 1;
+    transition: opacity 1.1s var(--ease), visibility 0s linear 0s;
+  }
+
+  .spec[data-shown='0'] {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 1.1s var(--ease), visibility 0s linear 1.1s;
   }
 
   /* None of the source stills or videos are actually cut out — they're
@@ -244,29 +265,32 @@
      DESIGN-SYSTEM.md assumes true black under void-family specimens
      so the rectangle disappears with no cutting/alpha/mask; the newer
      octopus render has a soft dark vignette instead, which would
-     otherwise show as a faint edge against the page. No image-editing
-     tool is available in this environment to re-background the source
-     file, so this fades that one image's own edges to transparent
-     instead, letting the page's true black show through underneath —
-     same visual result, without touching pixels. Mask-image, not
-     mix-blend-mode: the design system specifically rules out blend
-     modes on specimen images (stacking contexts trap the blend); a
-     mask has no such restriction.
+     otherwise show as a faint edge against the page.
 
-     Extended to video, not just img: brain.webm genuinely does carry
-     a real alpha channel (verified the same way as every other cutout
-     asset -- decoded via canvas.drawImage/getImageData in a real
-     browser, corners read [0,0,0,0]) but a plain <video> tag only
-     composites WebM/VP9 alpha in Chromium-family browsers. Safari and
-     Firefox ignore it and play the opaque color planes underneath,
-     which is exactly the solid rectangle reported on an iPhone. The
-     mask works identically everywhere since it doesn't depend on the
-     browser's own alpha support at all -- it fades the rendered
-     rectangle's edges regardless of what's under them. */
-  .spec[data-vignette='1'] img,
-  .spec[data-vignette='1'] video {
-    -webkit-mask-image: radial-gradient(ellipse 60% 60% at 50% 48%, black 58%, transparent 100%);
-    mask-image: radial-gradient(ellipse 60% 60% at 50% 48%, black 58%, transparent 100%);
+     This used to be mask-image/-webkit-mask-image on the img/video
+     itself. Reported back: piglet (a video) was still showing its
+     hard rectangle after that shipped. CSS masking a live <video> is
+     a known-flaky combination in WebKit specifically -- video decode
+     composites on its own layer that doesn't reliably honor an
+     element-level mask the way a plain <img> does, and this sandbox
+     can only verify against Chromium, which masks video fine and so
+     never would have caught that gap.
+
+     Switched to a technique with no mask-API dependency at all: an
+     ordinary painted ::after overlay, sized to match .spec exactly,
+     with the SAME radial shape inverted -- transparent in the middle,
+     fading to --void at the edges. This doesn't touch the video's
+     alpha or compositing in any way; it just paints fake black over
+     the rectangle's corners, on top, like the vignette on a photo.
+     Plain `background`, not mask or blend-mode (the design system
+     rules out blend modes on specimens; a painted layer needs
+     neither). */
+  .spec[data-vignette='1']::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse 60% 60% at 50% 48%, transparent 58%, var(--void) 100%);
   }
 
   .spec-tag {
@@ -1654,7 +1678,7 @@
       for (const c of candidates) {
         const { n, w, X, Y, sx, sy, anchorX, nerveYHere, dofT, blurPx } = c;
         const on = shown.has(n);
-        n.el.style.visibility = on ? 'visible' : 'hidden';
+        n.el.dataset.shown = on ? '1' : '0';
 
         // Lazy mount: assign the real src (and poster) only now, the
         // first time this specimen is actually shown -- see the note
