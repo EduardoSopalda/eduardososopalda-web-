@@ -71,6 +71,15 @@
     overflow: hidden;
     background: var(--void);
     cursor: grab;
+    /* Drag is handled entirely via pointerdown/pointermove/pointerup
+       in the script below (targetX/dragY) -- without this, a touch
+       drag is also the browser's own native pan/scroll gesture, and
+       nothing here ever told it to back off. Both fired at once: the
+       nerve tries to follow the drag while the page also scrolls
+       underneath it, which reads as "the screen moves, not the
+       nerve." touch-action: none hands the whole gesture to the
+       pointer handlers exclusively. */
+    touch-action: none;
   }
 
   .field:active {
