@@ -1,5 +1,5 @@
 ---
-title:    AI Governance: The Silent Framework That Is Already Changing the Rules of the Game
+title:    'AI Governance: The Silent Framework That Is Already Changing the Rules of the Game'
 date:     2025-12-20
 kind:     article
 threads:  [GOVERNANCE, TRUST]
@@ -7,7 +7,7 @@ dek:
 image:
 family:   void
 people:   []
-question: So maybe the big question isn’t whether regulation will slow innovation. Maybe the real question is: will governance finally help more AI projects actually cross the bridge into reality and stay there?
+question: 'So maybe the big question isn’t whether regulation will slow innovation. Maybe the real question is: will governance finally help more AI projects actually cross the bridge into reality and stay there?'
 ---
 
 A few weeks ago, a colleague from the U.S. asked me half curious, half horrified, like someone watching a slow-motion compliance documentary, how on earth it was possible to work with AI in Europe “under such restrictive rules”. She genuinely looked concerned. If she’d had pearls, she would have clutched them. For a moment I could almost hear the echo of legal terms bouncing off invisible walls.

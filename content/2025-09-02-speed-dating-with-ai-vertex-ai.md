@@ -1,5 +1,5 @@
 ---
-title:    Speed Dating with AI: Vertex AI
+title:    'Speed Dating with AI: Vertex AI'
 date:     2025-09-02
 kind:     experiment
 threads:  [CURIOSITY, MEMORY]

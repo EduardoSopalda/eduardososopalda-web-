@@ -1,5 +1,5 @@
 ---
-title:    Crisis Management 101: The Morning Everything Went Wrong (and I Survived)
+title:    'Crisis Management 101: The Morning Everything Went Wrong (and I Survived)'
 date:     2025-05-19
 kind:     note
 threads:  [MEMORY]

@@ -1,5 +1,5 @@
 ---
-title:    Speed Dating with AI: ChatGPT
+title:    'Speed Dating with AI: ChatGPT'
 date:     2025-09-24
 kind:     experiment
 threads:  [CURIOSITY, MEMORY]

@@ -1,5 +1,5 @@
 ---
-title:    "Can I Call You Uncle Too?" On unexpected mentors, timeless advice, and the art of never stopping learning
+title:    '"Can I Call You Uncle Too?" On unexpected mentors, timeless advice, and the art of never stopping learning'
 date:     2025-05-16
 kind:     article
 threads:  [PROXIMITY]

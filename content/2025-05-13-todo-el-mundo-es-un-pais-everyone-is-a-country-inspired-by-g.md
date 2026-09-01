@@ -1,9 +1,9 @@
 ---
-title:    "TODO EL MUNDO ES UN PAÍS" Everyone is a country… Inspired by Goya’s silent truths
+title:    '"TODO EL MUNDO ES UN PAÍS" Everyone is a country… Inspired by Goya’s silent truths'
 date:     2025-05-13
 kind:     note
 threads:  [PROXIMITY]
-dek:      "The witch, the stranger, the colleague"...
+dek:      '"The witch, the stranger, the colleague"...'
 image:
 family:   void
 people:   []

@@ -1,5 +1,5 @@
 ---
-title:    Strada Maestra: Lessons from an Italian Curve
+title:    'Strada Maestra: Lessons from an Italian Curve'
 date:     2025-06-11
 kind:     article
 threads:  [MEANING]

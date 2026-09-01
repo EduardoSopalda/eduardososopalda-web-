@@ -1,5 +1,5 @@
 ---
-title:    Speed Dating with AI: Shopping Around
+title:    'Speed Dating with AI: Shopping Around'
 date:     2025-08-24
 kind:     experiment
 threads:  [CURIOSITY, PROXIMITY]

@@ -1,5 +1,5 @@
 ---
-title:    Speed Dating with AI: Perplexity – The Footnote Prince
+title:    'Speed Dating with AI: Perplexity – The Footnote Prince'
 date:     2025-09-30
 kind:     experiment
 threads:  [CURIOSITY, TRUST]
