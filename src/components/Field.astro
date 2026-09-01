@@ -1732,7 +1732,6 @@
         // the diorama note. Speed itself was already depth-scaled via
         // worldX * n.s.d below; unchanged.
         const dofT = Math.max(0, Math.min(1, (n.s.d - 0.42) / (1.0 - 0.42)));
-        const blurPx = tier === 'perdido' ? 1.1 : (1 - dofT) * 2;
         // Size by role, per direct spec's own table -- a viewport-width
         // fraction, not the specimen's own natural pixel width times a
         // multiplier. dofT still gives some variety within a role
@@ -1746,6 +1745,22 @@
         // bump (see Specimen.sizeMul) scales the whole result rather
         // than getting clamped away by the floor it's meant to clear.
         if (n.s.sizeMul) w *= n.s.sizeMul;
+        // Was a flat px value (perdido: 1.1, others: (1-dofT)*2) --
+        // reported directly: "on mobile they look blurry" while
+        // desktop looked fine, same asset either way. Root cause
+        // wasn't resolution (confirmed: a raw extracted frame of the
+        // same source file looked sharp) -- it's that mobile's own
+        // SCALE_VW range renders every specimen at roughly half
+        // desktop's pixel width (a bigger % of a much narrower
+        // viewport), so a FIXED blur radius reads as a proportionally
+        // much heavier soft-focus there. Scaling blur by the
+        // specimen's own just-computed w keeps the relative softness
+        // the same at every breakpoint instead of the absolute one --
+        // constants chosen so desktop's own look is unchanged (mesa at
+        // its typical ~300px desktop width still lands near the old
+        // 2px ceiling) while mobile's smaller render gets proportionally
+        // less blur, not the same amount over a smaller image.
+        const blurPx = tier === 'perdido' ? w * 0.0055 : (1 - dofT) * w * 0.0067;
 
         const baseX = wrap(n.xn * WORLD_W - worldX * n.s.d, WORLD_W) - Math.min(520, W * 0.4);
         const anchorX = baseX + w * 0.5;
