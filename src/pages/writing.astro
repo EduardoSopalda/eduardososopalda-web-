@@ -1,17 +1,17 @@
 ---
 // Plain reverse-chronological archive, per docs/BUILD-ORDER.md step 3 & 7:
-// "Writing first, since it has content." No invented copy -- every title,
-// date, kind and thread below is read straight from content/_index.json,
-// the same file src/data/articleIndex.ts derives its catalogue numbers
-// from. This is the list view only; /writing/[slug] (the actual reader)
-// is a separate, larger build (spine, callouts, question block) that
-// needs the Astro content collection wired up first.
+// "Writing first, since it has content." No invented copy -- every
+// title, date, kind and thread below comes straight from the real
+// content collection (src/content/config.ts, reading content/ itself),
+// the same source /writing/[slug] renders from -- one source of truth,
+// not the earlier hand-parsed content/_index.json snapshot.
 import '../styles/global.css';
-import articles from '../../content/_index.json';
+import { getCollection } from 'astro:content';
 import { catalogNoForTitle } from '../data/articleIndex';
 
-const bySource = articles
-  .map((a) => ({ ...a, no: catalogNoForTitle(a.title) }))
+const entries = await getCollection('articles');
+const bySource = entries
+  .map((e) => ({ ...e.data, id: e.id, no: catalogNoForTitle(e.data.title) }))
   .sort((a, b) => (a.date < b.date ? 1 : -1));
 ---
 
@@ -29,20 +29,16 @@ const bySource = articles
       <ol class="list">
         {bySource.map((a) => (
           <li>
-            <a class="row" href={`#${a.file.replace(/\.md$/, '')}`}>
+            <a class="row" href={`/writing/${a.id}`}>
               <span class="no">{a.no ? `No.${String(a.no).padStart(2, '0')}` : ''}</span>
               <span class="title">{a.title}</span>
               <span class="meta">
-                {a.date.slice(0, 4)} · {a.kind} · {a.threads.join(', ')}
+                {a.date.getFullYear()} · {a.kind} · {a.threads.join(', ')}
               </span>
             </a>
           </li>
         ))}
       </ol>
-      <p class="todo">
-        TODO (Eduardo): each row links nowhere yet -- the reader
-        (<code>/writing/[slug]</code>) is not built. See docs/BUILD-ORDER.md.
-      </p>
     </main>
   </body>
 </html>
@@ -123,13 +119,4 @@ const bySource = articles
     color: rgba(243, 235, 224, 0.4);
   }
 
-  .todo {
-    margin-top: 3rem;
-    font-size: 0.7rem;
-    color: rgba(243, 235, 224, 0.35);
-  }
-
-  .todo code {
-    font-family: inherit;
-  }
 </style>

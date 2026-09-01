@@ -1,0 +1,436 @@
+---
+// The reader, per docs/FIELD-SPEC.md's "Room to reader" section and
+// docs/CONTENT-FORMAT.md: one column, the nerve becomes a vertical
+// spine with subhead beads, a standalone short paragraph is a callout,
+// the front-matter question is the closing contact mechanism (no
+// form), people are named because Eduardo named them, not extracted.
+//
+// CLAUDE.md non-negotiable 7: this must work with JavaScript off. Every
+// block below renders as complete, readable HTML/CSS with no script at
+// all -- the <script> tag at the bottom only adds the spine's
+// scroll-fill and the callouts' dim-until-reached state. Without it,
+// callouts are simply lit from the start and the spine is a plain
+// static line: a harmless, still-readable degrade, not a broken page.
+import '../../styles/global.css';
+// opsz.css, not the default index.css/wght.css -- per CLAUDE.md "honour
+// the optical size axis" (same reasoning as fraunces.css): index.css's
+// files lock opsz at a fixed instance, opsz.css keeps the full opsz
+// range in the variable font so the browser's own optical-size
+// interpolation (font-optical-sizing: auto, the default) can act on it
+// as text scales, same as Fraunces elsewhere on this site.
+import '@fontsource-variable/newsreader/opsz.css';
+import '@fontsource-variable/newsreader/opsz-italic.css';
+import { getCollection, type CollectionEntry } from 'astro:content';
+import { parseArticleBody, headingsOf } from '../../lib/parseArticleBody';
+import { catalogNoForTitle } from '../../data/articleIndex';
+
+export async function getStaticPaths() {
+  const entries = await getCollection('articles');
+  return entries.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+interface Props {
+  entry: CollectionEntry<'articles'>;
+}
+
+const { entry } = Astro.props;
+const { title, date, kind, threads, dek, family, people, question } = entry.data;
+const blocks = parseArticleBody(entry.body ?? '');
+const beads = headingsOf(blocks);
+const catalogNo = catalogNoForTitle(title);
+const year = date.getFullYear();
+const dateLabel = date.toLocaleDateString('en-GB', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} — EDUARDO sopalda</title>
+    {dek && <meta name="description" content={dek} />}
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body data-family={family}>
+    <p class="back"><a href="/writing">All writing</a></p>
+
+    <header class="plate" id="plate">
+      <p class="kicker">
+        {catalogNo ? `No.${String(catalogNo).padStart(2, '0')} · ` : ''}{year} · {kind}
+      </p>
+      <h1>{title}</h1>
+      {dek && <p class="dek">{dek}</p>}
+      <p class="threads">
+        {threads.map((t) => <span class="thread">{t}</span>)}
+      </p>
+    </header>
+
+    <div class="reader">
+      <nav class="rail" aria-label="Sections in this article">
+        <ol>
+          {beads.map((b) => (
+            <li><a href={`#${b.id}`}>{b.text}</a></li>
+          ))}
+        </ol>
+      </nav>
+
+      <div class="spine" aria-hidden="true" id="spine">
+        <div class="spine-fill" id="spine-fill"></div>
+        {beads.map((b) => (
+          <span class="bead" data-target={b.id}></span>
+        ))}
+      </div>
+
+      <article class="body">
+        {blocks.map((block) => {
+          if (block.type === 'heading') {
+            return <h2 id={block.id}>{block.text}</h2>;
+          }
+          if (block.type === 'callout') {
+            return (
+              <p class="callout" set:html={block.html} />
+            );
+          }
+          if (block.type === 'list') {
+            return (
+              <ul>
+                {block.items.map((item) => <li set:html={item} />)}
+              </ul>
+            );
+          }
+          return <p set:html={block.html} />;
+        })}
+
+        {people.length > 0 && (
+          <p class="people">
+            People in this piece: {people.join(', ')}
+          </p>
+        )}
+
+        {question && (
+          <footer class="question">
+            <p>{question}</p>
+          </footer>
+        )}
+      </article>
+    </div>
+
+    <script>
+      const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // Callouts: dim until reached, then lit. Base CSS already renders
+      // them fully readable with no script at all -- this only adds the
+      // reveal-on-scroll behavior on top of that readable default.
+      const callouts = document.querySelectorAll<HTMLElement>('.callout');
+      if (!reduced && callouts.length) {
+        callouts.forEach((el) => el.classList.add('dim'));
+        const io = new IntersectionObserver(
+          (entries) => {
+            for (const e of entries) {
+              if (e.isIntersecting) {
+                e.target.classList.add('lit');
+                e.target.classList.remove('dim');
+                io.unobserve(e.target);
+              }
+            }
+          },
+          { rootMargin: '0px 0px -20% 0px' }
+        );
+        callouts.forEach((el) => io.observe(el));
+      }
+
+      // Spine: fills as you read, beads light up as their heading
+      // passes. Purely decorative -- the rail above already gives real
+      // keyboard/JS-off navigation to the same headings.
+      const spineFill = document.getElementById('spine-fill');
+      const spine = document.getElementById('spine');
+      const article = document.querySelector('.body');
+      const beadEls = document.querySelectorAll<HTMLElement>('.bead');
+      const headingEls = Array.from(document.querySelectorAll<HTMLElement>('.body h2'));
+
+      if (!reduced && spineFill && spine && article) {
+        const updateSpine = () => {
+          const rect = article.getBoundingClientRect();
+          const total = rect.height - window.innerHeight * 0.5;
+          const passed = Math.min(Math.max(-rect.top, 0), Math.max(total, 1));
+          const pct = total > 0 ? passed / total : 0;
+          spineFill.style.height = `${Math.min(1, Math.max(0, pct)) * 100}%`;
+
+          headingEls.forEach((h, i) => {
+            const bead = beadEls[i];
+            if (!bead) return;
+            const pastHeading = h.getBoundingClientRect().top < window.innerHeight * 0.5;
+            bead.classList.toggle('awake', pastHeading);
+          });
+        };
+        updateSpine();
+        window.addEventListener('scroll', updateSpine, { passive: true });
+        window.addEventListener('resize', updateSpine);
+      }
+    </script>
+
+    <style>
+      body {
+        overflow-y: auto;
+        overflow-x: hidden;
+        min-height: 100svh;
+        color: var(--bone);
+      }
+
+      .back {
+        position: absolute;
+        top: 1.5rem;
+        left: 1.5rem;
+        margin: 0;
+        z-index: 2;
+      }
+
+      .back a {
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+        color: var(--gold);
+        text-decoration: none;
+      }
+
+      .back a:focus-visible {
+        outline: 1.5px solid var(--gold);
+        outline-offset: 4px;
+        border-radius: 2px;
+      }
+
+      /* The plate: full bleed with the title over it. It has no image
+         asset today (all 25 articles ship with family: void and no
+         image), so this is the typographic plate CONTENT-FORMAT.md
+         describes for that case -- an image, when one exists, replaces
+         this background without touching any other rule here. */
+      .plate {
+        min-height: 70svh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        gap: 1.25rem;
+        padding: 6rem 1.5rem 4rem;
+        background: radial-gradient(ellipse at 50% 30%, rgba(227, 175, 149, 0.08), transparent 70%);
+      }
+
+      .kicker {
+        margin: 0;
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: rgba(227, 175, 149, 0.55);
+      }
+
+      .plate h1 {
+        margin: 0;
+        max-width: 44rem;
+        font-family: var(--font-display);
+        font-weight: 400;
+        font-size: clamp(1.8rem, 5vw, 3rem);
+        line-height: 1.15;
+      }
+
+      .dek {
+        margin: 0;
+        max-width: 34rem;
+        font-family: var(--font-reading);
+        font-style: italic;
+        font-size: 1.05rem;
+        line-height: 1.5;
+        color: rgba(243, 235, 224, 0.7);
+      }
+
+      .threads {
+        margin: 0.5rem 0 0;
+        display: flex;
+        gap: 0.6rem;
+      }
+
+      .thread {
+        font-family: var(--font-mono);
+        font-size: 0.6rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(227, 175, 149, 0.5);
+        border: 1px solid rgba(227, 175, 149, 0.25);
+        border-radius: 999px;
+        padding: 0.25rem 0.7rem;
+      }
+
+      .reader {
+        display: grid;
+        grid-template-columns: 12rem 1.5rem minmax(0, 38rem);
+        justify-content: center;
+        gap: 0 2rem;
+        max-width: 64rem;
+        margin: 0 auto;
+        padding: 0 1.5rem 8rem;
+      }
+
+      .rail,
+      .spine {
+        display: none;
+      }
+
+      @media (min-width: 56rem) {
+        .rail {
+          display: block;
+          position: sticky;
+          top: 4rem;
+          align-self: start;
+          height: fit-content;
+        }
+
+        .rail ol {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+        }
+
+        .rail li + li {
+          margin-top: 0.9rem;
+        }
+
+        .rail a {
+          font-family: var(--font-mono);
+          font-size: 0.7rem;
+          line-height: 1.4;
+          letter-spacing: 0.02em;
+          color: rgba(243, 235, 224, 0.4);
+          text-decoration: none;
+        }
+
+        .rail a:hover,
+        .rail a:focus-visible {
+          color: var(--gold);
+        }
+
+        .spine {
+          display: block;
+          position: sticky;
+          top: 4rem;
+          align-self: start;
+          width: 1px;
+          height: 80vh;
+          background: rgba(243, 235, 224, 0.14);
+        }
+
+        .spine-fill {
+          width: 100%;
+          height: 0%;
+          background: var(--gold);
+        }
+
+        .bead {
+          position: absolute;
+          left: -2.5px;
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: rgba(243, 235, 224, 0.25);
+        }
+
+        .bead.awake {
+          background: var(--gold);
+          box-shadow: 0 0 8px var(--gold);
+        }
+      }
+
+      .body {
+        font-family: var(--font-reading);
+        font-size: 1.15rem;
+        line-height: 1.75;
+        max-width: 38rem;
+      }
+
+      .body h2 {
+        font-family: var(--font-display);
+        font-weight: 400;
+        font-size: 1.4rem;
+        margin: 3rem 0 1.25rem;
+        scroll-margin-top: 4rem;
+      }
+
+      .body h2:first-child {
+        margin-top: 0;
+      }
+
+      .body p {
+        margin: 0 0 1.4rem;
+      }
+
+      .body ul {
+        margin: 0 0 1.4rem;
+        padding-left: 1.4rem;
+      }
+
+      .body a {
+        color: var(--bone);
+        text-decoration-color: rgba(247, 197, 106, 0.5);
+      }
+
+      /* Callout: dim until reached, then lit -- see docs/FIELD-SPEC.md.
+         The base state (no .dim class) is fully readable; .dim/.lit
+         only exist once the script above decides JS is running. */
+      .callout {
+        font-family: var(--font-display);
+        font-size: 1.5rem;
+        line-height: 1.4;
+        margin: 2.5rem 0;
+        padding-left: 1.25rem;
+        border-left: 2px solid var(--gold);
+        color: var(--bone);
+        transition: color 0.9s var(--ease), border-color 0.9s var(--ease);
+      }
+
+      .callout.dim {
+        color: rgba(243, 235, 224, 0.35);
+        border-left-color: rgba(247, 197, 106, 0.25);
+      }
+
+      .callout.lit {
+        color: var(--bone);
+        border-left-color: var(--gold);
+      }
+
+      .people {
+        margin-top: 3rem;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        color: rgba(243, 235, 224, 0.45);
+      }
+
+      .question {
+        margin-top: 3.5rem;
+        padding-top: 2rem;
+        border-top: 1px solid rgba(243, 235, 224, 0.14);
+      }
+
+      .question p {
+        margin: 0;
+        font-family: var(--font-display);
+        font-style: italic;
+        font-size: 1.3rem;
+        line-height: 1.5;
+        color: var(--flesh);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .callout {
+          transition: none;
+        }
+      }
+    </style>
+  </body>
+</html>
