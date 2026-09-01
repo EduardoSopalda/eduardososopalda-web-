@@ -1,5 +1,5 @@
 ---
-title:    From Stewardship to Partnership: Why GenAI in Data Governance Is No Longer “The Future”
+title:    'From Stewardship to Partnership: Why GenAI in Data Governance Is No Longer “The Future”'
 date:     2026-02-07
 kind:     article
 threads:  [GOVERNANCE, TRUST]

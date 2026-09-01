@@ -1,5 +1,5 @@
 ---
-title:    Speed Dating with AI: Grok
+title:    'Speed Dating with AI: Grok'
 date:     2025-09-18
 kind:     experiment
 threads:  [CURIOSITY, PROXIMITY]

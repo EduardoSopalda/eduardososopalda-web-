@@ -1,5 +1,5 @@
 ---
-title:    Speed-Dating with AI: The GitHub Copilot
+title:    'Speed-Dating with AI: The GitHub Copilot'
 date:     2025-10-29
 kind:     experiment
 threads:  [MEMORY, CURIOSITY]

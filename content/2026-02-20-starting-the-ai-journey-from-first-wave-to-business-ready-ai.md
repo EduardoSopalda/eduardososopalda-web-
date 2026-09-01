@@ -1,5 +1,5 @@
 ---
-title:    Starting the AI Journey: From First Wave to Business-Ready AI
+title:    'Starting the AI Journey: From First Wave to Business-Ready AI'
 date:     2026-02-20
 kind:     article
 threads:  [GOVERNANCE, MEANING]

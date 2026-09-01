@@ -7,7 +7,7 @@ dek:      “If governance has to be re-explained every time, it’s not an oper
 image:
 family:   void
 people:   []
-question: In your experience, what tends to embed muscle memory most effectively: tooling constraints, workflow design or accountability pressure?
+question: 'In your experience, what tends to embed muscle memory most effectively: tooling constraints, workflow design or accountability pressure?'
 ---
 
 ## Setting the Stage

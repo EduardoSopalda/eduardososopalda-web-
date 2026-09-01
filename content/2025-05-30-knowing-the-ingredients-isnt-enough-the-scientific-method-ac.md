@@ -7,7 +7,7 @@ dek:      One summer in Mallorca, while staying at a friend’s place in Port d�
 image:
 family:   void
 people:   [Juan]
-question: Hypothesis: What if we change the tequila?
+question: 'Hypothesis: What if we change the tequila?'
 ---
 
 ## Whether it’s a cocktail, a product, or a customer solution — don’t settle for “correct.” - Ask questions. - Test things. - Iterate. - And when you take that extra time, what’s good becomes unforgettable.

@@ -3,7 +3,7 @@ title:    Data Are Not Universal
 date:     2025-12-30
 kind:     article
 threads:  [MEANING, GOVERNANCE]
-dek:      Some time ago, someone told me something that didn’t sound particularly profound at first:
+dek:      'Some time ago, someone told me something that didn’t sound particularly profound at first:'
 image:
 family:   void
 people:   []

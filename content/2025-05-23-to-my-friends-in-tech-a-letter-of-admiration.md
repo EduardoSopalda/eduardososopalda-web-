@@ -1,9 +1,9 @@
 ---
-title:    To My Friends in Tech: A Letter of Admiration
+title:    'To My Friends in Tech: A Letter of Admiration'
 date:     2025-05-23
 kind:     note
 threads:  [MEANING, PROXIMITY]
-dek:      There’s a saying that hits hard on days like today: “I could not walk a mile in any of their shoes... by this point, any of their muddy boots.”
+dek:      'There’s a saying that hits hard on days like today: “I could not walk a mile in any of their shoes... by this point, any of their muddy boots.”'
 image:
 family:   void
 people:   [Clare Sheriff, Laura Gheorghe, Veronica Recanati, Sara Bermejo, Andrea Onhaus]

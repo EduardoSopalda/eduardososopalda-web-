@@ -1,5 +1,5 @@
 ---
-title:    Responsible AI in Times of Chaos: Why Trust Is Not a Feature
+title:    'Responsible AI in Times of Chaos: Why Trust Is Not a Feature'
 date:     2026-01-19
 kind:     article
 threads:  [TRUST, GOVERNANCE]
