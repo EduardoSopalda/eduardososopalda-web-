@@ -582,14 +582,50 @@
     // dominant starts at 48vw), so a bigger multiplier would have
     // pushed piglet into reading as large as a dominant specimen,
     // undermining the tier distinction the budget/hierarchy depends on.
-    { vid: '/specimens/piglet.webm', poster: '/specimens/piglet-poster.png', w: 300, d: 0.74, tag: 'No.05 · MEANING · PIGLET', vignette: true, band: 'baja', scale: 'mesa', witness: true, cutout: true, sizeMul: 1.2 },
+    // cutout dropped: reported back that piglet still showed a box
+    // after the vignette fix. Measured it properly this time (every
+    // pixel across ten sampled frames, not eyeballing) -- the ground
+    // piglet stands on is real, substantial, lit content (bottom row
+    // mean brightness 40% of full white, peaks near-white) spanning
+    // the FULL width and reaching literally the bottom edge in every
+    // single sampled frame. That's not compression noise a vignette
+    // can fade -- it's intentional environment baked into the render,
+    // same as the piglet itself. Alpha is real but only covers the
+    // top/sky portion (matches the poster PNG: top corners alpha 0,
+    // bottom corners alpha 255) -- cutout:true's flare drop-shadow
+    // follows the element's alpha, so on this asset it would trace a
+    // glow around the real transparent sky AND around the solid
+    // ground rectangle at once, adding a second box-like artifact on
+    // flare. Dropping cutout avoids that; the ground plane itself
+    // can't be fixed without a new render with the floor actually
+    // removed -- a content/asset request, not a code fix, same
+    // category as the original piglet.mp4 -> piglet.webm swap.
+    { vid: '/specimens/piglet.webm', poster: '/specimens/piglet-poster.png', w: 300, d: 0.74, tag: 'No.05 · MEANING · PIGLET', vignette: true, band: 'baja', scale: 'mesa', witness: true, sizeMul: 1.2 },
     { img: '/specimens/eyefish.png', w: 260, d: 0.58, boost: 1.15, band: 'nervio', scale: 'perdido' },
     { vid: '/specimens/seaweed.mp4', w: 300, d: 0.5, band: 'baja', scale: 'mesa' },
     // Both genuinely alpha-cut (verified same as the others: canvas
     // pixel sampling and a real <video> tag against a red test
     // background), appended rather than reordered so they don't shift
     // the octopus/chimp's tuned load-time positions.
-    { vid: '/specimens/brain.webm', w: 480, d: 0.9, tag: 'No.06 · CURIOSITY · BRAIN', vignette: true, cutout: true, band: 'baja', scale: 'mesa' },
+    // cutout dropped, file itself re-encoded: also still reported as
+    // boxed after the vignette fix. Measured this one properly too --
+    // the margin (left ~20%, right ~17%, top ~5-11% of the frame) is
+    // literally pure #000000 in the decoded pixels, mean AND max both
+    // exactly 0, not noise -- so no CSS treatment was ever going to
+    // change what's already true black. That pointed at the file
+    // itself: brain.webm carried an alpha_mode=1 VP9 side-channel it
+    // never actually needed (nothing in the margin was ever
+    // transparent, just already-black), and VP9-alpha WebM is exactly
+    // the kind of format Safari has a history of decoding
+    // inconsistently or not at all -- unlike a plain opaque VP9 WebM,
+    // which is well supported. Re-encoded to drop that unneeded alpha
+    // side-data entirely (verified: same frame content, same
+    // dimensions/duration, margin still measured pure black) --
+    // 5.5MB -> 1.7MB as a side benefit. cutout is gone too, since the
+    // file is genuinely opaque now; leaving it on would make the
+    // flare drop-shadow (which follows alpha) trace the whole
+    // rectangle as a glowing box on every flare.
+    { vid: '/specimens/brain.webm', w: 480, d: 0.9, tag: 'No.06 · CURIOSITY · BRAIN', vignette: true, band: 'baja', scale: 'mesa' },
     { vid: '/specimens/bluefish.webm', w: 420, d: 0.62, tag: 'No.07 · GOVERNANCE · BLUE FISH', vignette: true, cutout: true, band: 'baja', scale: 'mesa' },
     // Second jellyfish -- was a still, now a looping animation Eduardo
     // sent, genuinely alpha-cut (verified against both red and true-
