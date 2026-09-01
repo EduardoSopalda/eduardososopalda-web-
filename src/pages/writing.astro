@@ -1,0 +1,135 @@
+---
+// Plain reverse-chronological archive, per docs/BUILD-ORDER.md step 3 & 7:
+// "Writing first, since it has content." No invented copy -- every title,
+// date, kind and thread below is read straight from content/_index.json,
+// the same file src/data/articleIndex.ts derives its catalogue numbers
+// from. This is the list view only; /writing/[slug] (the actual reader)
+// is a separate, larger build (spine, callouts, question block) that
+// needs the Astro content collection wired up first.
+import '../styles/global.css';
+import articles from '../../content/_index.json';
+import { catalogNoForTitle } from '../data/articleIndex';
+
+const bySource = articles
+  .map((a) => ({ ...a, no: catalogNoForTitle(a.title) }))
+  .sort((a, b) => (a.date < b.date ? 1 : -1));
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Writing — EDUARDO sopalda</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <main>
+      <p class="back"><a href="/">Back to the field</a></p>
+      <ol class="list">
+        {bySource.map((a) => (
+          <li>
+            <a class="row" href={`#${a.file.replace(/\.md$/, '')}`}>
+              <span class="no">{a.no ? `No.${String(a.no).padStart(2, '0')}` : ''}</span>
+              <span class="title">{a.title}</span>
+              <span class="meta">
+                {a.date.slice(0, 4)} · {a.kind} · {a.threads.join(', ')}
+              </span>
+            </a>
+          </li>
+        ))}
+      </ol>
+      <p class="todo">
+        TODO (Eduardo): each row links nowhere yet -- the reader
+        (<code>/writing/[slug]</code>) is not built. See docs/BUILD-ORDER.md.
+      </p>
+    </main>
+  </body>
+</html>
+
+<style>
+  body {
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 100svh;
+  }
+
+  main {
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+    font-family: var(--font-mono);
+    color: var(--bone);
+  }
+
+  .back a {
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    color: var(--gold);
+    text-decoration: none;
+  }
+
+  .back a:focus-visible {
+    outline: 1.5px solid var(--gold);
+    outline-offset: 4px;
+    border-radius: 2px;
+  }
+
+  .list {
+    list-style: none;
+    margin: 3rem 0 0;
+    padding: 0;
+  }
+
+  .list li {
+    border-top: 1px solid rgba(243, 235, 224, 0.12);
+  }
+
+  .list li:last-child {
+    border-bottom: 1px solid rgba(243, 235, 224, 0.12);
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 3.5rem 1fr;
+    gap: 0.25rem 1rem;
+    padding: 1.1rem 0;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .row:focus-visible {
+    outline: 1.5px solid var(--gold);
+    outline-offset: 2px;
+  }
+
+  .no {
+    font-size: 0.7rem;
+    color: rgba(227, 175, 149, 0.6);
+    align-self: start;
+  }
+
+  .title {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    line-height: 1.35;
+  }
+
+  .meta {
+    grid-column: 2;
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: rgba(243, 235, 224, 0.4);
+  }
+
+  .todo {
+    margin-top: 3rem;
+    font-size: 0.7rem;
+    color: rgba(243, 235, 224, 0.35);
+  }
+
+  .todo code {
+    font-family: inherit;
+  }
+</style>

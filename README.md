@@ -18,9 +18,14 @@ assets/specimens/       10 reference images, void and lit families (candidate
                         still pending final selection, see chat history)
 prototype/field.html    working reference: landing, drift, decay, nerve, seven stops
 
-src/                    the actual Astro build, in progress. Currently: the landing
-                        (src/components/Landing.astro) only — field, reader, and the
-                        rest of build-order.md are not built yet.
+src/                    the actual Astro build, in progress. Currently built: the
+                        landing (src/components/Landing.astro) and the field
+                        (src/components/Field.astro) — drift, decay, the nerve, the
+                        seven stops as real links. /writing is a plain archive list.
+                        Not yet built: the Astro content collection (articles still
+                        live as loose markdown in content/, matched by hand into
+                        src/data/), the reader for individual articles, and the
+                        remaining rooms per build-order.md steps 2 and 8-9.
 ```
 
 Open `prototype/field.html` in a browser to see the reference before changing `src/`.
