@@ -408,6 +408,17 @@
     color: inherit;
   }
 
+  .frag-ref a:hover,
+  .frag-ref a:focus-visible {
+    color: var(--gold);
+  }
+
+  .frag-ref a:focus-visible {
+    outline: 1.5px solid var(--gold);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
   /* ---- nerve stops ---- */
   .stop {
     position: absolute;
@@ -481,7 +492,7 @@
 
 <script>
   import { FRAGS } from '../data/fragments';
-  import { ARTICLE_CATALOG } from '../data/articleIndex';
+  import { ARTICLE_CATALOG, slugForTitle } from '../data/articleIndex';
 
   type Band = 'alta' | 'nervio' | 'baja';
   type ScaleTier = 'dominant' | 'mesa' | 'perdido';
@@ -1311,16 +1322,23 @@
         const catalogNo = ARTICLE_CATALOG[f.source];
         const label = catalogNo ? `No.${String(catalogNo).padStart(2, '0')}` : f.source;
         const cite = f.year ? `${label} \u00b7 ${f.year}` : label;
+        // docs/BRIEF.md's own definition of a fragment: "linking back
+        // to the paragraph it came from." This is the article-level
+        // version of that -- real, not a dead end, though not yet
+        // anchored to the exact paragraph within it. slugForTitle
+        // resolves against the real content collection (see
+        // articleIndex.ts), not a guess.
+        const slug = slugForTitle(f.source);
         setTimeout(() => {
           if (slot.fragIndex !== revealIdx) return;
           slot.ref.innerHTML = '';
-          if (f.href) {
+          if (slug) {
             const a = document.createElement('a');
-            a.href = f.href;
+            a.href = `/writing/${slug}`;
             a.textContent = cite;
             slot.ref.appendChild(a);
           } else {
-            slot.ref.appendChild(document.createTextNode(`\u2014 ${cite}`));
+            slot.ref.appendChild(document.createTextNode(cite));
           }
           slot.ref.style.transition = 'opacity 0.6s ease';
           slot.ref.style.opacity = '1';

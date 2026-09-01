@@ -245,9 +245,31 @@ body.is-docked .cue {
   font-size: 0.68rem;
   letter-spacing: 0.05em;
   text-align: center;
-  color: rgba(227, 175, 149, 0.55);
+  /* .55 alpha measured 3.67:1 on black at this size -- confirmed by
+     direct contrast calculation against the 4.5:1 floor, same check
+     that caught Field.astro's own citation at .4 alpha. .65 matches
+     that fix exactly: same rgb, same target, one consistent value for
+     both of the site's fragment citations. */
+  color: rgba(227, 175, 149, 0.65);
   opacity: 0;
   transition: opacity 0.8s var(--ease);
+}
+
+.frag-source a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgba(227, 175, 149, 0.4);
+}
+
+.frag-source a:hover,
+.frag-source a:focus-visible {
+  color: var(--gold);
+}
+
+.frag-source a:focus-visible {
+  outline: 1.5px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .frag-source.is-visible {

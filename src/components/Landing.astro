@@ -27,9 +27,14 @@ import '../styles/sopalda-landing.css';
 
   <div class="stage">
     <header class="mark" id="mark">
+      {/* Real static text, not empty spans -- splitWord() below clears
+          and rebuilds each into letter-by-letter <b> spans on load, so
+          the animation is unaffected, but a crawler or a page that
+          never gets to run the module now sees the actual name instead
+          of two empty elements under an aria-label nothing else reads. */}
       <h1 aria-label="Eduardo Sopalda">
-        <span class="given" id="given" aria-hidden="true"></span>
-        <span class="family" id="family" aria-hidden="true"></span>
+        <span class="given" id="given" aria-hidden="true">EDUARDO</span>
+        <span class="family" id="family" aria-hidden="true">sopalda</span>
       </h1>
       <p class="tagline">DATA | AI <span class="amp">&amp;</span> The human experience</p>
     </header>
@@ -37,7 +42,10 @@ import '../styles/sopalda-landing.css';
     <main class="slot">
       <p class="frag" id="frag-a" hidden></p>
       <p class="frag" id="frag-b" hidden></p>
-      <p class="frag-source" id="frag-source" aria-hidden="true"></p>
+      {/* Not aria-hidden -- it sometimes holds a real link now (see
+          revealSourceFor below), and a focusable element hidden from
+          assistive tech is worse than one left plain. */}
+      <p class="frag-source" id="frag-source"></p>
     </main>
 
     <footer class="foot">
@@ -56,7 +64,7 @@ import '../styles/sopalda-landing.css';
 
 <script>
   import { FRAGS } from '../data/fragments';
-  import { ARTICLE_CATALOG } from '../data/articleIndex';
+  import { ARTICLE_CATALOG, slugForTitle } from '../data/articleIndex';
 
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -122,7 +130,20 @@ import '../styles/sopalda-landing.css';
     // outright, chrome and prose alike, and Field.astro's own citation
     // (see its `cite` construction) never had one to begin with. This
     // now matches that exactly instead of quietly diverging from it.
-    sourceEl.textContent = year ? `${label} · ${year}` : label;
+    const cite = year ? `${label} · ${year}` : label;
+    // Real link when the article has one, same as Field.astro's own
+    // fragments -- docs/BRIEF.md's fragment definition again, this
+    // time for Act I's own quote rather than the field's.
+    const slug = slugForTitle(source);
+    sourceEl.textContent = '';
+    if (slug) {
+      const a = document.createElement('a');
+      a.href = `/writing/${slug}`;
+      a.textContent = cite;
+      sourceEl.appendChild(a);
+    } else {
+      sourceEl.appendChild(document.createTextNode(cite));
+    }
     setTimeout(() => sourceEl.classList.add('is-visible'), reduced ? 0 : 900);
   }
 

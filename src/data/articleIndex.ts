@@ -42,3 +42,20 @@ const NORMALIZED_CATALOG: Record<string, number> = Object.fromEntries(
 export function catalogNoForTitle(title: string): number | null {
   return NORMALIZED_CATALOG[normalizeQuotes(title)] ?? null;
 }
+
+// Real per-article slugs (the content collection's own entry.id, which
+// is just each file's name minus ".md" -- the glob loader's default),
+// keyed by title the same normalized way as the catalogue above. This
+// is what makes a fragment's citation, and eventually the fragment
+// itself, a real link instead of the dead end docs/BRIEF.md's own
+// definition of a fragment says it shouldn't be: "linking back to the
+// paragraph it came from."
+import articles from '../../content/_index.json';
+
+const NORMALIZED_SLUGS: Record<string, string> = Object.fromEntries(
+  articles.map((a) => [normalizeQuotes(a.title), a.file.replace(/\.md$/, '')])
+);
+
+export function slugForTitle(title: string): string | null {
+  return NORMALIZED_SLUGS[normalizeQuotes(title)] ?? null;
+}

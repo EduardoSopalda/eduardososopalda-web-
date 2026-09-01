@@ -13,17 +13,16 @@
 // "year" is the real publication year, matched by source title against
 // content/_index.json's own date field -- not invented, and left
 // unset (never guessed) for the one fragment with no source at all.
-// "href" stays unset everywhere: there's no real per-article URL to
-// link to yet (see docs/BRIEF.md -- "whether the site publishes first
-// or archives from LinkedIn" is still an open question), so the field
-// exists in the type for when that's decided, not populated now.
+// No "href" field here: a real per-article URL exists now
+// (/writing/[slug]), so a fragment's link is resolved at render time
+// via articleIndex.ts's slugForTitle(source) instead of being baked
+// into this data -- one lookup to keep in sync, not fifty.
 export type Fragment = {
   text: string;
   thread: string;
   weight: 'short' | 'long';
   source: string | null;
   year?: number;
-  href?: string;
   lang?: string;
 };
 
