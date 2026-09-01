@@ -1,0 +1,86 @@
+---
+// Shared shell for the four rooms that are empty until Eduardo writes them
+// (see CLAUDE.md "What is not done" and docs/BUILD-ORDER.md step 7:
+// "build the shells with visible TODOs, invent nothing"). The subtitle
+// prop is the same line Field.astro already shows for this stop on the
+// nerve -- reused, not new copy.
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  subtitle: string;
+  todo: string;
+}
+const { title, subtitle, todo } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} — EDUARDO sopalda</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <main>
+      <p class="label">{subtitle}</p>
+      <h1>{title}</h1>
+      <p class="todo">TODO (Eduardo): {todo}</p>
+      <p class="back"><a href="/">Back to the field</a></p>
+    </main>
+  </body>
+</html>
+
+<style>
+  body {
+    overflow: visible;
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  main {
+    max-width: 30rem;
+    text-align: center;
+    padding: 0 1.5rem;
+    font-family: var(--font-mono);
+    color: var(--bone);
+  }
+
+  .label {
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(227, 175, 149, 0.55);
+    margin: 0 0 0.75rem;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 1.8rem;
+    margin: 0 0 2rem;
+  }
+
+  .todo {
+    font-size: 0.75rem;
+    line-height: 1.6;
+    color: rgba(243, 235, 224, 0.4);
+    margin: 0 0 2.5rem;
+  }
+
+  .back a {
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    color: var(--gold);
+    text-decoration: none;
+  }
+
+  .back a:focus-visible {
+    outline: 1.5px solid var(--gold);
+    outline-offset: 4px;
+    border-radius: 2px;
+  }
+</style>

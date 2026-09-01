@@ -27,3 +27,18 @@ export const ARTICLE_CATALOG: Record<string, number> = {
   'The Data Is My Shepherd, I Shall Not Want': 24,
   'Ten Thousand Files, Two Thousand That Mattered': 25,
 };
+
+// content/_index.json's `title` field uses straight quotes throughout;
+// the keys above keep fragments.ts's original curly-quote/backslash
+// style. Normalize both sides through this before comparing titles from
+// _index.json against this catalogue (used by /writing).
+const normalizeQuotes = (s: string) =>
+  s.replace(/\\'/g, "'").replace(/[‘’]/g, "'").replace(/[“”]/g, '"');
+
+const NORMALIZED_CATALOG: Record<string, number> = Object.fromEntries(
+  Object.entries(ARTICLE_CATALOG).map(([k, v]) => [normalizeQuotes(k), v])
+);
+
+export function catalogNoForTitle(title: string): number | null {
+  return NORMALIZED_CATALOG[normalizeQuotes(title)] ?? null;
+}
