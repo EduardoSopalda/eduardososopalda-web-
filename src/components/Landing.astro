@@ -41,11 +41,14 @@ import '../styles/sopalda-landing.css';
     </main>
 
     <footer class="foot">
-      <p class="meta">Barcelona<br /><a href="#" id="li">LinkedIn</a></p>
+      {/* Plain text, not a link: no real LinkedIn URL exists yet. A
+          dead href was a fake interaction on the first screen -- see
+          non-negotiable 1, invent nothing, not even a placeholder
+          destination. Becomes a real <a> the day there's a URL. */}
+      <p class="meta">Barcelona<br /><span class="li">LinkedIn</span></p>
       <button type="button" class="cue" id="cue" aria-label="Continue">
         <span class="cue-line" aria-hidden="true"></span>
         <span class="cue-dot" aria-hidden="true"></span>
-        <span class="cue-word" aria-hidden="true">Continue</span>
       </button>
     </footer>
   </div>
@@ -56,10 +59,6 @@ import '../styles/sopalda-landing.css';
   import { ARTICLE_CATALOG } from '../data/articleIndex';
 
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  // No real LinkedIn URL yet -- stub the click rather than send anyone
-  // to a placeholder href.
-  document.getElementById('li')?.addEventListener('click', (e) => e.preventDefault());
 
   // ================= wordmark: split + staggered CSS reveal =================
   function splitWord(node: HTMLElement, text: string) {
