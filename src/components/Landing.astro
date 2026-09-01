@@ -118,7 +118,11 @@ import '../styles/sopalda-landing.css';
     // own comment), not invented.
     const catalogNo = ARTICLE_CATALOG[source];
     const label = catalogNo ? `No.${String(catalogNo).padStart(2, '0')}` : source;
-    sourceEl.textContent = `— ${year ? `${label} · ${year}` : label}`;
+    // No leading dash -- CLAUDE.md non-negotiable 8 bans em/en dashes
+    // outright, chrome and prose alike, and Field.astro's own citation
+    // (see its `cite` construction) never had one to begin with. This
+    // now matches that exactly instead of quietly diverging from it.
+    sourceEl.textContent = year ? `${label} · ${year}` : label;
     setTimeout(() => sourceEl.classList.add('is-visible'), reduced ? 0 : 900);
   }
 

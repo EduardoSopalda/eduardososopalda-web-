@@ -14,7 +14,7 @@ import '../styles/global.css';
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
-    <title>Not found — EDUARDO sopalda</title>
+    <title>Not found · EDUARDO sopalda</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
   <body>
@@ -54,13 +54,22 @@ import '../styles/global.css';
     margin: 0 0 2rem;
   }
 
+  /* Bone at rest, not gold -- CLAUDE.md non-negotiable 6 keeps gold to
+     the nerve, its beads, and whatever is awake. A plain resting link
+     isn't awake; hovering or focusing it is, so gold appears there
+     instead, same as everywhere else on the site earns it. */
   .back {
     display: inline-block;
     font-family: var(--font-mono);
     font-size: 0.75rem;
     letter-spacing: 0.1em;
-    color: var(--gold);
+    color: var(--bone);
     text-decoration: none;
+  }
+
+  .back:hover,
+  .back:focus-visible {
+    color: var(--gold);
   }
 
   .back:focus-visible {

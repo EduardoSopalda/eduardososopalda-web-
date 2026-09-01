@@ -42,11 +42,6 @@ const blocks = parseArticleBody(entry.body ?? '');
 const beads = headingsOf(blocks);
 const catalogNo = catalogNoForTitle(title);
 const year = date.getFullYear();
-const dateLabel = date.toLocaleDateString('en-GB', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-});
 ---
 
 <!doctype html>
@@ -54,7 +49,7 @@ const dateLabel = date.toLocaleDateString('en-GB', {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title} — EDUARDO sopalda</title>
+    <title>{title} · EDUARDO sopalda</title>
     {dek && <meta name="description" content={dek} />}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
@@ -83,8 +78,12 @@ const dateLabel = date.toLocaleDateString('en-GB', {
 
       <div class="spine" aria-hidden="true" id="spine">
         <div class="spine-fill" id="spine-fill"></div>
-        {beads.map((b) => (
-          <span class="bead" data-target={b.id}></span>
+        {beads.map((b, i) => (
+          <span
+            class="bead"
+            data-target={b.id}
+            style={`top: ${beads.length > 1 ? (i / (beads.length - 1)) * 100 : 50}%`}
+          />
         ))}
       </div>
 
@@ -192,12 +191,20 @@ const dateLabel = date.toLocaleDateString('en-GB', {
         z-index: 2;
       }
 
+      /* Bone at rest, not gold -- gold is for the nerve, its beads, and
+         whatever is awake (CLAUDE.md non-negotiable 6), not a resting
+         link color. Hover/focus is the awake moment instead. */
       .back a {
         font-family: var(--font-mono);
         font-size: 0.7rem;
         letter-spacing: 0.1em;
-        color: var(--gold);
+        color: var(--bone);
         text-decoration: none;
+      }
+
+      .back a:hover,
+      .back a:focus-visible {
+        color: var(--gold);
       }
 
       .back a:focus-visible {
@@ -268,11 +275,18 @@ const dateLabel = date.toLocaleDateString('en-GB', {
         padding: 0.25rem 0.7rem;
       }
 
+      /* Single column by default -- the grid below is real only once
+         the rail/spine actually have room to exist beside the text
+         (the same 56rem breakpoint they themselves turn on at). Before
+         this fix, grid-template-columns was unconditional: with .rail
+         and .spine display:none below 56rem, grid auto-placement put
+         the one remaining item (.body) into column 1 alone, which is
+         the 12rem track -- every article rendered ~192px wide on
+         every phone. Verified directly (not assumed) by measuring
+         .body's real rendered width in a headless browser over a
+         local server (file:// alone gives a false negative, since an
+         absolute /_astro/... stylesheet href never resolves under it). */
       .reader {
-        display: grid;
-        grid-template-columns: 12rem 1.5rem minmax(0, 38rem);
-        justify-content: center;
-        gap: 0 2rem;
         max-width: 64rem;
         margin: 0 auto;
         padding: 0 1.5rem 8rem;
@@ -284,6 +298,13 @@ const dateLabel = date.toLocaleDateString('en-GB', {
       }
 
       @media (min-width: 56rem) {
+        .reader {
+          display: grid;
+          grid-template-columns: 12rem 1.5rem minmax(0, 38rem);
+          justify-content: center;
+          gap: 0 2rem;
+        }
+
         .rail {
           display: block;
           position: sticky;
@@ -335,6 +356,7 @@ const dateLabel = date.toLocaleDateString('en-GB', {
         .bead {
           position: absolute;
           left: -2.5px;
+          margin-top: -3px;
           width: 6px;
           height: 6px;
           border-radius: 50%;

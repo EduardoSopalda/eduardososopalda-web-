@@ -16,8 +16,13 @@
   --neon: #FF6E93;
 
   /* Bronze — the specimens' own glow, one step down from gold. The
-     reference prototype's own EDUARDO colour, flat, no gradient. */
-  --bronze: #A6613A;
+     reference prototype's own EDUARDO colour, flat, no gradient.
+     Nudged from #A6613A: that measured 4.39:1 on black, just under
+     the 4.5:1 AA floor for normal-size text (the docked wordmark sits
+     at 15-19px, not large text) -- "misses AA by a hair" reads fine
+     to whoever tunes it and fails for someone reading in daylight.
+     This measures 4.77:1, same rust, no longer measurably borderline. */
+  --bronze: #AA6842;
 
   /* Champagne — warm and golden, close to the bronze/gold family.
      For text that needs real warmth (e.g. the tagline). */
@@ -30,7 +35,12 @@
      essay fragments sitting on true black, closer to the "cheap"
      brightness a design critique flagged elsewhere. */
   --oxide: #6E3D24;
-  --oxide-lit: #8F4E2C;
+  /* Nudged from #8F4E2C: that measured 3.29:1 on black at the sizes
+     Landing.astro's manifesto/quote line actually renders at (normal
+     text, needs 4.5:1) -- the single most important sentence on the
+     site was failing contrast. This measures 5.01:1, same warm rust
+     family, no longer unreadable in daylight. */
+  --oxide-lit: #AA6D4E;
 
   --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
   /* The wordmark's landing-to-corner metamorphosis specifically: slower

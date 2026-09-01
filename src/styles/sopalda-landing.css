@@ -33,8 +33,7 @@
 
 .landing .mark,
 .landing .frag,
-.landing .cue,
-.landing #li {
+.landing .cue {
   pointer-events: auto;
 }
 

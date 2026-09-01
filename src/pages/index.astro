@@ -17,6 +17,15 @@ import Landing from '../components/Landing.astro';
 // actually reads text before the page itself: the meta description
 // and the social preview card.
 const description = 'Understand it first… then you decide if you trust it.';
+
+// og:url/og:image previously hardcoded "eduardosopalda.com" (no www),
+// while astro.config.mjs's own `site` is "www.eduardosopalda.com" --
+// two different canonical hosts for the same page, so every share
+// preview and any crawler honoring canonical URLs saw a mismatch.
+// Both now derive from Astro.site, the one place the real host is
+// meant to be decided, so they can't drift apart from it again.
+const canonicalUrl = new URL('/', Astro.site);
+const ogImageUrl = new URL('/og-image.png', Astro.site);
 ---
 
 <!doctype html>
@@ -27,16 +36,17 @@ const description = 'Understand it first… then you decide if you trust it.';
     <meta name="description" content={description} />
     <title>EDUARDO sopalda</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href={canonicalUrl} />
 
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://eduardosopalda.com/" />
+    <meta property="og:url" content={canonicalUrl} />
     <meta property="og:title" content="EDUARDO sopalda" />
     <meta property="og:description" content={description} />
-    <meta property="og:image" content="https://eduardosopalda.com/og-image.png" />
+    <meta property="og:image" content={ogImageUrl} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="EDUARDO sopalda" />
     <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content="https://eduardosopalda.com/og-image.png" />
+    <meta name="twitter:image" content={ogImageUrl} />
     <meta name="theme-color" content="#000000" />
   </head>
   <body data-landing="landing">
