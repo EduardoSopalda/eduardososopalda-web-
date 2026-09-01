@@ -17,11 +17,13 @@
 // (50 real fragments, thread + weight) -- shared with Landing.astro's
 // hero quote via src/data/fragments.ts, one source of truth instead of
 // two copies drifting apart. Specimen images/video are the
-// confirmed assets from this session — see public/specimens/. Three
-// have real "DATA" catalogue tags per the cabinet's thread mapping
-// decided earlier; the rest (seaweed, eyefish) are untagged
-// atmosphere, on purpose — the tag is the scarce thing here, same
-// logic as gold.
+// confirmed assets from this session — see public/specimens/. Nine of
+// eleven carry a thread-mapped catalogue tag; only seaweed and eyefish
+// are untagged atmosphere. Tagged as SP.NN, not No.NN -- No.NN already
+// belongs to ARTICLE_CATALOG (No.01-25), and having the same number in
+// the same typeface mean two different things in the same field (a
+// goldfish and an article) was a real, confirmed collision, not a
+// stylistic quirk.
 ---
 
 <!-- The seven stops above are also built by JS onto the nerve (see
@@ -390,16 +392,15 @@
   .frag-ref {
     margin: 0.5em 0 0 0.85em;
     font-family: var(--font-mono);
-    /* Per direct spec's typography table: ~0.6-0.62rem, tracking wider,
-       flesh at ~40% opacity -- reversing an earlier legibility fix this
-       same session that bumped this from 0.62rem/0.45 alpha to
-       0.72rem/0.65 alpha specifically because it had been "structurally
-       too faint to read." Applied as specified; flagged to Eduardo
-       rather than silently overridden, since it undoes that earlier
-       direct correction. */
+    /* 0.4 alpha measures 2.38:1 on black -- confirmed by direct
+       contrast calculation, not estimated -- against a 4.5:1 floor for
+       text this size. That's what the earlier legibility fix (0.65
+       alpha) was correcting before it got reverted to match a spec
+       table; the table was wrong on this point. Restored, this time
+       with the number that made it necessary on record. */
     font-size: 0.6rem;
     letter-spacing: 0.07em;
-    color: rgba(227, 175, 149, 0.4);
+    color: rgba(227, 175, 149, 0.65);
     line-height: 1.3;
   }
 
@@ -413,10 +414,19 @@
     top: 0;
     left: 0;
     font-family: var(--font-mono);
-    font-size: 10px;
+    /* rem, not a fixed 10px -- this is the site's only navigation
+       (CLAUDE.md non-negotiable 2), so it has to honor a reader's own
+       text-size setting like anything else that matters would.
+       0.625rem is the same visual size as before at the default root
+       size, just no longer locked to it. */
+    font-size: 0.625rem;
     letter-spacing: 0.34em;
     text-transform: uppercase;
-    color: rgba(243, 235, 224, 0.3);
+    /* 0.3 alpha measured 2.25:1 on black -- confirmed by direct
+       contrast calculation against the 4.5:1 floor this text size
+       needs. The site's entire navigation was, measurably, close to
+       unreadable except at data-near='1'. 0.5 measures 4.5:1. */
+    color: rgba(243, 235, 224, 0.5);
     white-space: nowrap;
     transition: color 0.5s, letter-spacing 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
     cursor: pointer;
@@ -547,7 +557,7 @@
   const SCALE_FLOOR_MOBILE: Record<ScaleTier, number> = { dominant: 0, mesa: 140, perdido: 96 };
 
   const SPECIMENS: Specimen[] = [
-    { img: '/specimens/chimp.png', w: 460, d: 1.0, tag: 'No.04 · PROXIMITY · CHIMP', vignette: true, cutout: true, band: 'alta', scale: 'dominant' },
+    { img: '/specimens/chimp.png', w: 460, d: 1.0, tag: 'SP.04 · PROXIMITY · CHIMP', vignette: true, cutout: true, band: 'alta', scale: 'dominant' },
     // Every webm below was confirmed genuinely alpha-cut by decoding a
     // real frame via canvas + getImageData in a browser -- but that
     // canvas test only ever ran in this sandbox's Chromium, and WebM/
@@ -562,8 +572,8 @@
     // true black cleanly on its own" -- that assumption predates this
     // finding and wasn't Safari-tested either, so vignette goes back on
     // every cutout video, not just the one that got caught.
-    { vid: '/specimens/octopus.webm', w: 640, d: 0.97, tag: 'No.02 · GOVERNANCE · OCTOPUS', vignette: true, cutout: true, band: 'alta', scale: 'dominant' },
-    { vid: '/specimens/jellyfish.webm', w: 560, d: 0.66, tag: 'No.03 · TRUST · JELLYFISH', vignette: true, cutout: true, band: 'alta', scale: 'mesa' },
+    { vid: '/specimens/octopus.webm', w: 640, d: 0.97, tag: 'SP.02 · GOVERNANCE · OCTOPUS', vignette: true, cutout: true, band: 'alta', scale: 'dominant' },
+    { vid: '/specimens/jellyfish.webm', w: 560, d: 0.66, tag: 'SP.03 · TRUST · JELLYFISH', vignette: true, cutout: true, band: 'alta', scale: 'mesa' },
     // Was goldfish.mp4 -- reported "some specimens... the animation is
     // not triggered." This sandbox can't decode H.264 at all, so MP4
     // playback here was always untestable; every WebM specimen in
@@ -573,7 +583,7 @@
     // needed, doesn't have one) to match the rest of the roster and
     // make it testable -- verified: still plays with a 0% stuck rate,
     // same visual quality, 4.5MB -> 1.4MB.
-    { vid: '/specimens/goldfish.webm', poster: '/specimens/goldfish.png', w: 400, d: 0.94, tag: 'No.01 · MEMORY · GOLDFISH', boost: 1.2, band: 'nervio', scale: 'mesa' },
+    { vid: '/specimens/goldfish.webm', poster: '/specimens/goldfish.png', w: 400, d: 0.94, tag: 'SP.01 · MEMORY · GOLDFISH', boost: 1.2, band: 'nervio', scale: 'mesa' },
     // Real alpha now -- piglet.webm (VP9 + alpha, 512x512, no audio),
     // sent to replace the old opaque piglet.mp4 that couldn't carry
     // cutout:true without lighting up a visible rectangle. Verified the
@@ -609,7 +619,7 @@
     // can't be fixed without a new render with the floor actually
     // removed -- a content/asset request, not a code fix, same
     // category as the original piglet.mp4 -> piglet.webm swap.
-    { vid: '/specimens/piglet.webm', poster: '/specimens/piglet-poster.png', w: 300, d: 0.74, tag: 'No.05 · MEANING · PIGLET', vignette: true, band: 'baja', scale: 'mesa', witness: true, sizeMul: 1.2 },
+    { vid: '/specimens/piglet.webm', poster: '/specimens/piglet-poster.png', w: 300, d: 0.74, tag: 'SP.05 · MEANING · PIGLET', vignette: true, band: 'baja', scale: 'mesa', witness: true, sizeMul: 1.2 },
     { img: '/specimens/eyefish.png', w: 260, d: 0.58, boost: 1.15, band: 'nervio', scale: 'perdido' },
     // Same conversion as goldfish above, same reason.
     { vid: '/specimens/seaweed.webm', w: 300, d: 0.5, band: 'baja', scale: 'mesa' },
@@ -635,8 +645,8 @@
     // file is genuinely opaque now; leaving it on would make the
     // flare drop-shadow (which follows alpha) trace the whole
     // rectangle as a glowing box on every flare.
-    { vid: '/specimens/brain.webm', w: 480, d: 0.9, tag: 'No.06 · CURIOSITY · BRAIN', vignette: true, band: 'baja', scale: 'mesa' },
-    { vid: '/specimens/bluefish.webm', w: 420, d: 0.62, tag: 'No.07 · GOVERNANCE · BLUE FISH', vignette: true, cutout: true, band: 'baja', scale: 'mesa' },
+    { vid: '/specimens/brain.webm', w: 480, d: 0.9, tag: 'SP.06 · CURIOSITY · BRAIN', vignette: true, band: 'baja', scale: 'mesa' },
+    { vid: '/specimens/bluefish.webm', w: 420, d: 0.62, tag: 'SP.07 · GOVERNANCE · BLUE FISH', vignette: true, cutout: true, band: 'baja', scale: 'mesa' },
     // Second jellyfish -- was a still, now a looping animation Eduardo
     // sent, genuinely alpha-cut (verified against both red and true-
     // black test backgrounds, same as the octopus above), so cutout:
@@ -644,7 +654,7 @@
     // (pulse: true) on top of that -- the two are independent, so it
     // both swims in its own loop and breathes in and out at the same
     // time.
-    { vid: '/specimens/jellyfish2.webm', w: 460, d: 0.42, tag: 'No.08 · TRUST · JELLYFISH', pulse: true, vignette: true, cutout: true, band: 'alta', scale: 'mesa' },
+    { vid: '/specimens/jellyfish2.webm', w: 460, d: 0.42, tag: 'SP.08 · TRUST · JELLYFISH', pulse: true, vignette: true, cutout: true, band: 'alta', scale: 'mesa' },
     // Second goldfish -- Eduardo sent a new render, genuinely alpha-cut
     // this time (verified directly: sampled the decoded video frame's
     // own alpha channel in a real browser, not just the file's
@@ -653,7 +663,7 @@
     // same thread (MEMORY), a new catalog number. "Casi perdido" tier
     // per direct feedback -- small and easy to miss on purpose, paired
     // with eyefish rather than competing with the original goldfish.
-    { vid: '/specimens/goldfish2.webm', w: 520, d: 0.78, tag: 'No.09 · MEMORY · GOLDFISH', vignette: true, cutout: true, band: 'nervio', scale: 'perdido' },
+    { vid: '/specimens/goldfish2.webm', w: 520, d: 0.78, tag: 'SP.09 · MEMORY · GOLDFISH', vignette: true, cutout: true, band: 'nervio', scale: 'perdido' },
   ];
 
   // Third element is the real route slug, per CLAUDE.md's own repo
@@ -2350,7 +2360,14 @@
         s.el.dataset.near = String(near);
       }
 
-      requestAnimationFrame(frame);
+      // Under reduced motion everything above this point is already a
+      // no-op (drift, springs, decay, entry-fade are each gated on
+      // `reduced` individually) -- but the loop itself kept recursing
+      // forever regardless, still forcing a getBoundingClientRect
+      // every frame and a real layout recompute every ~20 frames for a
+      // canvas that never changes. One settled frame, then stop; no
+      // rAF loop running at all for a page with nothing left to redraw.
+      if (!reduced) requestAnimationFrame(frame);
     }
 
     resize();

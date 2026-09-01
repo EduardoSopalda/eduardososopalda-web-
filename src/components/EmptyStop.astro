@@ -19,7 +19,7 @@ const { title, subtitle, todo } = Astro.props;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title} — EDUARDO sopalda</title>
+    <title>{title} · EDUARDO sopalda</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
   <body>
@@ -71,11 +71,19 @@ const { title, subtitle, todo } = Astro.props;
     margin: 0 0 2.5rem;
   }
 
+  /* Bone at rest, not gold -- gold is for the nerve, its beads, and
+     whatever is awake (CLAUDE.md non-negotiable 6), not a resting
+     link color. Hover/focus is the awake moment instead. */
   .back a {
     font-size: 0.75rem;
     letter-spacing: 0.1em;
-    color: var(--gold);
+    color: var(--bone);
     text-decoration: none;
+  }
+
+  .back a:hover,
+  .back a:focus-visible {
+    color: var(--gold);
   }
 
   .back a:focus-visible {
