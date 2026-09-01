@@ -471,6 +471,7 @@
 
 <script>
   import { FRAGS } from '../data/fragments';
+  import { ARTICLE_CATALOG } from '../data/articleIndex';
 
   type Band = 'alta' | 'nervio' | 'baja';
   type ScaleTier = 'dominant' | 'mesa' | 'perdido';
@@ -1236,7 +1237,17 @@
       slot.ref.style.display = f.source ? '' : 'none';
       if (f.source) {
         const revealIdx = idx;
-        const cite = f.year ? `${f.source} \u00b7 ${f.year}` : f.source;
+        // Short reference form (No.NN \u00b7 year) instead of the full
+        // article title -- per direct feedback, "short and sweet."
+        // No.NN is ARTICLE_CATALOG's real, stable chronological
+        // catalogue number (derived from content/_index.json's own
+        // date field, oldest = No.01), not invented. Falls back to
+        // the full title for the rare case of a source not yet in
+        // the catalogue (a newly added fragment before its article's
+        // number is regenerated) rather than showing nothing.
+        const catalogNo = ARTICLE_CATALOG[f.source];
+        const label = catalogNo ? `No.${String(catalogNo).padStart(2, '0')}` : f.source;
+        const cite = f.year ? `${label} \u00b7 ${f.year}` : label;
         setTimeout(() => {
           if (slot.fragIndex !== revealIdx) return;
           slot.ref.innerHTML = '';
