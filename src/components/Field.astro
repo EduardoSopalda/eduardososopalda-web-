@@ -733,6 +733,10 @@
     // on any real pointer movement, drag, or wheel input; frame()
     // ramps drift speed up gradually the longer it's been.
     let lastActiveT = 0;
+    // Strict round-robin across three equal vertical thirds of the
+    // safe channel, incremented once per fragment spawn -- see the
+    // zone-assignment block in assignFragment for why.
+    let zoneRotation = 0;
 
     const wrap = (v: number, m: number) => ((v % m) + m) % m;
     // Converts a "retain (1-rate) of the gap per assumed-60fps frame"
@@ -1177,6 +1181,9 @@
         // value, since state starts 'pending' and assignFragment runs
         // before any decay check does.
         decayAfter: 30,
+        // Real value rolled per fragment in assignFragment -- about 1
+        // in 5 spawns is immune to the natural timeout entirely.
+        persistent: false,
         state: 'pending' as 'pending' | 'alive' | 'decaying' | 'dead',
         pendingT: slotI * 3 + Math.random() * 3, // staggered first appearance
         decayT: 0,
@@ -1320,44 +1327,31 @@
       // decay unseen).
       const depthFactor = 0.3 + slot.depth * 0.7;
 
-      // Y is nerve-relative now, not a fixed shelf fraction of the
-      // viewport -- replaces the old per-slot band system entirely, per
-      // direct spec ("posicionado relativo al nervio, no shelf fijo").
-      // A one-time snapshot of the live nerve curve at spawn (same
-      // pattern the old shelf system used: computed once, reused every
-      // frame via slot.y * H), not tracked live every frame -- the
-      // nerve's own drift is gentle enough that a fixed offset from its
-      // position at spawn time stays coherent for one fragment's whole
-      // lifetime. Short fragments ride close to the wire (BAND_RANGE.
-      // nervio, split above/below); long ones sit in the lower band
-      // (BAND_RANGE.baja, always below) -- weight-to-band linkage, per
-      // spec. Alta is never used here on purpose: that band is
-      // specimen-only (the docked mark lives up there), so fragments
-      // simply never draw from it.
+      // Divided into three equal horizontal thirds of the channel
+      // itself (nerveMin..nerveMax -- already the safe vertical range,
+      // clear of the mark/meta/stops, see computeNerveChannel), and
+      // assigned by strict round-robin, one third per spawn in
+      // rotation -- direct feedback: "if we divide the screen in 3
+      // horizontal sections, most of phrases pop up in the middle
+      // section... we need math to coordinate their release." The
+      // previous system tied Y to weight instead (short always rode
+      // tight to the nerve's own local wave -- which spends most of
+      // its time roughly central -- long always sat in a lower band,
+      // alta never used at all), so the ~62% of fragments that are
+      // "short" all clustered near the nerve's generally-central path
+      // while a whole third of the screen never got anything. Weight
+      // no longer decides vertical placement at all; the rotation
+      // does, so coverage across all three zones is guaranteed over
+      // time by construction rather than left to chance.
       const isLong = f.weight === 'long';
       const channel = Math.max(1, nerveMax - nerveMin);
-      const nerveRef = chainYAt(W * 0.5);
-      const [lo, hi] = isLong ? BAND_RANGE.baja : BAND_RANGE.nervio;
-      // Independent random side+magnitude per fragment meant two
-      // same-weight chairs (both "short", both landing in the same
-      // narrow nervio band) could easily roll near-identical Y with
-      // nothing to separate them -- retrying X alone can't fix that on
-      // a narrow phone, where a quote's own width already eats most of
-      // the viewport's spare horizontal room. Instead: look at where
-      // OTHER currently-alive same-weight siblings already are, and
-      // take whichever side is less crowded, spread across the band
-      // (not clustered near its center) so concurrent chairs land on
-      // deliberately different lines rather than converging by chance.
-      const sameWeightSiblings = fragSlots.filter(
-        (s) => s !== slot && s.state === 'alive' && FIELD_FRAGS[s.fragIndex]?.weight === f.weight
-      );
-      const negCount = sameWeightSiblings.filter((s) => s.y * H < nerveRef).length;
-      const posCount = sameWeightSiblings.length - negCount;
-      const side = isLong ? 1 : negCount <= posCount ? -1 : 1;
-      const laneCount = sameWeightSiblings.filter((s) => (s.y * H < nerveRef ? -1 : 1) === side).length;
-      const laneT = ((laneCount % 3) + 0.5) / 3; // spreads concurrent same-side chairs across the band instead of re-rolling near each other
-      const mag = (lo + laneT * (hi - lo)) * channel;
-      let candidateY = Math.max(nerveMin + 20, Math.min(nerveMax - 20, nerveRef + side * mag));
+      zoneRotation = (zoneRotation + 1) % 3;
+      const thirdH = channel / 3;
+      const zoneLo = nerveMin + zoneRotation * thirdH;
+      // Inset from the third's own edges so a fragment doesn't spawn
+      // flush against the seam between two zones.
+      const inset = thirdH * 0.18;
+      let candidateY = zoneLo + inset + Math.random() * Math.max(1, thirdH - inset * 2);
       slot.y = candidateY / H;
 
       // Retried against both other specimens' AND sibling fragments'
@@ -1400,18 +1394,17 @@
       let targetScreenX = W * 0.06 + Math.random() * W * 0.5;
       for (let attempt = 0; attempt < 10 && collidesAt(targetScreenX, candidateY); attempt++) {
         targetScreenX = W * 0.06 + Math.random() * W * 0.5;
-        // First few attempts only move sideways (keeps the sibling-lane
-        // spreading above meaningful in the common case) -- but a wide
-        // dominant specimen can block the ENTIRE horizontal band at one
-        // Y, which no amount of X-only retrying can ever escape.
-        // Confirmed directly: fragments were re-colliding and re-decaying
-        // in a tight loop because every retry kept landing back on the
-        // same blocked band. From here on, also re-roll Y within the
-        // same band/side (not a different band -- weight-to-band linkage
-        // still holds), giving a genuine way out.
+        // First few attempts only move sideways -- but a wide dominant
+        // specimen can block the ENTIRE horizontal band at one Y, which
+        // no amount of X-only retrying can ever escape. Confirmed
+        // directly: fragments were re-colliding and re-decaying in a
+        // tight loop because every retry kept landing back on the same
+        // blocked band. From here on, also re-roll Y within the SAME
+        // zone third (not a different one -- the round-robin coverage
+        // this zone assignment exists for still holds), giving a
+        // genuine way out.
         if (attempt >= 4) {
-          const freshMag = (lo + Math.random() * (hi - lo)) * channel;
-          candidateY = Math.max(nerveMin + 20, Math.min(nerveMax - 20, nerveRef + side * freshMag));
+          candidateY = zoneLo + inset + Math.random() * Math.max(1, thirdH - inset * 2);
           slot.y = candidateY / H;
         }
       }
@@ -1437,6 +1430,15 @@
       slot.decayAfter = isTouch
         ? (isLong ? 58 : 66) + Math.random() * (isLong ? 14 : 16)
         : (isLong ? 35 : 42) + Math.random() * (isLong ? 10 : 14);
+      // Direct feedback: "they don't all have to death, some can
+      // survive." About one in five spawns is immune to the natural
+      // aloneTime timeout entirely (decayAfter effectively infinite);
+      // collision-forced decay still applies as a safety valve, so a
+      // persistent fragment can't literally block something forever --
+      // it just never runs out the clock on its own the way the other
+      // four in five do.
+      slot.persistent = Math.random() < 0.2;
+      if (slot.persistent) slot.decayAfter = Infinity;
       slot.state = 'alive';
       // Floor of 150 -- specimens top out at z-index 100 (Math.round(s.d
       // * 100), d never exceeds 1.0), and the nerve canvas sits at 250.
@@ -2097,8 +2099,14 @@
 
         // Entry offset decays toward 0 each frame -- this is what makes
         // a freshly spawned fragment fly in from its chosen edge rather
-        // than simply fading in at its resting spot.
-        slot.entryAmt *= reduced ? 0 : Math.pow(0.94, dt * 60);
+        // than simply fading in at its resting spot. Was 0.94 (a ~1s
+        // reveal, both the fly-in offset and the opacity ramp below
+        // are driven by this same value) -- direct feedback: fragments
+        // "come up abruptly... we need a sloooow fade in." Slowed to a
+        // ~3.5s reveal (95% settled by then), matching the doc's own
+        // subhead-bead / callout language elsewhere on this site about
+        // things lighting up rather than snapping in.
+        slot.entryAmt *= reduced ? 0 : Math.pow(0.9858, dt * 60);
         const off = slot.entryAmt * ENTRY_OFFSET;
         let ox = 0, oy = 0;
         if (slot.entryDir === 'left') ox = -off;
@@ -2231,8 +2239,18 @@
             // started. A natural aloneTime timeout should still get the
             // slow, savored version; a collision needs the fast one.
             const wasCollision = forcedByCollision && slot.aloneTime < slot.decayAfter;
-            const wakeMul = wasCollision ? 0.15 : 1;
-            const fadeMul = wasCollision ? 5 : 1;
+            // Was 0.15/5 (a ~1.4-2.4s dissolve at current base rates) --
+            // direct feedback: even a forced decay "needs to happen
+            // slow, elegant and coordinated," not rushed. The 3.5s
+            // collision-tolerance threshold above already does the
+            // real work of not triggering this on every passing graze,
+            // so the dissolve itself no longer needs to be this
+            // urgent once it does fire. Moderated to a ~3-5.5s dissolve
+            // with a more visible per-letter stagger (wakeMul raised)
+            // so it reads as a deliberate, coordinated departure
+            // rather than a flash-and-gone.
+            const wakeMul = wasCollision ? 0.5 : 1;
+            const fadeMul = wasCollision ? 2.2 : 1;
             // Same formulas as Landing's own decay() -- each letter is a
             // Verlet particle displaced by a transform relative to its
             // own normal-flow position, not repositioned to an absolute
