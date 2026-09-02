@@ -927,7 +927,13 @@
       for (let i = 0; i < N; i++) {
         const x = chain[i].x;
         let force = 0;
-        if (hasPointer && !isTouch) {
+        // No !isTouch guard here on purpose: a touch's own pointermove
+        // events already carry real px/py (that's what drags the world
+        // horizontally), so a finger on the glass bends the nerve the
+        // same way a mouse does -- it only stops reacting once the
+        // finger actually lifts (pointerleave-equivalent), not because
+        // touch is excluded outright.
+        if (hasPointer) {
           const baseY = nerveBaseY(x);
           const dist = Math.hypot(x - px, baseY - py);
           if (dist < RADIUS) {
@@ -1693,8 +1699,10 @@
 
       // ---- the point of light: the cursor itself, replaced. Drawn at
       // the same px/py already tracked for bending the nerve, so the
-      // one glow the visitor moves IS the thing moving the wire. ----
-      if (hasPointer && !isTouch) {
+      // one glow the visitor moves IS the thing moving the wire.
+      // Touch included, same reasoning as stepSprings above -- the
+      // glow marks wherever the nerve is actually bending toward. ----
+      if (hasPointer) {
         const glow = ctx!.createRadialGradient(px, py, 0, px, py, 16);
         glow.addColorStop(0, 'rgba(255, 244, 214, 0.95)');
         glow.addColorStop(0.4, 'rgba(247, 197, 106, 0.45)');
