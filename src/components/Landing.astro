@@ -94,11 +94,45 @@ import '../styles/sopalda-landing.css';
     });
   }
 
-  // Populated inside beginReveal below, not here -- see its own comment
-  // for why. Declared up front since dock()'s FLIP animation reads them
-  // regardless of whether the reveal has actually happened yet.
-  let givenLetters: HTMLElement[] = [];
-  let familyLetters: HTMLElement[] = [];
+  // Built immediately, not inside beginReveal -- the wordmark's real
+  // final layout (seven separate inline-block <b> letters, not one
+  // plain text run) needs to exist from the start, the same reasoning
+  // as the manifesto's own setLine(..., false) below: Field.astro
+  // measures the real page to know where the nerve should settle, and
+  // splitting the name AFTER that measurement already happened would
+  // shift the layout out from under it right as it arrives. The CSS
+  // for .given b/.family b has no animation of its own (opacity: 0,
+  // static) specifically so building them early doesn't also start
+  // them animating early -- animateWordmark below does that, gated on
+  // nerve-settled the same way the quote's own animateLetters is.
+  const givenLetters = splitWord(document.getElementById('given')!, 'EDUARDO');
+  const familyLetters = splitWord(document.getElementById('family')!, 'sopalda');
+
+  function animateWordmark() {
+    const animateSet = (letters: HTMLElement[], baseDelay: number, step: number) => {
+      letters.forEach((b, i) => {
+        const anim = b.animate(
+          [
+            { opacity: 0, transform: 'translateY(14px)', filter: 'blur(10px)' },
+            { opacity: 1, transform: 'none', filter: 'blur(0)' },
+          ],
+          {
+            duration: reduced ? 1 : 2400,
+            delay: reduced ? 0 : baseDelay + i * step,
+            easing: 'cubic-bezier(.22,.7,.2,1)',
+            fill: 'forwards',
+          }
+        );
+        // Same reasoning as the quote's own animateLetters: keep the
+        // real inline opacity in sync once the animation finishes, so
+        // nothing later cancelling this animation snaps back to a
+        // stale, invisible 0.
+        anim.onfinish = () => { b.style.opacity = '1'; };
+      });
+    };
+    animateSet(givenLetters, 150, 70);
+    animateSet(familyLetters, 850, 110);
+  }
 
   // ================= the quote: birth, Verlet death, repeat =================
   // Two stacked layers (#frag-a/#frag-b): while one dies, the other is
@@ -460,8 +494,7 @@ import '../styles/sopalda-landing.css';
     // already done this by the time it would go off.
     if (revealed) return;
     revealed = true;
-    givenLetters = splitWord(document.getElementById('given')!, 'EDUARDO');
-    familyLetters = splitWord(document.getElementById('family')!, 'sopalda');
+    animateWordmark();
     animateLetters();
     if (!reduced) setTimeout(decay, 12000);
   }

@@ -90,24 +90,19 @@ body[data-landing='field'] .top-bar {
   font-weight: inherit;
   will-change: transform;
   opacity: 0;
-  animation: rise-in 2.4s cubic-bezier(.22, .7, .2, 1) forwards;
 }
 
-.given b:nth-child(1) { animation-delay: .15s; }
-.given b:nth-child(2) { animation-delay: .22s; }
-.given b:nth-child(3) { animation-delay: .29s; }
-.given b:nth-child(4) { animation-delay: .36s; }
-.given b:nth-child(5) { animation-delay: .43s; }
-.given b:nth-child(6) { animation-delay: .50s; }
-.given b:nth-child(7) { animation-delay: .57s; }
-
-.family b:nth-child(1) { animation-delay: .85s; }
-.family b:nth-child(2) { animation-delay: .96s; }
-.family b:nth-child(3) { animation-delay: 1.07s; }
-.family b:nth-child(4) { animation-delay: 1.18s; }
-.family b:nth-child(5) { animation-delay: 1.29s; }
-.family b:nth-child(6) { animation-delay: 1.40s; }
-.family b:nth-child(7) { animation-delay: 1.51s; }
+/* No CSS animation-delay here on purpose (there used to be one, per
+   letter, via :nth-child) -- splitWord() builds these letters
+   immediately at load now, not gated behind the nerve settling, so
+   that the wordmark's real final layout exists from the start instead
+   of shifting into place after Field.astro's nerve has already
+   measured and settled toward a channel that assumed the plain,
+   unsplit text. A CSS animation-delay counts from element creation,
+   so it would start the moment these letters exist -- immediately,
+   again defeating the wait. animateWordmark() in Landing.astro's own
+   script animates these in via the Web Animations API instead, with
+   the same per-letter stagger, started only once nerve-settled fires. */
 
 .given {
   font-family: var(--font-wordmark-given);
