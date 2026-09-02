@@ -94,8 +94,11 @@ import '../styles/sopalda-landing.css';
     });
   }
 
-  const givenLetters = splitWord(document.getElementById('given')!, 'EDUARDO');
-  const familyLetters = splitWord(document.getElementById('family')!, 'sopalda');
+  // Populated inside beginReveal below, not here -- see its own comment
+  // for why. Declared up front since dock()'s FLIP animation reads them
+  // regardless of whether the reveal has actually happened yet.
+  let givenLetters: HTMLElement[] = [];
+  let familyLetters: HTMLElement[] = [];
 
   // ================= the quote: birth, Verlet death, repeat =================
   // Two stacked layers (#frag-a/#frag-b): while one dies, the other is
@@ -168,7 +171,13 @@ import '../styles/sopalda-landing.css';
   let held = false;
   let docked = false;
 
-  function setLine(text: string, source: string | null, year: number | null, node: HTMLElement) {
+  // revealNow=false builds the line's real DOM structure (and, with
+  // it, its real layout position and height) without starting the
+  // per-letter fade-in yet -- see beginReveal below for why the very
+  // first call (the manifesto) needs exactly that split. Every later
+  // call passes the default (true): build and animate together, same
+  // as always.
+  function setLine(text: string, source: string | null, year: number | null, node: HTMLElement, revealNow = true) {
     decaying = false;
     node.innerHTML = '';
     letters = [];
@@ -193,6 +202,10 @@ import '../styles/sopalda-landing.css';
       });
       node.appendChild(word);
     });
+    if (revealNow) animateLetters();
+  }
+
+  function animateLetters() {
     letters.forEach((b, i) => {
       const anim = b.animate(
         [
@@ -420,8 +433,50 @@ import '../styles/sopalda-landing.css';
     });
   }
 
-  setLine(MANIFESTO.text, MANIFESTO.source, null, layers[0]);
-  if (!reduced) setTimeout(decay, 12000);
+  // Lays out the manifesto's real DOM structure (and with it, #frag-a's
+  // real height and position) immediately, letters at rest at opacity
+  // 0 -- but does not animate them in yet (revealNow=false). This has
+  // to happen right away, ungated: Field.astro's computeNerveChannel
+  // measures #frag-a's own position to know where the nerve should
+  // settle, and #frag-a starts the page `hidden` -- if nothing ever
+  // un-hides it until the nerve has already settled, the nerve can
+  // never get a real measurement to settle toward in the first place.
+  // Splitting "laid out" from "visibly animated in" breaks that circle:
+  // the letters themselves still wait for beginReveal below.
+  setLine(MANIFESTO.text, MANIFESTO.source, null, layers[0], false);
+
+  // The name splitting into letters, and animating the manifesto's own
+  // letters in, used to just run here, immediately, at script load.
+  // That raced Field.astro's nerve: the nerve's entrance (see its own
+  // comment, "nerve-settled") could still be flat and pinned near the
+  // top while the name and quote were already fading in on top of it.
+  // Waiting for that event means the sequence is now what it's
+  // supposed to be -- the nerve arrives, then the name, then the quote
+  // -- instead of both starting at once by coincidence of load timing.
+  let revealed = false;
+  function beginReveal() {
+    // Guards against running twice: the safety-net timeout below fires
+    // unconditionally, and the common case is that the real event has
+    // already done this by the time it would go off.
+    if (revealed) return;
+    revealed = true;
+    givenLetters = splitWord(document.getElementById('given')!, 'EDUARDO');
+    familyLetters = splitWord(document.getElementById('family')!, 'sopalda');
+    animateLetters();
+    if (!reduced) setTimeout(decay, 12000);
+  }
+
+  if (reduced) {
+    // No entrance to wait for under reduced motion -- same as before,
+    // immediate.
+    beginReveal();
+  } else {
+    addEventListener('nerve-settled', beginReveal, { once: true });
+    // Safety net: if Field.astro's script never dispatches this (fails
+    // to load, throws before it gets there), don't leave the page
+    // permanently blank waiting on a signal that's never coming.
+    setTimeout(beginReveal, 4000);
+  }
 
   layers.forEach((node) => {
     node.addEventListener('pointerdown', () => {

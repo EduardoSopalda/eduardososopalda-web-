@@ -778,6 +778,14 @@
       canvas!.style.height = H + 'px';
       ctx!.setTransform(DPR, 0, 0, DPR, 0, 0);
       buildChain();
+      // The nerve's entrance pose: flat, pinned near the top of the
+      // still-black screen, before anything else has appeared. Set
+      // once, on the very first resize() at load -- a later resize
+      // (rotating a phone, a window resize) must not replay this.
+      if (!entranceInited) {
+        nerveMin = nerveMax = H * 0.1;
+        entranceInited = true;
+      }
       computeNerveChannel();
     }
 
@@ -846,14 +854,32 @@
     // elements instead, so the channel -- and the wave that fills it --
     // adapts to whatever room genuinely exists on that viewport, phone
     // or desktop alike, rather than a number tuned for one screen.
-    let nerveMin = H * 0.16, nerveMax = H * 0.86;
+    // nerveMin/nerveMax are the RENDERED channel bounds -- what
+    // nerveBaseY and every fragment/specimen placement actually reads.
+    // They start flat and pinned near the top of a still-black screen
+    // on purpose (see resize()'s entrance setup below) and ease toward
+    // realNerveMin/realNerveMax -- the measured target -- once that's
+    // known. This used to be a single pair of variables computed
+    // directly by computeNerveChannel, which meant its first (correctly
+    // rejected, see that function's own comment) measurement left the
+    // channel at whatever H*0.16/H*0.86 happened to equal before
+    // resize() had ever run (0, since H was still 0) -- a real bug, a
+    // flat line pinned to literal y=0 until the next successful
+    // measurement snapped it into place. Splitting "rendered" from
+    // "target" turns that snap into a deliberate, visible entrance.
+    let nerveMin = 0, nerveMax = 0;
+    let realNerveMin = 0, realNerveMax = 0;
+    let haveRealChannel = false;
+    let entranceInited = false;
+    let entranceSettled = false;
     function computeNerveChannel() {
       if (document.body.dataset.landing === 'field') {
         // Docked: the corner mark is tiny and the quote is hidden
         // (opacity 0) -- only the very top (top-bar/corner mark) and
         // very bottom (meta/stops) need real clearance.
-        nerveMin = H * 0.12;
-        nerveMax = H * 0.88;
+        realNerveMin = H * 0.12;
+        realNerveMax = H * 0.88;
+        haveRealChannel = true;
         return;
       }
       const tagline = document.querySelector('.tagline');
@@ -863,13 +889,17 @@
       const pTop = purpose.getBoundingClientRect().top;
       const margin = 26;
       // Sanity floor (120px) before trusting the measurement -- a
-      // layout mid-reflow (fonts still loading, a transition mid-way)
-      // could momentarily report a near-zero or negative gap, and
-      // clamping the wave into that would be worse than just keeping
-      // last frame's good channel until the next recompute.
+      // layout mid-reflow (fonts still loading, a transition mid-way,
+      // or -- the real case this caught -- #frag-a still carrying its
+      // initial `hidden` attribute before Landing.astro's own script
+      // un-hides it, which makes getBoundingClientRect() report all
+      // zeros) could momentarily report a near-zero or negative gap,
+      // and clamping the wave into that would be worse than just
+      // keeping the last good target until the next recompute.
       if (pTop - tBottom > margin * 2 + 120) {
-        nerveMin = tBottom + margin;
-        nerveMax = pTop - margin;
+        realNerveMin = tBottom + margin;
+        realNerveMax = pTop - margin;
+        haveRealChannel = true;
       }
     }
 
@@ -1630,6 +1660,30 @@
       // them. Catches both without a resize or attribute-change listener.
       channelT += 1;
       if (channelT > 20) { channelT = 0; computeNerveChannel(); }
+
+      // Ease the rendered channel toward whatever's actually been
+      // measured, once there's something real to ease toward -- see
+      // the entrance-pose comment above computeNerveChannel. Slow on
+      // purpose: this is the nerve's own arrival, not a value snapping
+      // into place. Landing.astro waits for the 'nerve-settled' event
+      // this dispatches once, so the name and quote don't start fading
+      // in until the nerve has actually finished arriving.
+      if (haveRealChannel) {
+        if (reduced) {
+          nerveMin = realNerveMin;
+          nerveMax = realNerveMax;
+        } else {
+          nerveMin += (realNerveMin - nerveMin) * approachFactor(0.045, dt);
+          nerveMax += (realNerveMax - nerveMax) * approachFactor(0.045, dt);
+        }
+        if (!entranceSettled) {
+          const closeEnough = Math.abs(nerveMin - realNerveMin) < 1.5 && Math.abs(nerveMax - realNerveMax) < 1.5;
+          if (reduced || closeEnough) {
+            entranceSettled = true;
+            dispatchEvent(new Event('nerve-settled'));
+          }
+        }
+      }
 
       stepChain(dt);
       ctx!.clearRect(0, 0, W, H);
