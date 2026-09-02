@@ -872,6 +872,18 @@
     let haveRealChannel = false;
     let entranceInited = false;
     let entranceSettled = false;
+    // Fixed-duration eased tween, not a continuous chase -- an
+    // exponential approach (the approachFactor pattern used everywhere
+    // else in this file) moves fastest at the very start, the instant
+    // the target becomes known, which reads as an abrupt jolt rather
+    // than an arrival. A real ease-in-out (slow, then faster through
+    // the middle, then slow again into place) is what "elegant" here
+    // actually looks like -- the same reasoning as tokens.css's own
+    // --ease-slow, used for exactly this kind of unhurried
+    // repositioning elsewhere on the site.
+    let entranceStartT = -1;
+    let entranceFromMin = 0, entranceFromMax = 0;
+    const ENTRANCE_MS = 3000;
     function computeNerveChannel() {
       if (document.body.dataset.landing === 'field') {
         // Docked: the corner mark is tiny and the quote is hidden
@@ -1669,19 +1681,41 @@
       // this dispatches once, so the name and quote don't start fading
       // in until the nerve has actually finished arriving.
       if (haveRealChannel) {
-        if (reduced) {
-          nerveMin = realNerveMin;
-          nerveMax = realNerveMax;
-        } else {
-          nerveMin += (realNerveMin - nerveMin) * approachFactor(0.045, dt);
-          nerveMax += (realNerveMax - nerveMax) * approachFactor(0.045, dt);
-        }
         if (!entranceSettled) {
-          const closeEnough = Math.abs(nerveMin - realNerveMin) < 1.5 && Math.abs(nerveMax - realNerveMax) < 1.5;
-          if (reduced || closeEnough) {
+          if (reduced) {
+            nerveMin = realNerveMin;
+            nerveMax = realNerveMax;
             entranceSettled = true;
             dispatchEvent(new Event('nerve-settled'));
+          } else {
+            if (entranceStartT < 0) {
+              entranceStartT = now;
+              entranceFromMin = nerveMin;
+              entranceFromMax = nerveMax;
+            }
+            const p = Math.min(1, (now - entranceStartT) / ENTRANCE_MS);
+            // Cosine ease-in-out: 0 at p=0, 1 at p=1, slope zero at
+            // both ends -- gentle start, faster through the middle,
+            // gentle finish. Same shape --ease-slow describes,
+            // expressed as a number instead of a CSS timing function
+            // since this drives a canvas value, not a transitionable
+            // style property.
+            const eased = 0.5 - 0.5 * Math.cos(p * Math.PI);
+            nerveMin = entranceFromMin + (realNerveMin - entranceFromMin) * eased;
+            nerveMax = entranceFromMax + (realNerveMax - entranceFromMax) * eased;
+            if (p >= 1) {
+              entranceSettled = true;
+              dispatchEvent(new Event('nerve-settled'));
+            }
           }
+        } else {
+          // The entrance already happened once -- this is an ordinary
+          // later adjustment (a resize, a taller or shorter quote
+          // changing the available channel), not a first arrival, so a
+          // plain continuous chase is the right amount of motion, not
+          // another multi-second ease.
+          nerveMin += (realNerveMin - nerveMin) * approachFactor(0.06, dt);
+          nerveMax += (realNerveMax - nerveMax) * approachFactor(0.06, dt);
         }
       }
 
