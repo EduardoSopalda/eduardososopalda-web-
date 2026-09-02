@@ -1,8 +1,11 @@
 name: Deploy to IONOS
 
+# push-to-main trigger intentionally left out for now: IONOS_SFTP_PASSWORD
+# isn't set yet and remote_path is still an unconfirmed placeholder, so
+# firing on every push would just fail. workflow_dispatch lets it be run
+# manually once both are ready; re-add "push: branches: [main]" here
+# once they are, to get real push-to-deploy.
 on:
-  push:
-    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
