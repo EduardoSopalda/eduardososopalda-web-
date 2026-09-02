@@ -1,0 +1,42 @@
+name: Deploy to IONOS
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx astro build
+
+      # IONOS Hosting Plus has no Git integration, so this is the
+      # replacement for what a Vercel/Deploy Now push-to-deploy would
+      # have done -- upload the static build over SFTP instead.
+      #
+      # remote_path below is a placeholder ("/") and needs confirming
+      # against the real webspace folder structure before this is
+      # trustworthy: IONOS Hosting Plus can put a given domain's
+      # docroot at the webspace root or in its own subfolder once
+      # eduardosopalda.com is actually attached to this contract.
+      # Check via the FileZilla/Cyberduck config IONOS offers to
+      # download, or its browser file manager, then update remote_path
+      # to match -- deploying to the wrong folder would upload the
+      # site somewhere nobody's domain points at, not somewhere unsafe,
+      # but it won't be reachable until this is right.
+      - name: Deploy to IONOS via SFTP
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+        with:
+          username: a604739
+          server: access-5017995636.webspace-host.com
+          port: 22
+          password: ${{ secrets.IONOS_SFTP_PASSWORD }}
+          local_path: './dist/*'
+          remote_path: '/'
