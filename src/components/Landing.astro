@@ -36,6 +36,21 @@ import '../styles/sopalda-landing.css';
         <span class="given" id="given" aria-hidden="true">EDUARDO</span>
         <span class="family" id="family" aria-hidden="true">sopalda</span>
       </h1>
+      {/* The module script below (splitWord) also clears and rebuilds
+          these two spans, but it's a deferred module -- it only runs
+          once the browser gets around to it, well after this markup
+          has already been parsed and painted at least once. On a slow
+          enough device that gap is long enough to see: the plain
+          static name flashes on screen, then vanishes, then the real
+          letter-by-letter animation starts. is:inline runs this
+          synchronously, in place, before the parser moves past it --
+          the static text never gets a chance to paint at all, while
+          still existing in the served markup for a crawler or a page
+          that never runs JS at all. */}
+      <script is:inline>
+        document.getElementById('given').textContent = '';
+        document.getElementById('family').textContent = '';
+      </script>
       <p class="tagline">DATA | AI <span class="amp">&amp;</span> The human experience</p>
     </header>
 
