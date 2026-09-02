@@ -179,7 +179,7 @@ import '../styles/sopalda-landing.css';
       node.appendChild(word);
     });
     letters.forEach((b, i) => {
-      b.animate(
+      const anim = b.animate(
         [
           { opacity: 0, transform: 'translateY(10px)', filter: 'blur(8px)' },
           { opacity: 1, transform: 'none', filter: 'blur(0)' },
@@ -191,6 +191,18 @@ import '../styles/sopalda-landing.css';
           fill: 'forwards',
         }
       );
+      // fill:'forwards' holds the animation's own visual result at
+      // opacity 1 without ever touching b.style.opacity itself, which
+      // stays at the literal '0' set above. decay() later cancels this
+      // animation to hand the letter to the physics engine -- cancelling
+      // reverts to that stale underlying '0', not to what was on screen,
+      // so every letter would flash fully invisible for one frame and
+      // then flash back (physics starts at life:1) before actually
+      // starting to fade -- a real, confirmed "fade in, vanish, come
+      // back, then decay" glitch, not a timing illusion. Keeping the
+      // real inline opacity in sync once the animation finishes means
+      // cancelling it later is a no-op visually.
+      anim.onfinish = () => { b.style.opacity = '1'; };
     });
   }
 
