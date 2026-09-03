@@ -348,6 +348,17 @@ import '../styles/sopalda-landing.css';
     physLast = performance.now();
     const origin = letters.map((b) => b.getBoundingClientRect());
     phys = letters.map((b, i) => {
+      // Belt-and-suspenders alongside animateLetters' own onfinish
+      // handler above: decay() here is always called a fixed 12-16s
+      // after a quote's entrance started, comfortably longer than the
+      // ~1.6s+stagger fade-in ever takes, so this animation should
+      // always have already finished by the time this runs. Snapshotting
+      // the live computed opacity into the inline style before
+      // cancelling regardless costs nothing and closes the same class
+      // of bug Field.astro's own fragment decay had (a cancel reverting
+      // to a stale creation-time opacity rather than what was actually
+      // on screen) in case that timing assumption ever stops holding.
+      b.style.opacity = getComputedStyle(b).opacity;
       b.getAnimations().forEach((a) => a.cancel());
       const ang = (i / Math.max(letters.length, 1)) * Math.PI * 2 + (Math.random() - 0.5) * 0.35;
       const speed = mode === 'explode' ? 11 + Math.random() * 8 : 2.4 + Math.random() * 2;
