@@ -478,6 +478,88 @@ import '../styles/sopalda-landing.css';
     });
   }
 
+  // ================= undock: reverse FLIP back to the hero =================
+  // FIELD-SPEC: "Escape leaves." Field.astro owns the actual keydown
+  // listener (only it knows whether the field is even docked right
+  // now) and signals back via a plain window event -- it doesn't own
+  // the wordmark/tagline elements this has to animate, the same reason
+  // nerve-settled crosses the same boundary the other direction.
+  // Exactly dock()'s own FLIP, run in reverse: capture rects while
+  // still docked, drop is-docked/data-landing, capture rects again,
+  // animate from the first pair to the second. The formula itself
+  // doesn't change -- only which state gets measured first.
+  function undock() {
+    if (!docked) return;
+    docked = false;
+
+    const tag = document.querySelector('.tagline') as HTMLElement;
+    // Cancels dock()'s own still-"filling" animations first -- those
+    // used fill:'both', so without this a fresh animation here is
+    // layering on top of one that's still holding its final transform
+    // rather than starting clean from the current, settled position.
+    [...givenLetters, ...familyLetters, tag].forEach((el) => el.getAnimations().forEach((a) => a.cancel()));
+
+    const firstG = firstRects(givenLetters);
+    const firstF = firstRects(familyLetters);
+    const firstT = tag.getBoundingClientRect();
+    document.body.classList.remove('is-docked');
+    document.body.removeAttribute('data-landing');
+    const lastG = firstRects(givenLetters);
+    const lastF = firstRects(familyLetters);
+    const lastT = tag.getBoundingClientRect();
+
+    const flip = (nodes: HTMLElement[], first: DOMRect[], last: DOMRect[], duration: number, stepDelay: number) => {
+      nodes.forEach((b, i) => {
+        const dx = first[i].left - last[i].left;
+        const dy = first[i].top - last[i].top;
+        const sx = first[i].width / Math.max(last[i].width, 1);
+        const sy = first[i].height / Math.max(last[i].height, 1);
+        b.animate(
+          [
+            { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` },
+            { transform: 'translate(0,0) scale(1)' },
+          ],
+          { duration: reduced ? 1 : duration, delay: i * stepDelay, easing: 'cubic-bezier(.22,.7,.2,1)', fill: 'both' }
+        );
+      });
+    };
+    flip(givenLetters, firstG, lastG, 3400, 55);
+    flip(familyLetters, firstF, lastF, 3400, 55);
+    {
+      const dx = firstT.left - lastT.left;
+      const dy = firstT.top - lastT.top;
+      const sx = firstT.width / Math.max(lastT.width, 1);
+      const sy = firstT.height / Math.max(lastT.height, 1);
+      tag.animate(
+        [
+          { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`, opacity: '1' },
+          { transform: 'translate(0,0) scale(1)', opacity: '1' },
+        ],
+        { duration: reduced ? 1 : 3800, delay: 120, easing: 'cubic-bezier(.22,.65,.2,1)', fill: 'both' }
+      );
+    }
+
+    // The manifesto/quote, the field's own specimens and fragments, and
+    // the cue's dimmed-while-docked opacity all revert on their own --
+    // every one of those is a plain CSS rule keyed off is-docked or
+    // data-landing='field', not something this function has to touch.
+    // Field.astro's own channel measurement and nerve position ease
+    // back toward the landing formula the same ordinary way any later
+    // adjustment does (see its own frame() loop), not a second
+    // dramatic entrance.
+    //
+    // wheel/touchstart were {once:true} -- already consumed by the
+    // very first dock, so scrolling or touching again after an undock
+    // would otherwise do nothing. Re-armed here so the same low-friction
+    // fallback works again; cue/mark's own click listeners were never
+    // {once:true} and already still work without this.
+    if (!reduced) {
+      addEventListener('wheel', dock, { once: true, passive: true });
+      addEventListener('touchstart', dock, { once: true, passive: true });
+    }
+  }
+  addEventListener('field-escape', undock);
+
   // Lays out the manifesto's real DOM structure (and with it, #frag-a's
   // real height and position) immediately, letters at rest at opacity
   // 0 -- but does not animate them in yet (revealNow=false). This has

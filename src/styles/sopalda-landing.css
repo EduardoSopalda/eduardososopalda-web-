@@ -121,6 +121,23 @@ body[data-landing='field'] .top-bar {
 }
 
 .tagline {
+  /* inline-block, not the default block -- .mark's own text-align
+     still centers it (and, docked, right-aligns it) since inline-level
+     boxes respond to that, but the box itself now hugs the actual
+     rendered text instead of stretching to .mark's full width. That
+     matters concretely for dock()'s own FLIP transform in Landing.astro:
+     it reads this element's getBoundingClientRect() before and after
+     toggling is-docked to compute a scale factor, and a plain block
+     paragraph's box is dominated by its container's width, not the
+     short centered text inside it -- confirmed directly, a ~1396px
+     landing box against a ~200px docked one (the docked rule's own
+     max-width: 16rem) computed a 6.87x horizontal scale, visibly
+     ballooning the tagline to near full viewport width for about a
+     second of every single dock transition before it snapped down to
+     its real size. inline-block's shrink-to-fit box makes both
+     measurements reflect the real text width, so the computed scale is
+     the true, modest ratio the font-size change alone accounts for. */
+  display: inline-block;
   margin-top: 14px;
   font-family: var(--font-mono);
   font-size: clamp(.58rem, 2.7vw, .72rem);
