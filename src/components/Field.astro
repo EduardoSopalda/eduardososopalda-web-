@@ -196,6 +196,19 @@
     transition: opacity 1.1s var(--ease), visibility 0s linear 1.1s;
   }
 
+  /* Only specimens carrying a real catalogue tag get tabindex (see
+     specNodes below) -- the untagged atmosphere pair (seaweed, eyefish)
+     stay non-interactive since there's nothing real to announce for
+     them, same "invent nothing" reasoning as everywhere else on this
+     site. Same ring as .stop/.cue elsewhere, so keyboard focus reads
+     as one consistent style across the whole field, not invented fresh
+     here. */
+  .spec:focus-visible {
+    outline: 1.5px solid var(--gold);
+    outline-offset: 6px;
+    border-radius: 2px;
+  }
+
   /* None of the source stills or videos are actually cut out — they're
      opaque rectangles with a near-black (not pure 0,0,0) background:
      compression noise, ~1-10 per channel, up to 40+ in spots. Brightening
@@ -811,6 +824,33 @@
       targetX += (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) * 1.1;
     }, { passive: true });
 
+    // FIELD-SPEC: "arrow keys move the field, Escape leaves." Only
+    // active once actually docked into the field -- pre-dock there's
+    // nothing yet to pan, and nothing to leave. Arrow keys nudge the
+    // same targetX/dragY the wheel handler above already drives, not a
+    // parallel system, so drift/springs/parallax all react to a key
+    // press exactly the way they react to a wheel notch. Escape hands
+    // off to Landing.astro via a plain window event rather than
+    // undocking directly -- Field.astro doesn't own the wordmark or
+    // tagline elements the reverse transition has to animate, the same
+    // reason nerve-settled is a cross-component event rather than a
+    // direct call.
+    addEventListener('keydown', (e) => {
+      if (document.body.dataset.landing !== 'field') return;
+      if (e.key === 'Escape') {
+        dispatchEvent(new Event('field-escape'));
+        return;
+      }
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+      e.preventDefault();
+      lastActiveT = t;
+      const STEP = 120;
+      if (e.key === 'ArrowLeft') targetX -= STEP;
+      else if (e.key === 'ArrowRight') targetX += STEP;
+      else if (e.key === 'ArrowUp') dragY = Math.max(-H * 0.34, Math.min(H * 0.34, dragY - STEP * 0.5));
+      else if (e.key === 'ArrowDown') dragY = Math.max(-H * 0.34, Math.min(H * 0.34, dragY + STEP * 0.5));
+    });
+
     // ================= nerve: closed-form wave, sampled fresh each frame =================
     const N = 56, MARGIN = 240;
     type Pt = { x: number; y: number };
@@ -1063,6 +1103,17 @@
         tag.className = 'spec-tag';
         tag.textContent = s.tag;
         el.appendChild(tag);
+        // Keyboard-focusable, per FIELD-SPEC ("every specimen and stop
+        // is focusable"), but only for the specimens that carry a real
+        // catalogue tag -- seaweed and eyefish have nothing behind them
+        // beyond decorative atmosphere, and a tab stop announcing
+        // nothing would be a worse outcome than not being one. role
+        // "img" + the same string sighted users already read as the
+        // .spec-tag caption gives a screen reader user the real thing,
+        // not an invented label.
+        el.tabIndex = 0;
+        el.setAttribute('role', 'img');
+        el.setAttribute('aria-label', s.tag);
       }
       // Belt-and-suspenders alongside pointer-events/touch-callout/
       // user-drag in the CSS (see .spec img/video's own comment) --
@@ -1150,6 +1201,14 @@
       if (isTouch) {
         el.style.pointerEvents = 'auto';
         el.addEventListener('click', () => { node.tapAwakeUntil = t + 4; });
+      }
+      // Keyboard parity for the same wake a touch tap already gets --
+      // a sighted mouse user gets proximity for free, a keyboard user
+      // has no cursor to be "near" with, so focusing the specimen is
+      // its equivalent of arriving at it. Only ever added on tagged
+      // specimens, which are the only ones tabIndex was set on above.
+      if (s.tag) {
+        el.addEventListener('focus', () => { node.tapAwakeUntil = t + 4; });
       }
       return node;
     });
@@ -1256,6 +1315,11 @@
         fragIndex: -1,
         depth: 0.5,
         xn: 0, y: 0.5,
+        // Which of the 3 horizontal thirds (see zoneRotation below) this
+        // slot's current fragment spawned into -- -1 before the first
+        // ever assignment. Read by assignFragment itself to steer new
+        // spawns away from zones a live sibling already occupies.
+        zoneIdx: -1,
         entryDir: 'left' as Dir,
         entryAmt: 0, // 1 = fully off-screen at entry point, eases to 0
         aloneTime: 0,
@@ -1276,6 +1340,17 @@
         // visible specimen's bounding box -- "el texto espera o se
         // va" -- accumulated so a one-frame graze doesn't trigger it.
         collideTime: 0,
+        // Vertical nudge, eased in and out, that pushes this slot's
+        // quote away from whatever it's currently overlapping -- "el
+        // texto espera o se va" was only ever built as "waits, then
+        // leaves" (collideTime -> forced decay), with no attempt to
+        // actually get out of the way first. Measured directly: with
+        // 4 fragment chairs and up to 4 specimens sharing one channel,
+        // that meant collision-forced decay firing on effectively every
+        // fragment, 2-25s after spawn, none of the natural ~40s alone
+        // timeouts FIELD-SPEC calls for ever getting a chance to run.
+        // See the dodge logic in frame() for how this is set.
+        dodgeY: 0,
         // How long this chair has sat off-screen while still "alive".
         // assignFragment spawns a fragment ON-screen on purpose, but
         // the drifting world is much wider than the viewport (WORLD_W
@@ -1451,8 +1526,25 @@
       const isLong = f.weight === 'long';
       const channel = Math.max(1, nerveMax - nerveMin);
       zoneRotation = (zoneRotation + 1) % 3;
+      // Prefer a third no live sibling currently occupies over the
+      // blind round-robin's own next value. With up to 4 chairs sharing
+      // only 3 zones, plain rotation guarantees two land in the same
+      // third whenever all 4 are alive at once -- confirmed directly as
+      // a real cause of fragments overlapping each other: a 75s
+      // real-time trace where every single decay observed was
+      // collision-forced (2-25s after spawn), not one natural ~40s
+      // timeout, because the channel stayed crowded enough that some
+      // overlap was close to constant. Trying the next free third first
+      // still keeps the round-robin's own long-run coverage guarantee
+      // (zoneRotation itself keeps advancing every spawn regardless of
+      // which zone actually gets used this time), it just stops handing
+      // out a zone that's already taken when an empty one exists.
+      const usedZones = new Set(liveSiblings.map((s) => s.zoneIdx).filter((z) => z >= 0));
+      let zone = zoneRotation;
+      for (let tries = 0; tries < 3 && usedZones.has(zone); tries++) zone = (zone + 1) % 3;
+      slot.zoneIdx = zone;
       const thirdH = channel / 3;
-      const zoneLo = nerveMin + zoneRotation * thirdH;
+      const zoneLo = nerveMin + zone * thirdH;
       // Inset from the third's own edges so a fragment doesn't spawn
       // flush against the seam between two zones.
       const inset = thirdH * 0.18;
@@ -1656,7 +1748,7 @@
         el.dataset.justClicked = '1';
         setTimeout(() => delete el.dataset.justClicked, 400);
       });
-      return { el, name: s[0], xn: (i + 0.5) / STOPS.length, near: 0 };
+      return { el, name: s[0], xn: (i + 0.5) / STOPS.length, near: 0, nearAmt: 0 };
     });
 
     // Per-fragment decay timing (decayAfter) and touch-vs-pointer base
@@ -2162,6 +2254,12 @@
           const d = Math.hypot(px - sx, py - sy);
           want = d < w * 0.62 ? 1 : 0;
         }
+        // Keyboard focus wakes it too, on any device -- a mouse user
+        // gets proximity for free (above); a keyboard user has no
+        // cursor to be "near" with, so tapAwakeUntil (set on focus, see
+        // specNodes above) is the equivalent trigger regardless of
+        // isTouch/hasPointer.
+        if (t < n.tapAwakeUntil) want = 1;
         n.awake += (want - n.awake) * approachFactor(0.1, dt);
         // --awake (brightness/glow) always reflects the real value;
         // only the TAG's own visibility is budgeted to 3 concurrent.
@@ -2286,7 +2384,7 @@
         else if (slot.entryDir === 'top') oy = -off;
         else oy = off;
 
-        const X = baseX + ox, Y = baseY + oy;
+        const X = baseX + ox, Y = baseY + oy + slot.dodgeY;
         // Visibility is checked against the RESTING position (no entry
         // offset), and requires the whole block to fit -- not a wide
         // fixed-pixel margin around a partial overlap. The old margin
@@ -2366,6 +2464,35 @@
               if (X < cueRect.right && X + bw > cueRect.left && Y < cueRect.bottom && Y + bh > cueRect.top) colliding = true;
             }
             slot.collideTime = colliding ? slot.collideTime + dt : Math.max(0, slot.collideTime - dt * 2);
+
+            // Duck out of the way before giving up and dying -- "el
+            // texto espera o se va" was only ever built as "waits, then
+            // leaves" (collideTime above, forcing an early decay once
+            // it runs out), with nothing in between ever trying to
+            // actually get clear first. Measured directly: with 4
+            // fragment chairs and up to 4 specimens sharing one
+            // channel, that meant collision-forced decay firing on
+            // effectively every fragment, 2-25s after spawn -- none of
+            // FIELD-SPEC's own ~40s natural "alone" timeouts ever got a
+            // real chance to run. A small, slow vertical nudge away
+            // from the obstacle, eased the same way as every other
+            // proximity response here, gives a graze an actual chance
+            // to clear on its own before the 3.5s tolerance below is
+            // even reached. Clamped to roughly a third of this slot's
+            // own zone-third (see zoneIdx in assignFragment) so it
+            // trades one collision for breathing room within its own
+            // band, not for a new collision next door. Direction is
+            // toward whichever edge of that band currently has more
+            // room, recomputed fresh each frame from the live position
+            // (not fixed once) so it keeps adapting as things drift --
+            // stable in practice since the ease itself is slow enough
+            // not to flicker near the band's own midpoint.
+            const zoneThird = Math.max(1, (nerveMax - nerveMin) / 3);
+            const zoneLo = nerveMin + slot.zoneIdx * zoneThird;
+            const maxDodge = zoneThird * 0.32;
+            const towardTop = Y - zoneLo < zoneLo + zoneThird - (Y + bh);
+            const dodgeTarget = colliding ? (towardTop ? -1 : 1) * maxDodge : 0;
+            slot.dodgeY += (dodgeTarget - slot.dodgeY) * approachFactor(0.05, dt);
           }
           // Was 0.25s (lowered from 0.4s in an earlier fix) -- measured
           // directly what that actually did over a real 60s session
@@ -2534,13 +2661,27 @@
           }
         }
 
-        s.el.style.transform = `translate3d(${X}px, ${y - 22}px, 0)`;
         let near = 0;
         if (hasPointer) {
           const d = Math.hypot(px - X, py - y);
           near = d < 140 ? 1 : 0;
         }
         s.el.dataset.near = String(near);
+        // FIELD-SPEC: "the bead brightens, the label rises and
+        // letterspaces." Brighten and letterspace were already real
+        // (the color/letter-spacing transition on [data-near='1']
+        // below), but "rises" was never actually built -- a plain CSS
+        // transform on that selector can't do it, since this same
+        // element's position is an inline style JS overwrites every
+        // single frame regardless (inline always wins over a class
+        // rule), so any CSS transform would just get clobbered next
+        // frame. Smoothed via the same approachFactor curve as every
+        // other proximity response in this file (specimen wake, lean),
+        // not an instant snap, and baked directly into the Y this same
+        // line already computes.
+        s.nearAmt += (near - s.nearAmt) * approachFactor(0.12, dt);
+        const lift = s.nearAmt * 4;
+        s.el.style.transform = `translate3d(${X}px, ${y - 22 - lift}px, 0)`;
       }
 
       // Under reduced motion everything above this point is already a
