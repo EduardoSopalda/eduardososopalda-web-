@@ -497,7 +497,25 @@ import '../styles/sopalda-landing.css';
     // used fill:'both', so without this a fresh animation here is
     // layering on top of one that's still holding its final transform
     // rather than starting clean from the current, settled position.
-    [...givenLetters, ...familyLetters, tag].forEach((el) => el.getAnimations().forEach((a) => a.cancel()));
+    //
+    // Same bug as Field.astro's own fragment decay and Landing's own
+    // decay(), just reached a third way: cancelling an animation that
+    // is still actively running (not yet finished) reverts the element
+    // to its stale, pre-animation CSS starting pose, not to whatever
+    // was on screen -- confirmed directly, docking again quickly
+    // enough that the letters' own entrance reveal (animateWordmark)
+    // hadn't finished yet, then hitting Escape, made the wordmark
+    // vanish outright: .given b/.family b's own CSS starting pose is
+    // opacity: 0 (see sopalda-landing.css), and animateWordmark's
+    // onfinish only ever syncs the real inline opacity once that
+    // animation genuinely completes -- which cancelling here pre-empts.
+    // Snapshotting the live computed opacity into the inline style
+    // first means the cancel is a no-op regardless of whether the
+    // entrance had finished.
+    [...givenLetters, ...familyLetters, tag].forEach((el) => {
+      el.style.opacity = getComputedStyle(el).opacity;
+      el.getAnimations().forEach((a) => a.cancel());
+    });
 
     const firstG = firstRects(givenLetters);
     const firstF = firstRects(familyLetters);
@@ -553,10 +571,18 @@ import '../styles/sopalda-landing.css';
     // would otherwise do nothing. Re-armed here so the same low-friction
     // fallback works again; cue/mark's own click listeners were never
     // {once:true} and already still work without this.
-    if (!reduced) {
-      addEventListener('wheel', dock, { once: true, passive: true });
-      addEventListener('touchstart', dock, { once: true, passive: true });
-    }
+    //
+    // Not gated on reduced -- these are registered unconditionally at
+    // the bottom of this script now (see that code's own comment on why
+    // reduced motion still needs the same triggers, just an instant
+    // reveal instead of an animated one), so re-arming them here has to
+    // match, not fall back to the old reduced-skips-registration
+    // pattern. Confirmed directly: under reduced motion, a second
+    // Escape-then-wheel did nothing at all, because this re-arm alone
+    // was still gated on !reduced while the initial registration no
+    // longer was.
+    addEventListener('wheel', dock, { once: true, passive: true });
+    addEventListener('touchstart', dock, { once: true, passive: true });
   }
   addEventListener('field-escape', undock);
 
