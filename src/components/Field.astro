@@ -1348,7 +1348,7 @@
         slot.quote.appendChild(word);
       });
       slot.chars.forEach((b, i) => {
-        b.animate(
+        const anim = b.animate(
           [
             { opacity: 0, transform: 'translateY(10px)', filter: 'blur(8px)' },
             { opacity: 1, transform: 'none', filter: 'blur(0)' },
@@ -1360,6 +1360,20 @@
             fill: 'forwards',
           }
         );
+        // Same fix as Landing's own animateLetters, never ported over
+        // when this was built -- fill:'forwards' holds the animation's
+        // own visual result at opacity 1 without ever touching
+        // b.style.opacity, which stays at the literal '0' set above.
+        // The decay below cancels this animation to hand the letter to
+        // the physics engine; cancelling reverts to that stale
+        // underlying '0', not to what was on screen, so every letter
+        // flashed fully invisible for one frame and then flashed back
+        // (physics starts at life:1) before actually starting to fade
+        // -- confirmed directly, the same "appears, vanishes, comes
+        // back, then decays" glitch Landing's quote and wordmark had.
+        // Keeping the real inline opacity in sync once the animation
+        // finishes means cancelling it later is a no-op visually.
+        anim.onfinish = () => { b.style.opacity = '1'; };
       });
 
       // Ficha (citation card) reveals a beat after the quote itself,
@@ -2416,6 +2430,27 @@
             // already sits correctly inside its word span.
             const origin = slot.chars.map((b) => b.getBoundingClientRect());
             slot.phys = slot.chars.map((b, i) => {
+              // Snapshot the letter's actual rendered opacity before
+              // cancelling -- cancel() reverts to whatever b.style.opacity's
+              // own inline value is, which the onfinish handler above
+              // only ever updates once that letter's entrance animation
+              // genuinely finishes. A collision-forced decay isn't
+              // gated on that: confirmed directly, a fragment can be
+              // force-decayed within a second or two of spawning, while
+              // its own later letters (a longer per-letter stagger) are
+              // still visibly mid-fade-in. Cancelling one of those
+              // reverts it straight to the stale creation-time '0'
+              // regardless of the partial opacity actually on screen a
+              // moment before -- a real snap to invisible, then the
+              // physics particle below (life starts at 1) snaps it back
+              // to fully visible, before finally decaying. The same
+              // "appears, vanishes, reappears, then dies" glitch as the
+              // already-finished case, just reached a different way.
+              // getComputedStyle reads the live value an instant before
+              // this runs; writing it into the inline style first means
+              // cancelling immediately after is a no-op regardless of
+              // whether the entrance had finished.
+              b.style.opacity = getComputedStyle(b).opacity;
               b.getAnimations().forEach((a) => a.cancel());
               const ang = (i / Math.max(slot.chars.length, 1)) * Math.PI * 2 + (Math.random() - 0.5) * 0.35;
               const speed = mode === 'explode' ? 11 + Math.random() * 8 : 2.4 + Math.random() * 2;
