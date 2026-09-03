@@ -159,11 +159,21 @@
     opacity: 0;
     transition: opacity 2.6s var(--ease);
     pointer-events: none;
+    /* Belt-and-suspenders alongside the docked-only JS visibility/
+       tabIndex on specimens, fragment citation links, and stops
+       themselves (see `docked` in frame()) -- opacity alone hides
+       paint, not keyboard Tab order, which is what actually let a
+       keyboard user walk into invisible content through all of Act I.
+       Anything inside #world that doesn't set its own explicit
+       visibility (an inline style always wins over this) inherits
+       hidden from here as a fallback. */
+    visibility: hidden;
   }
 
   body[data-landing='field'] .world {
     opacity: 1;
     pointer-events: auto;
+    visibility: visible;
   }
 
   /* ---- specimens ---- */
@@ -1761,6 +1771,16 @@
       const dt = reduced ? 0 : Math.min(0.05, lastFrameTime ? (now - lastFrameTime) / 1000 : 1 / 60);
       lastFrameTime = now;
       t += dt;
+      // Read once per frame, reused everywhere below that needs to know
+      // whether the field is actually the thing on screen right now --
+      // #world's own opacity is already keyed off this same condition
+      // (see body[data-landing='field'] .world in this file's style
+      // block), but opacity alone doesn't remove an element from
+      // keyboard Tab order or hit-testing, only from paint. Specimens,
+      // fragment citation links, and stops all set their own real
+      // tabIndex/visibility off this same value now, not just off
+      // whether they're geometrically on-screen.
+      const docked = document.body.dataset.landing === 'field';
       // Read once per frame, reused by both the specimen-tag-style
       // spawn check and the runtime forced-decay check below -- same
       // rect either way, no reason to force the layout read twice.
@@ -2113,6 +2133,19 @@
         n.wasOn = on;
         const visuallyPresent = on || t < n.fadeOutUntil;
         n.el.dataset.shown = on ? '1' : '0';
+        // Tabbing to a tagged specimen only makes sense once the field
+        // is actually the thing on screen -- #world sits at opacity:0
+        // the whole time Act I is showing (see body[data-landing='field']
+        // .world in this file's own style block), but that alone
+        // doesn't remove a tabindex="0" element from keyboard Tab
+        // order: opacity hides paint, not focusability. Confirmed
+        // directly, walking Tab order on the still-undocked landing
+        // page: after the 7 real nav links, focus kept moving into
+        // invisible specimens -- a dead tab stop for every one of them,
+        // no visible indication anything received focus. Explicit -1
+        // pre-dock keeps this element out of Tab order entirely until
+        // it's genuinely the thing being shown.
+        if (n.s.tag) n.el.tabIndex = docked && on ? 0 : -1;
 
         // Lazy mount: assign the real src (and poster) only now, the
         // first time this specimen is actually shown -- see the note
@@ -2230,7 +2263,7 @@
         // above) so velocity isn't computed against a stale value from
         // however long ago Act I lasted the moment this does start
         // drawing.
-        if (document.body.dataset.landing === 'field') {
+        if (docked) {
           const gasaCycle = 0.5 + 0.5 * Math.sin(t * 0.12 + n.pulsePhase * 1.7);
           const twist = Math.sin(t * 0.31 + n.pulsePhase * 2.3) * 14;
           connectors.push({
@@ -2282,7 +2315,7 @@
         // Retries every 1.5s while still paused, rather than a single
         // fire-and-forget attempt -- see the nextPlayAttempt comment on
         // specNodes for why a one-shot call left specimens stuck.
-        if (n.video && document.body.dataset.landing === 'field') {
+        if (n.video && docked) {
           if (n.video.paused) {
             if (t >= n.nextPlayAttempt) {
               n.nextPlayAttempt = t + 1.5;
@@ -2399,7 +2432,17 @@
         const bw = slot.el.offsetWidth || 260;
         const bh = slot.el.offsetHeight || 80;
         const on = baseX > -10 && baseX + bw < W + 10 && baseY > -10 && baseY + bh < H + 10;
-        slot.el.style.visibility = on ? 'visible' : 'hidden';
+        // `on` itself stays purely geometric -- offscreenTime, the
+        // collision checks below, and liveFragRects all still need the
+        // real on-screen state regardless of dock, same as before. Only
+        // what gets assigned to the inline style changes: an inline
+        // visibility always beats #world's own CSS rule (see docked's
+        // own comment above), so a fragment's citation link stayed
+        // keyboard-focusable through Act I whenever its drift happened
+        // to be on-screen, confirmed directly by walking Tab order on
+        // the still-undocked landing page. `on && docked` keeps the
+        // citation card out of Tab order until the field is real.
+        slot.el.style.visibility = on && docked ? 'visible' : 'hidden';
         slot.el.style.transform = `translate3d(${X}px, ${Y}px, 0)`;
 
         // See offscreenTime's own comment on the slot object. Applies
@@ -2635,7 +2678,14 @@
         const X = wrap(s.xn * WORLD_W - worldX, WORLD_W) - Math.min(520, W * 0.4);
         let y = chainYAt(X) + worldYoff * 0.02;
         const on = X > -200 && X < W + 200;
-        s.el.style.visibility = on ? 'visible' : 'hidden';
+        // Same fix as the fragment citation link just above -- a stop
+        // is a real <a>, natively focusable with no tabindex needed at
+        // all, so it was reachable via Tab through the whole of Act I
+        // whenever its drift happened to put it on-screen, regardless
+        // of anyone ever docking. `on && docked` matches the visual
+        // truth (invisible behind #world's own opacity:0) with the
+        // keyboard one.
+        s.el.style.visibility = on && docked ? 'visible' : 'hidden';
         if (!on) continue;
 
         // A stop rides the nerve wherever the nerve happens to be, and
