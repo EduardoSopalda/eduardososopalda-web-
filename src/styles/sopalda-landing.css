@@ -306,7 +306,13 @@ body[data-landing='field'] .frag-source {
   font-size: .55rem;
   letter-spacing: .16em;
   text-transform: uppercase;
-  color: rgba(227, 175, 149, .45);
+  /* .45 measured 2.76:1 on black at this size -- confirmed by direct
+     contrast calculation, well under the 4.5:1 AA floor for normal
+     text. .65 is the same fix already applied to .frag-source and
+     Field.astro's own citation (same base rgb, same target, see
+     .frag-source's own comment) -- this one just got missed in that
+     pass. Measures 4.82:1. */
+  color: rgba(227, 175, 149, .65);
   text-align: right;
   line-height: 1.8;
 }

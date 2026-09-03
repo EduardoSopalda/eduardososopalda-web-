@@ -900,15 +900,30 @@
       const tBottom = tagline.getBoundingClientRect().bottom;
       const pTop = purpose.getBoundingClientRect().top;
       const margin = 26;
-      // Sanity floor (120px) before trusting the measurement -- a
-      // layout mid-reflow (fonts still loading, a transition mid-way,
-      // or -- the real case this caught -- #frag-a still carrying its
-      // initial `hidden` attribute before Landing.astro's own script
-      // un-hides it, which makes getBoundingClientRect() report all
-      // zeros) could momentarily report a near-zero or negative gap,
+      // Sanity floor before trusting the measurement -- a layout
+      // mid-reflow (fonts still loading, a transition mid-way, or --
+      // the real case this originally caught -- #frag-a still carrying
+      // its initial `hidden` attribute before Landing.astro's own
+      // script un-hides it, which makes getBoundingClientRect() report
+      // all zeros) could momentarily report tBottom/pTop as exactly 0,
       // and clamping the wave into that would be worse than just
       // keeping the last good target until the next recompute.
-      if (pTop - tBottom > margin * 2 + 120) {
+      //
+      // This used to require the gap to clear margin*2 + 120 (172px)
+      // before trusting it -- comfortably clear of the real "still
+      // hidden" failure (a flat 0), but also, confirmed directly, clear
+      // of the real gap on a short viewport: a phone in landscape
+      // (~390px tall) or a modest desktop window under ~550px tall
+      // measures a genuine ~120-150px gap here, which that floor
+      // rejected forever -- haveRealChannel never went true, so the
+      // nerve stayed pinned at its flat entrance pose across the
+      // wordmark permanently, not just during the entrance. tBottom > 0
+      // alone already distinguishes "real layout" from the zeroed-out
+      // hidden-element case this guards against; the small additive
+      // floor below only exists to keep a near-zero rounding artifact
+      // from producing a degenerate sliver of a channel, not to gate
+      // out real short viewports the way 120 accidentally did.
+      if (tBottom > 0 && pTop - tBottom > margin * 2 + 40) {
         realNerveMin = tBottom + margin;
         realNerveMax = pTop - margin;
         haveRealChannel = true;
@@ -2092,19 +2107,38 @@
         // filament twisting rather than just trailing.
         const velocity = Math.max(-40, Math.min(40, anchorX - n.prevAnchorX));
         n.prevAnchorX = anchorX;
-        const gasaCycle = 0.5 + 0.5 * Math.sin(t * 0.12 + n.pulsePhase * 1.7);
-        const twist = Math.sin(t * 0.31 + n.pulsePhase * 2.3) * 14;
-        connectors.push({
-          sx, sy,
-          cx: sx - velocity * 2.2 + twist,
-          cy: (sy + nerveYHere) / 2,
-          nx: anchorX, ny: nerveYHere,
-          o: (0.05 + gasaCycle * 0.2) + dofT * 0.08,
-          pulse: n.pulsePhase,
-        });
+        // The pushes below are canvas draws, not DOM -- .world's own
+        // opacity:0 (body[data-landing='field'] .world{opacity:1}) hides
+        // every specimen element until docked, but the nerve canvas
+        // sits on its own layer above everything and was never subject
+        // to that rule. Confirmed directly: pre-dock, with #world
+        // computed opacity 0, several specimens still counted as
+        // "visuallyPresent" here (their own ROLE_BUDGET rotation runs
+        // regardless of dock state), so their connector/flare lines
+        // were painted onto the always-visible canvas anyway --
+        // 2-4 disconnected gold threads hanging in the void on the
+        // landing page with no visible specimen attached to them, for
+        // as long as someone sits on Act I. Gating on the same docked
+        // check the video-autoplay line below already uses.
+        // prevAnchorX itself still updates every frame regardless (just
+        // above) so velocity isn't computed against a stale value from
+        // however long ago Act I lasted the moment this does start
+        // drawing.
+        if (document.body.dataset.landing === 'field') {
+          const gasaCycle = 0.5 + 0.5 * Math.sin(t * 0.12 + n.pulsePhase * 1.7);
+          const twist = Math.sin(t * 0.31 + n.pulsePhase * 2.3) * 14;
+          connectors.push({
+            sx, sy,
+            cx: sx - velocity * 2.2 + twist,
+            cy: (sy + nerveYHere) / 2,
+            nx: anchorX, ny: nerveYHere,
+            o: (0.05 + gasaCycle * 0.2) + dofT * 0.08,
+            pulse: n.pulsePhase,
+          });
 
-        if (flareEnv > 0.02) {
-          flareLines.push({ x: sx, y1: sy, y2: chainYAt(sx), o: flareEnv * 0.7 });
+          if (flareEnv > 0.02) {
+            flareLines.push({ x: sx, y1: sy, y2: chainYAt(sx), o: flareEnv * 0.7 });
+          }
         }
 
         let want = 0;
