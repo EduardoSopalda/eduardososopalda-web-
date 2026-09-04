@@ -24,23 +24,20 @@
 // the same typeface mean two different things in the same field (a
 // goldfish and an article) was a real, confirmed collision, not a
 // stylistic quirk.
+import { STOPS } from '../data/stops';
 ---
 
 <!-- The seven stops above are also built by JS onto the nerve (see
-     STOPS in the script below) -- those exist for the drifting visual
-     field. This list is the same seven, in the same order, as plain
-     static markup: a real navigation landmark that works with
-     JavaScript off and is not dependent on the field's runtime layout
-     math to be reachable. Keep it in sync with STOPS by hand if a
-     stop is ever added, renamed, or reordered. -->
+     STOPS, imported from src/data/stops.ts, in the script below) --
+     those exist for the drifting visual field. This list is the same
+     seven, in the same order, generated from the same import: a real
+     navigation landmark that works with JavaScript off and is not
+     dependent on the field's runtime layout math to be reachable. Used
+     to be hand-typed here with a comment asking future edits to keep
+     it in sync with the JS array by hand -- now it can't drift, since
+     there's only one array left to edit. -->
 <nav class="field-nav" aria-label="Site">
-  <a href="/manifesto">Manifesto</a>
-  <a href="/writing">Writing</a>
-  <a href="/lexicon">Lexicon</a>
-  <a href="/out-loud">Out Loud</a>
-  <a href="/first-dates">First Dates</a>
-  <a href="/who">Who</a>
-  <a href="/contact">Contact</a>
+  {STOPS.map((s) => <a href={s.href}>{s.label}</a>)}
 </nav>
 
 <!-- aria-hidden lives on the canvas only, not the section: the world div
@@ -534,11 +531,41 @@
     border-radius: 2px;
   }
 
+  /* The subtitle each empty room page already shows (src/data/stops.ts),
+     surfaced here for the first time -- see the stopNodes comment in
+     the script below for why. Same restrained mono voice .frag-ref
+     uses for citations: no uppercase, tight tracking, not .stop's own
+     dramatic letter-spacing (built for one short word, not a phrase).
+     max-height (not display) collapses it at rest, so it costs zero
+     layout space and never becomes an obstacle a fragment or specimen
+     has to dodge until someone is actually near enough to read it. */
+  .stop-sub {
+    display: block;
+    max-width: 12rem;
+    margin-top: 0.4em;
+    font-size: 0.5rem;
+    letter-spacing: 0.03em;
+    text-transform: none;
+    white-space: normal;
+    color: rgba(243, 235, 224, 0.6);
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: opacity 0.5s var(--ease), max-height 0.5s var(--ease);
+  }
+
+  .stop[data-near='1'] .stop-sub,
+  .stop:focus-visible .stop-sub {
+    max-height: 3em;
+    opacity: 1;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .spec img,
     .spec video,
     .spec-tag,
-    .stop {
+    .stop,
+    .stop-sub {
       transition: none;
     }
   }
@@ -547,6 +574,7 @@
 <script>
   import { FRAGS } from '../data/fragments';
   import { ARTICLE_CATALOG, slugForTitle } from '../data/articleIndex';
+  import { STOPS } from '../data/stops';
 
   type Band = 'alta' | 'nervio' | 'baja';
   type ScaleTier = 'dominant' | 'mesa' | 'perdido';
@@ -731,23 +759,10 @@
     { vid: '/specimens/goldfish2.webm', w: 520, d: 0.78, tag: 'SP.09 · MEMORY · GOLDFISH', vignette: true, cutout: true, band: 'nervio', scale: 'perdido' },
   ];
 
-  // Third element is the real route slug, per CLAUDE.md's own repo
-  // layout (manifesto, writing, lexicon, out-loud, first-dates, who,
-  // contact). Only index.astro exists today -- these routes 404 until
-  // the actual rooms are built, but a real href a screen reader can
-  // reach and a keyboard user can activate is correct architecture now,
-  // not something to wait on content for. Direct review finding: the
-  // stops were plain <div>s with a no-op click handler, formally
-  // invisible to every screen reader and unreachable by keyboard.
-  const STOPS: [string, string, string][] = [
-    ['Manifesto', 'the argument, stated once', '/manifesto'],
-    ['Writing', 'twenty five signals', '/writing'],
-    ['Lexicon', 'contested words, defined in public', '/lexicon'],
-    ['Out Loud', 'talks, panels, DAMA, the white paper', '/out-loud'],
-    ['First Dates', 'speed dating the machines', '/first-dates'],
-    ['Who', 'Panama, Finland, Barcelona, a goat', '/who'],
-    ['Contact', 'a question, answerable', '/contact'],
-  ];
+  // STOPS itself now lives in src/data/stops.ts, imported above --
+  // shared with the no-JS <nav> in this file's own markup and with
+  // each empty room page's EmptyStop subtitle prop, instead of three
+  // hand-typed copies drifting apart.
 
   function initField() {
     const root = document.getElementById('field-root');
@@ -1819,22 +1834,40 @@
     // unreachable by keyboard (no tabindex, no href to put them in the
     // native tab order at all). An <a href> with position:absolute and
     // a transform does everything the div did, plus it's a real link:
-    // natively focusable and in tab order without an explicit
-    // tabindex, right-click-copyable, crawlable, and it'll simply start
-    // working the moment a real room exists at that route -- nothing
-    // else in this file needs to change when that happens.
+    // natively focusable and in tab order without an explicit tabindex,
+    // right-click-copyable, crawlable.
+    //
+    // Each stop also carries a second, quieter child: its subtitle
+    // (the same line each empty room page shows as its own subtitle,
+    // via src/data/stops.ts -- see that file's own comment), rendered
+    // in the field for the first time. Per direct finding: a visitor
+    // had no way to tell whether a given stop held an essay or nothing
+    // at all before clicking it, since the label alone ("LEXICON") only
+    // names the room, not what's behind the door. Non-negotiable 3
+    // ("no titles in the field... metadata appears in rooms, never in
+    // the field") exists to stop fragments turning into captioned
+    // articles -- it was never about the seven real doors, which are
+    // navigation, not atmosphere, and already carry their own label at
+    // rest. The subtitle stays hidden except on close approach or
+    // keyboard focus (see .stop-sub's own CSS), same restrained mono
+    // voice .frag-ref already uses for citations -- so it costs the
+    // calm field nothing until someone is already reading a stop.
     const stopNodes = STOPS.map((s, i) => {
       const el = document.createElement('a');
       el.className = 'stop';
-      el.href = s[2];
-      el.textContent = s[0];
+      el.href = s.href;
+      el.textContent = s.label;
+      const sub = document.createElement('span');
+      sub.className = 'stop-sub';
+      sub.textContent = s.subtitle;
+      el.appendChild(sub);
       world!.appendChild(el);
       el.style.zIndex = '200'; // navigation always reads above specimens/fragments
       el.addEventListener('click', () => {
         el.dataset.justClicked = '1';
         setTimeout(() => delete el.dataset.justClicked, 400);
       });
-      return { el, name: s[0], xn: (i + 0.5) / STOPS.length, near: 0, nearAmt: 0 };
+      return { el, name: s.label, xn: (i + 0.5) / STOPS.length, near: 0, nearAmt: 0 };
     });
 
     // Per-fragment decay timing (decayAfter) and touch-vs-pointer base

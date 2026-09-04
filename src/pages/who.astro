@@ -1,8 +1,10 @@
 ---
 import EmptyStop from '../components/EmptyStop.astro';
+import { STOPS } from '../data/stops';
+const stop = STOPS.find((s) => s.href === '/who')!;
 ---
 <EmptyStop
-  title="Who"
-  subtitle="Panama, Finland, Barcelona, a goat"
+  title={stop.label}
+  subtitle={stop.subtitle}
   todo="not a text gap -- this is a query built from the real `people` front matter already on each article, not yet built. See docs/BUILD-ORDER.md step 9."
 />

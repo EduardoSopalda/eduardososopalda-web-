@@ -1,8 +1,10 @@
 ---
 import EmptyStop from '../components/EmptyStop.astro';
+import { STOPS } from '../data/stops';
+const stop = STOPS.find((s) => s.href === '/contact')!;
 ---
 <EmptyStop
-  title="Contact"
-  subtitle="a question, answerable"
+  title={stop.label}
+  subtitle={stop.subtitle}
   todo="the copy. No form, per CLAUDE.md non-negotiable 9 -- the contact mechanism is the question each article ends on."
 />
