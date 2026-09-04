@@ -458,6 +458,17 @@
   }
 
   /* ---- nerve stops ---- */
+  /* --stopglow: the one synchronized rhythm in the whole field. Every
+     other cycle here (specimen flare, jellyfish pulse, connector gasa,
+     fragment decay) is deliberately phase-offset per node -- see each
+     one's own n.pulsePhase / Math.random() seed -- so the field never
+     feels mechanical. The seven stops get the opposite treatment on
+     purpose: the SAME phase, all seven at once, set once per frame in
+     the stops loop below rather than per-node. A field where nothing
+     else ever moves in unison makes "these seven just moved in unison"
+     read as structural, not ambient -- the one signal in this design
+     that says "these belong to one system" without adding a menu, an
+     icon, or spending more gold on it. */
   .stop {
     position: absolute;
     top: 0;
@@ -501,7 +512,12 @@
        just a wider blur. */
     text-shadow:
       0 0 1px var(--void), 0 0 2px var(--void), 0 0 4px var(--void),
-      0 0 8px var(--void), 0 0 14px var(--void), 0 0 20px var(--void);
+      0 0 8px var(--void), 0 0 14px var(--void), 0 0 20px var(--void),
+      /* --stopglow (0-0.35, see the comment above and the stops loop)
+         -- a soft gold halo, not a colour change: resting text stays
+         bone, same as before, this just breathes under it in sync
+         across all seven. */
+      0 0 10px rgba(247, 197, 106, var(--stopglow, 0));
   }
 
   .stop[data-near='1'] {
@@ -2734,6 +2750,13 @@
         }
       }
       // ---- stops ----
+      // One shared value for all seven -- see --stopglow's own comment
+      // on .stop above for why this is deliberately NOT per-node phase
+      // like every other cycle in this file. 6.4s period, peak 0.35 (a
+      // soft halo, well short of --near's full gold swap so scarcity
+      // holds), gated off entirely under reduced motion rather than
+      // frozen mid-brighten.
+      const stopGlow = reduced ? 0 : (0.5 + 0.5 * Math.sin(t * (Math.PI * 2) / 6.4)) * 0.35;
       for (const s of stopNodes) {
         const X = wrap(s.xn * WORLD_W - worldX, WORLD_W) - Math.min(520, W * 0.4);
         let y = chainYAt(X) + worldYoff * 0.02;
@@ -2750,15 +2773,24 @@
 
         // A stop rides the nerve wherever the nerve happens to be, and
         // nothing kept that from landing exactly on a live quote's own
-        // territory -- unlike a specimen (a photo can sit behind a short
-        // word and both still read fine), two blocks of dense text on
-        // the same pixels are simply unreadable, seen directly: a stop's
-        // name rendered right through a quote's own line. A stop is one
-        // short word, so nudging it perpendicular off the wire just far
-        // enough to clear the quote is far cheaper than moving the
-        // quote itself, and it still visibly rides the nerve -- just
-        // ducking around something in its way, the way it already dips
-        // for a specimen drifting past.
+        // territory -- two blocks of dense text on the same pixels are
+        // simply unreadable, seen directly: a stop's name rendered
+        // right through a quote's own line. A stop is one short word,
+        // so nudging it perpendicular off the wire just far enough to
+        // clear the quote is far cheaper than moving the quote itself,
+        // and it still visibly rides the nerve -- just ducking around
+        // something in its way, the way it already dips for a specimen
+        // drifting past.
+        //
+        // Originally fragment-only -- this assumed a specimen (a photo)
+        // could sit behind a short word and both still read fine, no
+        // dodge needed. Wrong, confirmed directly in a screenshot: a
+        // goldfish's own fine detail and warm lighting sat right under
+        // LEXICON and left it barely legible, a busier background than
+        // a flat quote defeats the plain text-shadow halo just as
+        // badly. Checked against visibleSpecRects (same rect shape,
+        // already computed every frame for the fragment/specimen
+        // collision check above) the same way, right after.
         const sw = s.el.offsetWidth || 90, sh = s.el.offsetHeight || 22;
         for (const r of liveFragRects) {
           const sy = y - 22;
@@ -2770,6 +2802,17 @@
             break;
           }
         }
+        for (const r of visibleSpecRects) {
+          const sy = y - 22;
+          if (X < r.x + r.w && X + sw > r.x && sy < r.y + r.h && sy + sh > r.y) {
+            const below = r.y + r.h + sh / 2 + 16;
+            const above = r.y - sh / 2 - 16;
+            y = Math.abs(below - y) < Math.abs(above - y) ? below : above;
+            y = Math.max(nerveMin + 14, Math.min(nerveMax - 14, y));
+            break;
+          }
+        }
+        s.el.style.setProperty('--stopglow', stopGlow.toFixed(3));
 
         let near = 0;
         if (hasPointer) {
