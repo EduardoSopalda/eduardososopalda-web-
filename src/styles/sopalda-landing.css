@@ -37,23 +37,15 @@
   pointer-events: auto;
 }
 
-/* Not part of the reference -- a frozen top wash added earlier this
-   session so the corner mark has a persistent home. Kept as-is. */
+/* Not part of the reference -- a frozen top wash was added earlier this
+   session so the corner mark had a persistent home, then removed: a
+   second warm colour occupying a large, constant area of the docked
+   view fights CLAUDE.md's rule 6 (gold is the one accent, kept scarce)
+   rather than serving it. Confirmed via an A/B screenshot pair -- the
+   docked wordmark, tagline and specimen read cleaner against true black
+   than against the tinted band. */
 .top-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: clamp(4.5rem, 12vh, 7rem);
-  background: linear-gradient(180deg, rgba(230, 203, 155, 0.32) 0%, rgba(230, 203, 155, 0.12) 55%, transparent 100%);
-  opacity: 0.4;
-  pointer-events: none;
-  z-index: 0;
-  transition: opacity 2.4s var(--ease);
-}
-
-body[data-landing='field'] .top-bar {
-  opacity: 1;
+  display: none;
 }
 
 .stage {
