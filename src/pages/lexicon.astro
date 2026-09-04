@@ -1,8 +1,10 @@
 ---
 import EmptyStop from '../components/EmptyStop.astro';
+import { STOPS } from '../data/stops';
+const stop = STOPS.find((s) => s.href === '/lexicon')!;
 ---
 <EmptyStop
-  title="Lexicon"
-  subtitle="contested words, defined in public"
+  title={stop.label}
+  subtitle={stop.subtitle}
   todo="the entries. Which words, and his definitions."
 />

@@ -1,8 +1,10 @@
 ---
 import EmptyStop from '../components/EmptyStop.astro';
+import { STOPS } from '../data/stops';
+const stop = STOPS.find((s) => s.href === '/out-loud')!;
 ---
 <EmptyStop
-  title="Out Loud"
-  subtitle="talks, panels, DAMA, the white paper"
+  title={stop.label}
+  subtitle={stop.subtitle}
   todo="the transcriptions. He is transcribing them (see CLAUDE.md)."
 />
