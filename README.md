@@ -21,11 +21,13 @@ prototype/field.html    working reference: landing, drift, decay, nerve, seven s
 src/                    the actual Astro build, in progress. Currently built: the
                         landing (src/components/Landing.astro) and the field
                         (src/components/Field.astro) — drift, decay, the nerve, the
-                        seven stops as real links. /writing is a plain archive list.
-                        Not yet built: the Astro content collection (articles still
-                        live as loose markdown in content/, matched by hand into
-                        src/data/), the reader for individual articles, and the
-                        remaining rooms per build-order.md steps 2 and 8-9.
+                        seven stops as real links; /writing as a real archive over
+                        the Astro content collection; a reader for individual
+                        articles. Manifesto, Lexicon, Out Loud, First Dates, Who,
+                        and Contact exist as honest TODO shells — real routes, no
+                        invented copy, waiting on Eduardo's own words per
+                        CLAUDE.md's non-negotiable 1. Not yet built: /archive,
+                        /thread/[name], /with/[person].
 ```
 
 Open `prototype/field.html` in a browser to see the reference before changing `src/`.

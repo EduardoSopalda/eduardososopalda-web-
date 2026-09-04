@@ -11,14 +11,28 @@ export const ARTICLE_CATALOG: Record<string, number> = {
   '“TODO EL MUNDO ES UN PAÍS” Everyone is a country… Inspired by Goya’s silent truths': 1,
   '"Can I Call You Uncle Too?" On unexpected mentors, timeless advice, and the art of never stopping learning': 2,
   'Crisis Management 101: The Morning Everything Went Wrong (and I Survived)': 3,
+  // No.4-6, 10, 13, 15-16, 18 below were simply missing from the first
+  // pass -- confirmed directly against content/_index.json's own real
+  // dates (No.01-25, oldest first), not invented. None of these seven
+  // are cited by any fragment in fragments.ts, so there's no raw
+  // quote-style key to match there; the exact content/_index.json
+  // title (straight quotes) is enough, since /writing's own lookup
+  // (catalogNoForTitle) normalizes quote style on both sides already.
+  'To My Friends in Tech: A Letter of Admiration': 4,
   '“Knowing the Ingredients Isn’t Enough” – The Scientific Method According to a Hibiscus Margarita': 5,
+  'Emotional Intelligence in the Age of Artificial Intelligence': 6,
   'Strada Maestra: Lessons from an Italian Curve': 7,
   'Why the Smarter AI Isn\'t the One That Predicts': 8,
   'Speed Dating with AI: Shopping Around': 9,
+  'Speed Dating with AI: Vertex AI': 10,
   'Speed Dating with AI: Grok': 11,
   'Speed Dating with AI: ChatGPT': 12,
+  'Speed Dating with AI: Perplexity – The Footnote Prince': 13,
   'Speed-Dating with AI: The GitHub Copilot': 14,
+  'AI Governance: The Silent Framework That Is Already Changing the Rules of the Game': 15,
+  'Data Are Not Universal': 16,
   'Responsible AI in Times of Chaos: Why Trust Is Not a Feature': 17,
+  'Lessons from the DAMA ESPAÑA × Gaia-X Hub España webinar on data spaces': 18,
   'From Stewardship to Partnership: Why GenAI in Data Governance Is No Longer “The Future”': 19,
   'ATLAN´S Great Data Debate: DATA, Dashboards, AI, and the Fragility of Meaning': 20,
   'Starting the AI Journey: From First Wave to Business-Ready AI': 21,
