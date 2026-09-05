@@ -743,11 +743,12 @@ import { STOPS } from '../data/stops';
     // true black cleanly on its own" -- that assumption predates this
     // finding and wasn't Safari-tested either, so vignette goes back on
     // every cutout video, not just the one that got caught.
-    // poster: real ffmpeg-extracted frames, added when the reader page
-    // needed a still for these threads (src/data/threadImagery.ts) --
-    // a byproduct of that, not shot for this, but goldfish/piglet
-    // already proved a poster is worth having regardless: something to
-    // paint before the video itself has buffered, instead of nothing.
+    // poster: real ffmpeg-extracted frames, originally pulled for a
+    // per-article reader accent that specimens stay out of (Act II's
+    // cabinet, not Act III's reading room) -- kept here regardless,
+    // since goldfish/piglet already proved a poster is worth having on
+    // its own merits: something to paint before the video itself has
+    // buffered, instead of nothing.
     { vid: '/specimens/octopus.webm', poster: '/specimens/octopus-poster.png', w: 640, d: 0.97, tag: 'SP.02 · GOVERNANCE · OCTOPUS', vignette: true, cutout: true, band: 'alta', scale: 'dominant' },
     { vid: '/specimens/jellyfish.webm', poster: '/specimens/jellyfish-poster.png', w: 560, d: 0.66, tag: 'SP.03 · TRUST · JELLYFISH', vignette: true, cutout: true, band: 'alta', scale: 'mesa' },
     // Was goldfish.mp4 -- reported "some specimens... the animation is
