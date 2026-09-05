@@ -494,8 +494,14 @@ import { STOPS } from '../data/stops';
        a footnote and a fragment quote -- per direct finding, three
        different jobs (citation, specimen tag, real navigation) were
        all reading at the identical visual weight, so nothing marked
-       the seven stops as a category apart from ambient small text. */
-    font-size: clamp(0.8rem, 2.2vw, 1rem);
+       the seven stops as a category apart from ambient small text.
+       Raised a second time, past that first tier, per direct feedback
+       once the font-shorthand bug above was fixed and the real
+       (smaller than intended) size became visible for the first time
+       -- still a hierarchy problem, wanted closer to an old chemist's
+       specimen label: legible as its own object at a glance, not a
+       caption you have to lean into. */
+    font-size: clamp(0.92rem, 2.6vw, 1.15rem);
     letter-spacing: 0.34em;
     text-transform: uppercase;
     /* Bone at 0.3/0.5 alpha (measured 2.25:1, then 4.5:1) was legible
@@ -505,11 +511,12 @@ import { STOPS } from '../data/stops';
        citation. Moved onto gold at reduced strength instead -- still
        clearly short of [data-near='1']'s full var(--gold), so
        approach still reads as a real jump, just from a warmer,
-       already-present baseline. 0.75 alpha measured 7.40:1 on black,
-       computed the same way as the alpha fix above, well past the
-       4.5:1 floor even before the larger size drops that requirement
-       to 3:1. */
-    color: rgba(247, 197, 106, 0.75);
+       already-present baseline. Raised a second time alongside the
+       size above, same reasoning: 0.88 alpha measures 10.13:1 on
+       black, computed the same way as the alpha fix above -- brighter,
+       closer to the near-state gold, while [data-near='1'] itself is
+       still the one moment that reaches full, undiluted var(--gold). */
+    color: rgba(247, 197, 106, 0.88);
     white-space: nowrap;
     transition: color 0.5s, letter-spacing 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
     cursor: pointer;
