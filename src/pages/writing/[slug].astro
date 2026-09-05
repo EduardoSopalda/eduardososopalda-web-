@@ -184,6 +184,22 @@ const lead = leadFragmentFor(title);
     </script>
 
     <style>
+      /* global.css sets html AND body to overflow:hidden, correct for
+         the field (a fixed-viewport canvas that scrolls its own world)
+         but wrong for a reading room -- this page overrode body's own
+         overflow already, but never html's, and html is what actually
+         governs whether the real viewport can scroll at all. Confirmed
+         directly on a phone emulation: the full article existed in the
+         DOM (every paragraph, the real question footer) but
+         window.scrollY stayed pinned at 0 through real wheel/touch
+         scroll attempts -- the whole piece was in the page and
+         completely unreachable past the first screen. html needs the
+         same override body already has, not just body alone. */
+      html {
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
       body {
         overflow-y: auto;
         overflow-x: hidden;

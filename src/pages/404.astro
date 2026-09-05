@@ -27,6 +27,15 @@ import '../styles/global.css';
 </html>
 
 <style>
+  /* global.css sets html AND body to overflow:hidden -- correct for
+     the field, wrong for a real document. Overriding body alone
+     doesn't restore real scrolling, since html is what actually
+     governs the viewport. See writing.astro's own version of this
+     same fix for how it was confirmed. */
+  html {
+    overflow: visible;
+  }
+
   body {
     overflow: visible;
     min-height: 100vh;

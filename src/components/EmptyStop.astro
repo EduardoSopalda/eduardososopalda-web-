@@ -35,6 +35,17 @@ const { title, subtitle, todo } = Astro.props;
 </html>
 
 <style>
+  /* global.css sets html AND body to overflow:hidden -- correct for
+     the field, wrong for a real document. Overriding body alone
+     doesn't restore real scrolling, since html is what actually
+     governs the viewport; a long TODO line on a small phone would be
+     unreachable past the fold with no way to get to it. See
+     writing.astro's own version of this same fix for how it was
+     confirmed. */
+  html {
+    overflow: visible;
+  }
+
   body {
     overflow: visible;
     min-height: 100svh;
