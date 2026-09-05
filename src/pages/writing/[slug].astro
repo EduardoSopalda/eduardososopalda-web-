@@ -23,7 +23,7 @@ import '@fontsource-variable/newsreader/opsz-italic.css';
 import { getCollection, type CollectionEntry } from 'astro:content';
 import { parseArticleBody, headingsOf } from '../../lib/parseArticleBody';
 import { catalogNoForTitle, leadFragmentFor } from '../../data/articleIndex';
-import { specimenForThreads } from '../../data/threadImagery';
+import { specimenForArticle } from '../../data/threadImagery';
 
 export async function getStaticPaths() {
   const entries = await getCollection('articles');
@@ -44,7 +44,7 @@ const beads = headingsOf(blocks);
 const catalogNo = catalogNoForTitle(title);
 const year = date.getFullYear();
 const lead = leadFragmentFor(title);
-const specimen = specimenForThreads(threads);
+const specimen = specimenForArticle(threads, catalogNo ?? 0);
 ---
 
 <!doctype html>
@@ -65,7 +65,7 @@ const specimen = specimenForThreads(threads);
       </p>
       {specimen && (
         <div class="specimen-accent">
-          <img src={specimen.src} alt="" />
+          <img src={specimen} alt="" />
         </div>
       )}
       {lead ? (

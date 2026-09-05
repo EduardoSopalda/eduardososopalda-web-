@@ -743,8 +743,13 @@ import { STOPS } from '../data/stops';
     // true black cleanly on its own" -- that assumption predates this
     // finding and wasn't Safari-tested either, so vignette goes back on
     // every cutout video, not just the one that got caught.
-    { vid: '/specimens/octopus.webm', w: 640, d: 0.97, tag: 'SP.02 · GOVERNANCE · OCTOPUS', vignette: true, cutout: true, band: 'alta', scale: 'dominant' },
-    { vid: '/specimens/jellyfish.webm', w: 560, d: 0.66, tag: 'SP.03 · TRUST · JELLYFISH', vignette: true, cutout: true, band: 'alta', scale: 'mesa' },
+    // poster: real ffmpeg-extracted frames, added when the reader page
+    // needed a still for these threads (src/data/threadImagery.ts) --
+    // a byproduct of that, not shot for this, but goldfish/piglet
+    // already proved a poster is worth having regardless: something to
+    // paint before the video itself has buffered, instead of nothing.
+    { vid: '/specimens/octopus.webm', poster: '/specimens/octopus-poster.png', w: 640, d: 0.97, tag: 'SP.02 · GOVERNANCE · OCTOPUS', vignette: true, cutout: true, band: 'alta', scale: 'dominant' },
+    { vid: '/specimens/jellyfish.webm', poster: '/specimens/jellyfish-poster.png', w: 560, d: 0.66, tag: 'SP.03 · TRUST · JELLYFISH', vignette: true, cutout: true, band: 'alta', scale: 'mesa' },
     // Was goldfish.mp4 -- reported "some specimens... the animation is
     // not triggered." This sandbox can't decode H.264 at all, so MP4
     // playback here was always untestable; every WebM specimen in
@@ -816,8 +821,8 @@ import { STOPS } from '../data/stops';
     // file is genuinely opaque now; leaving it on would make the
     // flare drop-shadow (which follows alpha) trace the whole
     // rectangle as a glowing box on every flare.
-    { vid: '/specimens/brain.webm', w: 480, d: 0.9, tag: 'SP.06 · CURIOSITY · BRAIN', vignette: true, band: 'baja', scale: 'mesa' },
-    { vid: '/specimens/bluefish.webm', w: 420, d: 0.62, tag: 'SP.07 · GOVERNANCE · BLUE FISH', vignette: true, cutout: true, band: 'baja', scale: 'mesa' },
+    { vid: '/specimens/brain.webm', poster: '/specimens/brain-poster.png', w: 480, d: 0.9, tag: 'SP.06 · CURIOSITY · BRAIN', vignette: true, band: 'baja', scale: 'mesa' },
+    { vid: '/specimens/bluefish.webm', poster: '/specimens/bluefish-poster.png', w: 420, d: 0.62, tag: 'SP.07 · GOVERNANCE · BLUE FISH', vignette: true, cutout: true, band: 'baja', scale: 'mesa' },
     // Second jellyfish -- was a still, now a looping animation Eduardo
     // sent, genuinely alpha-cut (verified against both red and true-
     // black test backgrounds, same as the octopus above), so cutout:
@@ -825,7 +830,7 @@ import { STOPS } from '../data/stops';
     // (pulse: true) on top of that -- the two are independent, so it
     // both swims in its own loop and breathes in and out at the same
     // time.
-    { vid: '/specimens/jellyfish2.webm', w: 460, d: 0.42, tag: 'SP.08 · TRUST · JELLYFISH', pulse: true, vignette: true, cutout: true, band: 'alta', scale: 'mesa' },
+    { vid: '/specimens/jellyfish2.webm', poster: '/specimens/jellyfish2-poster.png', w: 460, d: 0.42, tag: 'SP.08 · TRUST · JELLYFISH', pulse: true, vignette: true, cutout: true, band: 'alta', scale: 'mesa' },
     // Second goldfish -- Eduardo sent a new render, genuinely alpha-cut
     // this time (verified directly: sampled the decoded video frame's
     // own alpha channel in a real browser, not just the file's
@@ -834,7 +839,7 @@ import { STOPS } from '../data/stops';
     // same thread (MEMORY), a new catalog number. "Casi perdido" tier
     // per direct feedback -- small and easy to miss on purpose, paired
     // with eyefish rather than competing with the original goldfish.
-    { vid: '/specimens/goldfish2.webm', w: 520, d: 0.78, tag: 'SP.09 · MEMORY · GOLDFISH', vignette: true, cutout: true, band: 'nervio', scale: 'perdido' },
+    { vid: '/specimens/goldfish2.webm', poster: '/specimens/goldfish2-poster.png', w: 520, d: 0.78, tag: 'SP.09 · MEMORY · GOLDFISH', vignette: true, cutout: true, band: 'nervio', scale: 'perdido' },
   ];
 
   // STOPS itself now lives in src/data/stops.ts, imported above --
