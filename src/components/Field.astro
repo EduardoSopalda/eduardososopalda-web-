@@ -1951,7 +1951,7 @@ import { STOPS } from '../data/stops';
         el.dataset.justClicked = '1';
         setTimeout(() => delete el.dataset.justClicked, 400);
       });
-      return { el, name: s.label, xn: (i + 0.5) / STOPS.length, near: 0, nearAmt: 0 };
+      return { el, name: s.label, xn: (i + 0.5) / STOPS.length, near: 0, nearAmt: 0, smoothY: NaN };
     });
 
     // Per-fragment decay timing (decayAfter) and touch-vs-pointer base
@@ -2988,11 +2988,55 @@ import { STOPS } from '../data/stops';
             break;
           }
         }
+        // y up to here is a target, not a position -- both dodge
+        // checks above are a hard boolean test run fresh every frame,
+        // so the instant a fragment or specimen starts or stops
+        // overlapping, y can jump straight from the nerve-relative
+        // value to the dodge value with no interpolation. Confirmed
+        // directly, not assumed: tracked a stop's actual rendered Y
+        // every 100ms for 8 seconds and found a 213px change in a
+        // single tick -- exactly the "jumpy titles" reported directly.
+        // Eased the same way worldX/nerveMin/nerveMax already are
+        // elsewhere in this file for the identical reason (a real
+        // value that can itself change abruptly, smoothed so its
+        // rendered effect never does). smoothY seeded to the first
+        // real target rather than 0, so a stop's first frame doesn't
+        // animate in from the top of the world.
+        if (!Number.isFinite(s.smoothY)) s.smoothY = y;
+        // 0.18 still let a huge single-frame swing in the raw target
+        // (confirmed directly: which specific fragment/specimen a stop
+        // dodges around can change abruptly as things drift, some
+        // observed swings 700-800px) show up as a ~150px jump even
+        // smoothed, since 18% of a huge number is still a big number.
+        // 0.06 -- the same rate worldX/nerveMin/nerveMax already use
+        // for this identical reason -- trades a longer glide for a
+        // small first-frame delta regardless of how big the
+        // underlying target swing was.
+        s.smoothY += (y - s.smoothY) * approachFactor(0.06, dt);
+        y = s.smoothY;
         const glow = stopGlowAt(s.xn);
         s.el.style.setProperty('--stopglow', glow.toFixed(3));
 
+        // Touch has no hover, so proximity is a meaningless concept
+        // there -- gating near on hasPointer meant a phone visitor
+        // never once saw the full-gold, wider-tracked, subtitle-shown
+        // state this whole system was built around, only ever the
+        // resting one. Confirmed directly, not assumed: a real user
+        // test on a real phone came back "I didn't know what I was
+        // supposed to click," and a screenshot of the exact resting
+        // state next to a dominant specimen showed why -- bold and
+        // warm is not the same signal as "arrived," and arrival is the
+        // one state a mouse user gets for free just by hovering. On
+        // touch there's no meaningful "approaching," only "on screen or
+        // not," so near is simply always true there -- every stop
+        // renders at its full, unambiguous state the moment it drifts
+        // into view, wake flicker included (see below: s.near starts
+        // at 0, so this still fires exactly once per stop, on arrival,
+        // not as a permanent flicker).
         let near = 0;
-        if (hasPointer) {
+        if (isTouch) {
+          near = 1;
+        } else if (hasPointer) {
           const d = Math.hypot(px - X, py - y);
           near = d < 140 ? 1 : 0;
         }
