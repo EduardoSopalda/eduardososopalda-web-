@@ -2898,7 +2898,17 @@ import { STOPS } from '../data/stops';
       // a longer or shorter thread, same as a specimen's own filament
       // changes length as it drifts (see drawConnector's own call
       // below, right after this loop knows its final position).
-      const STOP_LIFT = 24;
+      //
+      // Was 24 -- confirmed too small on a real phone screenshot,
+      // direct feedback: "the only difference is a change of color."
+      // At 24px the label sat close enough to the nerve, and the
+      // filament's own resting opacity (see the drawConnector call
+      // below) was faint enough, that the thread meant to say "this is
+      // tethered, not drifting" was easy to miss entirely -- exactly
+      // where a quote and a door read as the same kind of object.
+      // Raised well past the label's own height so the gap itself is
+      // unmistakable at a glance, not just legible on close reading.
+      const STOP_LIFT = 56;
       for (const s of stopNodes) {
         const X = wrap(s.xn * WORLD_W - worldX, WORLD_W) - Math.min(520, W * 0.4);
         // Captured before STOP_LIFT and the dodge logic below move y
@@ -3006,14 +3016,27 @@ import { STOPS } from '../data/stops';
         // check); nx/ny is the real point on the spine, captured as
         // nerveYAtX before STOP_LIFT and the dodge moved y away from
         // it. Opacity rides the same traveling glow as the text halo
-        // above, plus a steady baseline so the thread stays visible
-        // between sweeps -- a stop is always tied to the nerve, the
-        // wave just makes that tie brighten as it passes. Gated on
-        // docked the same way specimen connectors are (see that gate's
-        // own comment): #world sits at opacity 0 the whole time Act I
-        // shows, but this canvas doesn't, so an undocked stop would
-        // otherwise paint a disconnected gold thread hanging in the
-        // void on the landing page.
+        // above, plus a baseline so the thread stays visible between
+        // sweeps -- a stop is always tied to the nerve, the wave just
+        // makes that tie brighten as it passes.
+        //
+        // Baseline was 0.12 -- confirmed too faint on a real phone
+        // screenshot, direct feedback: the one thing meant to mark a
+        // stop as structurally different from a drifting quote (tied
+        // to the nerve, not floating free) was easy to miss entirely
+        // at rest, leaving colour as the only cue anyone actually
+        // registered. This is deliberately no longer as understated as
+        // the specimen version -- specimen connectors can stay gauze,
+        // since nothing depends on a visitor consciously noticing one;
+        // this thread is load-bearing wayfinding, the site's only
+        // navigation, so it has to read clearly on its own, every
+        // frame, not just at the peak of a 6.4s cycle.
+        //
+        // Gated on docked the same way specimen connectors are (see
+        // that gate's own comment): #world sits at opacity 0 the whole
+        // time Act I shows, but this canvas doesn't, so an undocked
+        // stop would otherwise paint a disconnected gold thread
+        // hanging in the void on the landing page.
         if (docked) {
           drawConnector({
             sx: X + sw / 2,
@@ -3022,7 +3045,7 @@ import { STOPS } from '../data/stops';
             cy: (labelY + sh / 2 + nerveYAtX) / 2,
             nx: X,
             ny: nerveYAtX,
-            o: 0.12 + glow * 0.6,
+            o: 0.34 + glow * 0.5,
             pulse: s.xn * 17,
           });
         }
