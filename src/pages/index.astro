@@ -8,6 +8,10 @@ import '../styles/fraunces.css';
 import '@fontsource/italiana';
 import 'typeface-glacial-indifference';
 import '@fontsource/ibm-plex-mono/400.css';
+// 600 (SemiBold) is the seven stops' own weight only -- see .stop's
+// own comment in Field.astro. Everything else using --font-mono
+// (citations, specimen tags, footer meta) stays at 400.
+import '@fontsource/ibm-plex-mono/600.css';
 import '../styles/global.css';
 import Field from '../components/Field.astro';
 import Landing from '../components/Landing.astro';

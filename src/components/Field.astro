@@ -502,6 +502,15 @@ import { STOPS } from '../data/stops';
        specimen label: legible as its own object at a glance, not a
        caption you have to lean into. */
     font-size: clamp(0.92rem, 2.6vw, 1.15rem);
+    /* 400 (the weight everything else using --font-mono stays at --
+       citations, specimen tags, footer meta) read thin next to a
+       fragment's own Fraunces at this new size -- direct feedback, a
+       stop wanted "weight," the actual word for it. 600 is IBM Plex
+       Mono's SemiBold, imported once in index.astro alongside 400
+       specifically for this rule; nothing else on the page uses it, so
+       this stays the one place a stop is typographically heavier than
+       everything around it, not just brighter. */
+    font-weight: 600;
     letter-spacing: 0.34em;
     text-transform: uppercase;
     /* Bone at 0.3/0.5 alpha (measured 2.25:1, then 4.5:1) was legible
@@ -544,10 +553,14 @@ import { STOPS } from '../data/stops';
     text-shadow:
       0 0 1px var(--void), 0 0 2px var(--void), 0 0 4px var(--void),
       0 0 8px var(--void), 0 0 14px var(--void), 0 0 20px var(--void),
-      /* --stopglow (0-0.35, see the comment above and the stops loop)
-         -- a soft gold halo, not a colour change: resting text stays
-         bone, same as before, this just breathes under it in sync
-         across all seven. */
+      /* The "shine" -- a permanent soft glow the letters themselves
+         give off, not just the filament below them. Two layers: a
+         tight, bright core that reads as light actually being emitted
+         (not painted on) at every frame, then --stopglow's own wider,
+         wave-driven halo on top of that riding the same traveling
+         pulse as the filament and the text colour -- so at the peak
+         of a sweep a stop looks lit from within, not merely brighter. */
+      0 0 3px rgba(255, 235, 190, 0.55), 0 0 7px rgba(247, 197, 106, 0.4),
       0 0 10px rgba(247, 197, 106, var(--stopglow, 0));
   }
 
