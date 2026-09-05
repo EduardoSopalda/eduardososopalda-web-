@@ -37,7 +37,7 @@ interface Props {
 }
 
 const { entry } = Astro.props;
-const { title, date, kind, threads, dek, family, people, question } = entry.data;
+const { title, date, kind, threads, dek, family, image, people, question } = entry.data;
 const blocks = parseArticleBody(entry.body ?? '');
 const beads = headingsOf(blocks);
 const catalogNo = catalogNoForTitle(title);
@@ -58,6 +58,18 @@ const lead = leadFragmentFor(title);
     <p class="back"><a href="/writing">All writing</a></p>
 
     <header class="plate" id="plate">
+      {/* image is null for all 25 articles today (family: void,
+          no exceptions) -- this renders nothing at all in that case,
+          not a reserved gap or a broken image icon, so the plate stays
+          byte-for-byte what it is right now until a real image and a
+          real family (specimen/apparatus) are actually assigned to a
+          specific piece. That assignment is content, not code -- see
+          content.config.ts's own comment on the taxonomy. */}
+      {image && (
+        <div class="plate-image">
+          <img src={image} alt="" />
+        </div>
+      )}
       <p class="kicker">
         {catalogNo ? `No.${String(catalogNo).padStart(2, '0')} · ` : ''}{year} · {kind}
       </p>
@@ -252,6 +264,28 @@ const lead = leadFragmentFor(title);
         gap: 1.25rem;
         padding: 6rem 1.5rem 4rem;
         background: radial-gradient(ellipse at 50% 30%, rgba(227, 175, 149, 0.08), transparent 70%);
+      }
+
+      /* Only ever present when a real image path exists (see the
+         markup's own comment) -- .plate's flex gap already spaces it
+         from the kicker below without anything extra here. Height
+         capped, not left to the image's own aspect ratio, so the
+         kicker/lead/title still sit close beneath it the way they do
+         on every article today rather than being pushed an image's
+         full height down the screen. */
+      .plate-image {
+        width: 100%;
+        max-width: 34rem;
+        max-height: 38vh;
+        overflow: hidden;
+        border-radius: 4px;
+      }
+
+      .plate-image img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
       }
 
       .kicker {

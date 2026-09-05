@@ -21,8 +21,15 @@ const articles = defineCollection({
     // "key:" with nothing after it parses as YAML null, not undefined,
     // so these accept null too rather than failing validation.
     dek: z.string().nullable().optional(),
+    // image/family together decide what (if anything) renders above
+    // the plate's kicker line -- see writing/[slug].astro's own
+    // comment on that block. All 25 articles ship family: void today,
+    // no exceptions -- that's the honest placeholder state, not a
+    // fourth style sitting next to specimen/apparatus (see docs on the
+    // image system for the taxonomy itself and why deciding what goes
+    // in each real image is Eduardo's call, not a default to invent).
     image: z.string().nullable().optional(),
-    family: z.enum(['void', 'lit']).default('void'),
+    family: z.enum(['void', 'specimen', 'apparatus']).default('void'),
     people: z.array(z.string()).default([]),
     question: z.string().nullable().optional(),
   }),
