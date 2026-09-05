@@ -23,7 +23,6 @@ import '@fontsource-variable/newsreader/opsz-italic.css';
 import { getCollection, type CollectionEntry } from 'astro:content';
 import { parseArticleBody, headingsOf } from '../../lib/parseArticleBody';
 import { catalogNoForTitle, leadFragmentFor } from '../../data/articleIndex';
-import { specimenForArticle } from '../../data/threadImagery';
 
 export async function getStaticPaths() {
   const entries = await getCollection('articles');
@@ -44,7 +43,6 @@ const beads = headingsOf(blocks);
 const catalogNo = catalogNoForTitle(title);
 const year = date.getFullYear();
 const lead = leadFragmentFor(title);
-const specimen = specimenForArticle(threads, catalogNo ?? 0);
 ---
 
 <!doctype html>
@@ -63,11 +61,6 @@ const specimen = specimenForArticle(threads, catalogNo ?? 0);
       <p class="kicker">
         {catalogNo ? `No.${String(catalogNo).padStart(2, '0')} · ` : ''}{year} · {kind}
       </p>
-      {specimen && (
-        <div class="specimen-accent">
-          <img src={specimen} alt="" />
-        </div>
-      )}
       {lead ? (
         <>
           <p class="lead">{lead}</p>
@@ -261,28 +254,6 @@ const specimen = specimenForArticle(threads, catalogNo ?? 0);
         font-weight: 400;
         font-size: clamp(1.8rem, 5vw, 3rem);
         line-height: 1.15;
-      }
-
-      /* Real per-article imagery doesn't exist (see threadImagery.ts's
-         own comment) -- this is one of the ten specimens the field
-         itself already carries, reused here rather than a placeholder
-         invented for this page alone. Circular and glowing rather than
-         a plain rectangle, closer to a held specimen than a hero
-         photo, and small enough that it reads as an accent next to the
-         quote, not a competing focal point. */
-      .specimen-accent {
-        width: clamp(120px, 18vw, 200px);
-        aspect-ratio: 1;
-        border-radius: 50%;
-        overflow: hidden;
-        box-shadow: 0 0 70px 14px rgba(170, 109, 78, 0.28);
-      }
-
-      .specimen-accent img {
-        display: block;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
       }
 
       /* The real pull-quote, when one exists (leadFragmentFor -- 17 of
