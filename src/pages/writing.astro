@@ -7,11 +7,11 @@
 // not the earlier hand-parsed content/_index.json snapshot.
 import '../styles/global.css';
 import { getCollection } from 'astro:content';
-import { catalogNoForTitle } from '../data/articleIndex';
+import { catalogNoForTitle, leadFragmentFor } from '../data/articleIndex';
 
 const entries = await getCollection('articles');
 const bySource = entries
-  .map((e) => ({ ...e.data, id: e.id, no: catalogNoForTitle(e.data.title) }))
+  .map((e) => ({ ...e.data, id: e.id, no: catalogNoForTitle(e.data.title), lead: leadFragmentFor(e.data.title) }))
   .sort((a, b) => (a.date < b.date ? 1 : -1));
 ---
 
@@ -32,7 +32,14 @@ const bySource = entries
           <li>
             <a class="row" href={`/writing/${a.id}`}>
               <span class="no">{a.no ? `No.${String(a.no).padStart(2, '0')}` : ''}</span>
-              <span class="title">{a.title}</span>
+              {a.lead ? (
+                <>
+                  <span class="lead">{a.lead}</span>
+                  <span class="title has-lead">{a.title}</span>
+                </>
+              ) : (
+                <span class="title">{a.title}</span>
+              )}
               <span class="meta">
                 {a.date.getFullYear()} · {a.kind} · {a.threads.join(', ')}
               </span>
@@ -121,10 +128,36 @@ const bySource = entries
     align-self: start;
   }
 
+  /* The row's real headline when a fragment exists for this article --
+     same colour Field.astro's own .frag-quote uses, so a quote reads
+     as the same kind of thing wherever it appears on the site. Only
+     17 of 25 articles have one (see leadFragmentFor's own comment);
+     the other 8 fall through to plain .title with none of this. */
+  .lead {
+    grid-column: 2;
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    line-height: 1.35;
+    color: var(--oxide-lit);
+  }
+
   .title {
+    grid-column: 2;
     font-family: var(--font-display);
     font-size: 1.05rem;
     line-height: 1.35;
+  }
+
+  /* Demoted once a lead quote is doing the headline's job -- the real
+     title becomes a caption naming which piece the quote came from,
+     mono like the catalogue number beside it rather than competing
+     with the quote for the same register. */
+  .title.has-lead {
+    margin-top: 0.15rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    color: rgba(243, 235, 224, 0.5);
   }
 
   .meta {

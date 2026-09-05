@@ -22,7 +22,8 @@ import '@fontsource-variable/newsreader/opsz.css';
 import '@fontsource-variable/newsreader/opsz-italic.css';
 import { getCollection, type CollectionEntry } from 'astro:content';
 import { parseArticleBody, headingsOf } from '../../lib/parseArticleBody';
-import { catalogNoForTitle } from '../../data/articleIndex';
+import { catalogNoForTitle, leadFragmentFor } from '../../data/articleIndex';
+import { specimenForThreads } from '../../data/threadImagery';
 
 export async function getStaticPaths() {
   const entries = await getCollection('articles');
@@ -42,6 +43,8 @@ const blocks = parseArticleBody(entry.body ?? '');
 const beads = headingsOf(blocks);
 const catalogNo = catalogNoForTitle(title);
 const year = date.getFullYear();
+const lead = leadFragmentFor(title);
+const specimen = specimenForThreads(threads);
 ---
 
 <!doctype html>
@@ -60,7 +63,19 @@ const year = date.getFullYear();
       <p class="kicker">
         {catalogNo ? `No.${String(catalogNo).padStart(2, '0')} · ` : ''}{year} · {kind}
       </p>
-      <h1>{title}</h1>
+      {specimen && (
+        <div class="specimen-accent">
+          <img src={specimen.src} alt="" />
+        </div>
+      )}
+      {lead ? (
+        <>
+          <p class="lead">{lead}</p>
+          <h1 class="has-lead">{title}</h1>
+        </>
+      ) : (
+        <h1>{title}</h1>
+      )}
       {dek && <p class="dek">{dek}</p>}
       <p class="threads">
         {threads.map((t) => <span class="thread">{t}</span>)}
@@ -246,6 +261,58 @@ const year = date.getFullYear();
         font-weight: 400;
         font-size: clamp(1.8rem, 5vw, 3rem);
         line-height: 1.15;
+      }
+
+      /* Real per-article imagery doesn't exist (see threadImagery.ts's
+         own comment) -- this is one of the ten specimens the field
+         itself already carries, reused here rather than a placeholder
+         invented for this page alone. Circular and glowing rather than
+         a plain rectangle, closer to a held specimen than a hero
+         photo, and small enough that it reads as an accent next to the
+         quote, not a competing focal point. */
+      .specimen-accent {
+        width: clamp(120px, 18vw, 200px);
+        aspect-ratio: 1;
+        border-radius: 50%;
+        overflow: hidden;
+        box-shadow: 0 0 70px 14px rgba(170, 109, 78, 0.28);
+      }
+
+      .specimen-accent img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      /* The real pull-quote, when one exists (leadFragmentFor -- 17 of
+         25 articles). Same size and position h1 alone used to hold,
+         and the same colour Field.astro's .frag-quote and the /writing
+         list's own .lead use, so a quote reads as one consistent thing
+         everywhere it appears on the site, not a new treatment invented
+         for this page. h1 stays the real, correct page heading either
+         way -- this only changes which line is visually dominant. */
+      .plate .lead {
+        margin: 0;
+        max-width: 44rem;
+        font-family: var(--font-display);
+        font-weight: 400;
+        font-size: clamp(1.8rem, 5vw, 3rem);
+        line-height: 1.15;
+        color: var(--oxide-lit);
+      }
+
+      /* Demoted to a caption once the quote above is doing the
+         headline's job -- names the piece without competing with it,
+         same demotion the /writing list gives its own .title.has-lead. */
+      .plate h1.has-lead {
+        max-width: 34rem;
+        font-family: var(--font-mono);
+        font-weight: 400;
+        font-size: 0.85rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(243, 235, 224, 0.55);
       }
 
       .dek {

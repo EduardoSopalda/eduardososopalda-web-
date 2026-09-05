@@ -73,3 +73,18 @@ const NORMALIZED_SLUGS: Record<string, string> = Object.fromEntries(
 export function slugForTitle(title: string): string | null {
   return NORMALIZED_SLUGS[normalizeQuotes(title)] ?? null;
 }
+
+// The one real pull-quote for an article's own catalogue/reader
+// treatment -- Eduardo's own line, already curated into fragments.ts,
+// not a new sentence pulled from the body. Prefers a short-weight
+// fragment (reads better as a large display headline than a long one)
+// but falls back to whatever exists. Only 17 of 25 articles have any
+// fragment at all -- callers MUST handle null, not assume one exists.
+import { FRAGS } from './fragments';
+
+export function leadFragmentFor(title: string): string | null {
+  const norm = normalizeQuotes(title);
+  const matches = FRAGS.filter((f) => f.source && normalizeQuotes(f.source) === norm);
+  if (!matches.length) return null;
+  return (matches.find((f) => f.weight === 'short') ?? matches[0]).text;
+}
