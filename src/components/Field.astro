@@ -470,6 +470,21 @@ import { STOPS } from '../data/stops';
     position: absolute;
     top: 0;
     left: 0;
+    /* A real <a> carries its own UA-stylesheet defaults (weight, style,
+       an implicit blue/purple, sometimes a different font entirely) --
+       reset those first, so every specific override below actually
+       wins. This has to come BEFORE font-family/font-size/etc, not
+       after: `font` is a shorthand, and one declared later in the same
+       rule resets every sub-property it covers (family, size, weight,
+       style, line-height) to its own value regardless of what a plain,
+       non-shorthand property set earlier for that same rule. Confirmed
+       directly, cross-checking real computed values on a phone
+       emulation: this was declared AFTER font-family/font-size below,
+       silently clobbering both back to "inherit" -- every stop was
+       rendering at the page's own inherited 16px Times New Roman the
+       whole time, not the mono font or any of the sizes ever specified
+       here, on every device, not just small ones. */
+    font: inherit;
     font-family: var(--font-mono);
     /* rem, not a fixed 10px -- this is the site's only navigation
        (CLAUDE.md non-negotiable 2), so it has to honor a reader's own
@@ -498,12 +513,13 @@ import { STOPS } from '../data/stops';
     white-space: nowrap;
     transition: color 0.5s, letter-spacing 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
     cursor: pointer;
-    /* Now a real <a>, not a div stub -- text-decoration:none keeps it
-       looking exactly as it did before, and font/background:inherit
-       block Safari/Firefox's UA-stylesheet defaults for links from
-       reintroducing a different font or an implicit blue/purple. */
+    /* Now a real <a>, not a div stub -- text-decoration:none and
+       background:inherit block Safari/Firefox's UA-stylesheet defaults
+       for links from reintroducing an implicit blue/purple. font:
+       inherit does the same job for font defaults, moved up to the top
+       of this rule -- see its own comment there for why it can't stay
+       here alongside the specific overrides it would otherwise reset. */
     text-decoration: none;
-    font: inherit;
     background: none;
     /* z-index alone decides paint ORDER, not whether something behind
        it is still legible -- plain text with nothing opaque behind it
