@@ -474,16 +474,27 @@ import { STOPS } from '../data/stops';
     /* rem, not a fixed 10px -- this is the site's only navigation
        (CLAUDE.md non-negotiable 2), so it has to honor a reader's own
        text-size setting like anything else that matters would.
-       0.625rem is the same visual size as before at the default root
-       size, just no longer locked to it. */
-    font-size: 0.625rem;
+       Raised off the old flat 0.625rem (the same size as .frag-ref's
+       citations and .spec-tag's captions) onto its own tier, between
+       a footnote and a fragment quote -- per direct finding, three
+       different jobs (citation, specimen tag, real navigation) were
+       all reading at the identical visual weight, so nothing marked
+       the seven stops as a category apart from ambient small text. */
+    font-size: clamp(0.8rem, 2.2vw, 1rem);
     letter-spacing: 0.34em;
     text-transform: uppercase;
-    /* 0.3 alpha measured 2.25:1 on black -- confirmed by direct
-       contrast calculation against the 4.5:1 floor this text size
-       needs. The site's entire navigation was, measurably, close to
-       unreadable except at data-near='1'. 0.5 measures 4.5:1. */
-    color: rgba(243, 235, 224, 0.5);
+    /* Bone at 0.3/0.5 alpha (measured 2.25:1, then 4.5:1) was legible
+       but read as the same kind of quiet mono text as everything else
+       on the page -- direct finding, confirmed in a screenshot: a
+       stop at rest was indistinguishable from a footer credit or a
+       citation. Moved onto gold at reduced strength instead -- still
+       clearly short of [data-near='1']'s full var(--gold), so
+       approach still reads as a real jump, just from a warmer,
+       already-present baseline. 0.75 alpha measured 7.40:1 on black,
+       computed the same way as the alpha fix above, well past the
+       4.5:1 floor even before the larger size drops that requirement
+       to 3:1. */
+    color: rgba(247, 197, 106, 0.75);
     white-space: nowrap;
     transition: color 0.5s, letter-spacing 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
     cursor: pointer;
@@ -531,6 +542,33 @@ import { STOPS } from '../data/stops';
     border-radius: 2px;
   }
 
+  /* Fires once, on the exact frame `near` flips 0 to 1 (see the
+     stopNodes wasNear check in the stops loop) -- the moment of
+     arrival, not a constant idle state. steps(1, end) over the whole
+     animation makes every segment jump rather than ease, an uneven
+     catch rather than one smooth brighten, the way an old arc lamp or
+     a projector bulb catches before it holds steady. Lands exactly on
+     [data-near='1']'s own end state (full gold, 0.52em tracking) so
+     this plays as that state's entrance, not a competing effect --
+     class removed by a timeout matching this duration once it's done,
+     so the steady near state (its own, separate transition) takes
+     over cleanly and it's armed to play again next arrival. Blur to
+     sharp is the same grammar Landing.astro's animateWordmark and
+     animateLetters use for anything else coming into being on this
+     site, not a new technique invented just for this. */
+  @keyframes stop-wake {
+    0%   { color: rgba(247, 197, 106, 0.75); filter: blur(5px); letter-spacing: 0.34em; }
+    18%  { color: var(--gold); filter: blur(1px); letter-spacing: 0.4em; }
+    34%  { color: rgba(247, 197, 106, 0.6); filter: blur(3px); letter-spacing: 0.34em; }
+    52%  { color: var(--gold); filter: blur(0.5px); letter-spacing: 0.48em; }
+    74%  { color: rgba(247, 197, 106, 0.85); filter: blur(2px); letter-spacing: 0.42em; }
+    100% { color: var(--gold); filter: blur(0); letter-spacing: 0.52em; }
+  }
+
+  .stop.is-waking {
+    animation: stop-wake 420ms steps(1, end) forwards;
+  }
+
   /* The subtitle each empty room page already shows (src/data/stops.ts),
      surfaced here for the first time -- see the stopNodes comment in
      the script below for why. Same restrained mono voice .frag-ref
@@ -561,6 +599,10 @@ import { STOPS } from '../data/stops';
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .stop.is-waking {
+      animation: none;
+    }
+
     .spec img,
     .spec video,
     .spec-tag,
@@ -1874,6 +1916,33 @@ import { STOPS } from '../data/stops';
     // life now live on each slot itself, rolled fresh in assignFragment
     // -- see the comment there.
 
+    // Shared by both the specimen connectors array (drawn in a batch,
+    // see the loop in frame()) and the stops loop (drawn directly, one
+    // call per stop, right where its position is already known) -- a
+    // gold thread from a label to its real point on the nerve, plus a
+    // small pulsing "suture" node marking the join. One drawing, two
+    // sources, per direct spec: a stop's own filament is the same
+    // museum-tag-on-a-wire language already built for specimens, not a
+    // second version of it.
+    function drawConnector(c: { sx: number; sy: number; cx: number; cy: number; nx: number; ny: number; o: number; pulse: number }) {
+      ctx!.beginPath();
+      ctx!.moveTo(c.sx, c.sy);
+      ctx!.quadraticCurveTo(c.cx, c.cy, c.nx, c.ny);
+      ctx!.strokeStyle = `rgba(247, 197, 106, ${c.o})`;
+      ctx!.lineWidth = 1;
+      ctx!.stroke();
+
+      const nodePulse = 0.5 + 0.5 * Math.sin(t * 1.6 + c.pulse);
+      const nodeR = 1.4 + nodePulse * 1.1;
+      ctx!.beginPath();
+      ctx!.arc(c.nx, c.ny, nodeR, 0, Math.PI * 2);
+      ctx!.fillStyle = `rgba(255, 235, 190, ${0.35 + nodePulse * 0.4})`;
+      ctx!.shadowBlur = 6;
+      ctx!.shadowColor = 'rgba(247, 197, 106, 0.8)';
+      ctx!.fill();
+      ctx!.shadowBlur = 0;
+    }
+
     let channelT = 0;
     function frame() {
       const now = performance.now();
@@ -2444,24 +2513,15 @@ import { STOPS } from '../data/stops';
       // through something viscous rather than a rigid prop. A small
       // pulsing "suture" node marks where the filament actually meets
       // the nerve, drawn after the curve so it sits on top of it.
-      for (const c of connectors) {
-        ctx!.beginPath();
-        ctx!.moveTo(c.sx, c.sy);
-        ctx!.quadraticCurveTo(c.cx, c.cy, c.nx, c.ny);
-        ctx!.strokeStyle = `rgba(247, 197, 106, ${c.o})`;
-        ctx!.lineWidth = 1;
-        ctx!.stroke();
-
-        const nodePulse = 0.5 + 0.5 * Math.sin(t * 1.6 + c.pulse);
-        const nodeR = 1.4 + nodePulse * 1.1;
-        ctx!.beginPath();
-        ctx!.arc(c.nx, c.ny, nodeR, 0, Math.PI * 2);
-        ctx!.fillStyle = `rgba(255, 235, 190, ${0.35 + nodePulse * 0.4})`;
-        ctx!.shadowBlur = 6;
-        ctx!.shadowColor = 'rgba(247, 197, 106, 0.8)';
-        ctx!.fill();
-        ctx!.shadowBlur = 0;
-      }
+      // drawConnector itself is shared with the stops loop further
+      // down (a stop's own label-to-nerve thread reuses this exact
+      // drawing, not a second version of it) -- see its own call there
+      // for why the stops loop draws its filaments directly rather
+      // than through this same connectors array: this loop runs
+      // before the stops loop even computes its positions, so
+      // anything the stops loop pushed here would only ever get
+      // drawn one frame too late, forever.
+      for (const c of connectors) drawConnector(c);
 
       // The flare's "gold line dropped to the nerve" -- drawn after the
       // specimen loop so sx/chainYAt are already known for anything
@@ -2783,16 +2843,47 @@ import { STOPS } from '../data/stops';
         }
       }
       // ---- stops ----
-      // One shared value for all seven -- see --stopglow's own comment
-      // on .stop above for why this is deliberately NOT per-node phase
-      // like every other cycle in this file. 6.4s period, peak 0.35 (a
-      // soft halo, well short of --near's full gold swap so scarcity
-      // holds), gated off entirely under reduced motion rather than
-      // frozen mid-brighten.
-      const stopGlow = reduced ? 0 : (0.5 + 0.5 * Math.sin(t * (Math.PI * 2) / 6.4)) * 0.35;
+      // A traveling wave, not a flat shared pulse -- the earlier
+      // version applied one identical value to all seven in the same
+      // frame, which read as seven things blinking in place rather
+      // than one signal moving through the nerve. Phase-shifted by
+      // each stop's own xn (its fraction along the nerve's length)
+      // instead, so the brighten visibly sweeps end to end. Still the
+      // one deliberately non-random rhythm in the field -- every other
+      // cycle here (specimen flare, jellyfish pulse, connector gasa,
+      // fragment decay) is phase-offset per node specifically to avoid
+      // feeling mechanical -- a wave just has one origin and one
+      // speed, it isn't frozen into a single frame any more. Same 6.4s
+      // period and 0.35 peak as before, gated off entirely under
+      // reduced motion rather than frozen mid-brighten. WAVE_LAG is a
+      // fraction of the period the sweep takes end to end -- tune by
+      // eye, this is a starting guess, not a measured constant.
+      const STOP_GLOW_PERIOD = 6.4;
+      const WAVE_LAG = 0.6;
+      function stopGlowAt(xn: number) {
+        if (reduced) return 0;
+        const phase = (t - xn * WAVE_LAG * STOP_GLOW_PERIOD) * (Math.PI * 2) / STOP_GLOW_PERIOD;
+        return (0.5 + 0.5 * Math.sin(phase)) * 0.35;
+      }
+      // Fixed pixel distance a stop rests above its real point on the
+      // nerve, rather than sitting on the line itself -- a stop used
+      // to share the same y as the curve underneath it, chainYAt(X),
+      // which is also exactly why nothing distinguished "a door" from
+      // "the line the doors ride." Every dodge below still perturbs
+      // this lifted position, same as before -- a stop already
+      // clearing a fragment or specimen is still tied to the nerve by
+      // a longer or shorter thread, same as a specimen's own filament
+      // changes length as it drifts (see drawConnector's own call
+      // below, right after this loop knows its final position).
+      const STOP_LIFT = 24;
       for (const s of stopNodes) {
         const X = wrap(s.xn * WORLD_W - worldX, WORLD_W) - Math.min(520, W * 0.4);
-        let y = chainYAt(X) + worldYoff * 0.02;
+        // Captured before STOP_LIFT and the dodge logic below move y
+        // away from it -- this is the real point on the spine the
+        // filament has to reach back to, not wherever the label itself
+        // currently sits.
+        const nerveYAtX = chainYAt(X);
+        let y = nerveYAtX - STOP_LIFT + worldYoff * 0.02;
         const on = X > -200 && X < W + 200;
         // Same fix as the fragment citation link just above -- a stop
         // is a real <a>, natively focusable with no tabindex needed at
@@ -2845,7 +2936,8 @@ import { STOPS } from '../data/stops';
             break;
           }
         }
-        s.el.style.setProperty('--stopglow', stopGlow.toFixed(3));
+        const glow = stopGlowAt(s.xn);
+        s.el.style.setProperty('--stopglow', glow.toFixed(3));
 
         let near = 0;
         if (hasPointer) {
@@ -2853,6 +2945,19 @@ import { STOPS } from '../data/stops';
           near = d < 140 ? 1 : 0;
         }
         s.el.dataset.near = String(near);
+        // The wake: a one-time flicker fired on the exact frame `near`
+        // flips 0 to 1, not a constant idle state (see .stop.is-waking's
+        // own comment for the animation itself). s.near, otherwise
+        // unused, is repurposed here as "was near last frame" so this
+        // fires once per arrival, not once per frame spent near.
+        // Timeout removes the class once the animation's own 420ms is
+        // over, matching its duration exactly, so it's armed to play
+        // again the next time someone leaves and comes back.
+        if (!reduced && near === 1 && s.near === 0) {
+          s.el.classList.add('is-waking');
+          setTimeout(() => s.el.classList.remove('is-waking'), 420);
+        }
+        s.near = near;
         // FIELD-SPEC: "the bead brightens, the label rises and
         // letterspaces." Brighten and letterspace were already real
         // (the color/letter-spacing transition on [data-near='1']
@@ -2867,7 +2972,37 @@ import { STOPS } from '../data/stops';
         // line already computes.
         s.nearAmt += (near - s.nearAmt) * approachFactor(0.12, dt);
         const lift = s.nearAmt * 4;
-        s.el.style.transform = `translate3d(${X}px, ${y - 22 - lift}px, 0)`;
+        const labelY = y - 22 - lift;
+        s.el.style.transform = `translate3d(${X}px, ${labelY}px, 0)`;
+
+        // The filament and the suture: the same museum-tag-on-a-wire
+        // drawing already built for specimens (drawConnector, defined
+        // above frame()), fed a new source instead of a second version
+        // of it. sx/sy approximate the label's own rendered center
+        // (offsetWidth/offsetHeight already read above for the dodge
+        // check); nx/ny is the real point on the spine, captured as
+        // nerveYAtX before STOP_LIFT and the dodge moved y away from
+        // it. Opacity rides the same traveling glow as the text halo
+        // above, plus a steady baseline so the thread stays visible
+        // between sweeps -- a stop is always tied to the nerve, the
+        // wave just makes that tie brighten as it passes. Gated on
+        // docked the same way specimen connectors are (see that gate's
+        // own comment): #world sits at opacity 0 the whole time Act I
+        // shows, but this canvas doesn't, so an undocked stop would
+        // otherwise paint a disconnected gold thread hanging in the
+        // void on the landing page.
+        if (docked) {
+          drawConnector({
+            sx: X + sw / 2,
+            sy: labelY + sh / 2,
+            cx: X + sw / 2,
+            cy: (labelY + sh / 2 + nerveYAtX) / 2,
+            nx: X,
+            ny: nerveYAtX,
+            o: 0.12 + glow * 0.6,
+            pulse: s.xn * 17,
+          });
+        }
       }
 
       // Under reduced motion everything above this point is already a
