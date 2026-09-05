@@ -1064,6 +1064,31 @@ import { STOPS } from '../data/stops';
     let entranceStartT = -1;
     let entranceFromMin = 0, entranceFromMax = 0;
     const ENTRANCE_MS = 3000;
+    // The landing branch below measures .tagline/#frag-a's real
+    // rendered position to lock in the entrance channel -- both use
+    // custom fonts (IBM Plex Mono, Fraunces). Before those finish
+    // loading, getBoundingClientRect reports real, non-zero numbers --
+    // passing the sanity floor just above just fine -- but wrong ones,
+    // built on the fallback font's metrics. entranceSettled then locks
+    // in on that wrong measurement, and the correction once the real
+    // font swaps in doesn't land until the next periodic recompute (up
+    // to 20 frames later), showing up as exactly the kind of jump this
+    // was meant to prevent in the first place. document.fonts.ready
+    // gates the FIRST trusted measurement specifically -- not
+    // computeNerveChannel itself, which still needs to keep running so
+    // there's a real channel ready the instant fonts do load, not one
+    // more thing waiting in series.
+    let fontsReady = false;
+    if (typeof document.fonts?.ready === 'object') {
+      document.fonts.ready.then(() => { fontsReady = true; }).catch(() => { fontsReady = true; });
+    } else {
+      fontsReady = true;
+    }
+    // Safety net, same pattern as nerve-settled's own 4s fallback --
+    // don't leave the entrance waiting forever on a promise that never
+    // resolves.
+    setTimeout(() => { fontsReady = true; }, 2000);
+
     function computeNerveChannel() {
       if (document.body.dataset.landing === 'field') {
         // Docked: the corner mark is tiny and the quote is hidden
@@ -1103,7 +1128,7 @@ import { STOPS } from '../data/stops';
       // floor below only exists to keep a near-zero rounding artifact
       // from producing a degenerate sliver of a channel, not to gate
       // out real short viewports the way 120 accidentally did.
-      if (tBottom > 0 && pTop - tBottom > margin * 2 + 40) {
+      if (fontsReady && tBottom > 0 && pTop - tBottom > margin * 2 + 40) {
         realNerveMin = tBottom + margin;
         realNerveMax = pTop - margin;
         haveRealChannel = true;
@@ -1951,7 +1976,7 @@ import { STOPS } from '../data/stops';
         el.dataset.justClicked = '1';
         setTimeout(() => delete el.dataset.justClicked, 400);
       });
-      return { el, name: s.label, xn: (i + 0.5) / STOPS.length, near: 0, nearAmt: 0, smoothY: NaN };
+      return { el, name: s.label, xn: (i + 0.5) / STOPS.length, near: 0, nearAmt: 0, smoothY: NaN, sw: 90, sh: 22, lastMeasure: -Infinity };
     });
 
     // Per-fragment decay timing (decayAfter) and touch-vs-pointer base
@@ -2967,7 +2992,21 @@ import { STOPS } from '../data/stops';
         // badly. Checked against visibleSpecRects (same rect shape,
         // already computed every frame for the fragment/specimen
         // collision check above) the same way, right after.
-        const sw = s.el.offsetWidth || 90, sh = s.el.offsetHeight || 22;
+        // Was a plain read every single frame, for all seven stops --
+        // offsetWidth/offsetHeight force a synchronous layout
+        // recalculation if anything about the page is dirty, and nothing
+        // stopped that from happening 7 times * 60fps regardless. A
+        // stop's real size only ever changes at specific moments (a
+        // near-state toggle changing letter-spacing, the subtitle
+        // opening, a resize), not every frame, so caching it and
+        // re-measuring on a throttle loses nothing real while cutting
+        // forced layout reads by roughly 12x.
+        if (t - s.lastMeasure > 0.2) {
+          s.sw = s.el.offsetWidth || 90;
+          s.sh = s.el.offsetHeight || 22;
+          s.lastMeasure = t;
+        }
+        const sw = s.sw, sh = s.sh;
         for (const r of liveFragRects) {
           const sy = y - 22;
           if (X < r.x + r.w && X + sw > r.x && sy < r.y + r.h && sy + sh > r.y) {
