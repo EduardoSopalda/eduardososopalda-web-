@@ -881,6 +881,23 @@ import { STOPS } from '../data/stops';
     let px = -9999, py = -9999, hasPointer = false, t = 0;
     let worldX = 0, targetX = 0, worldYoff = 0, dragY = 0;
     let drag = false, lastX = 0, lastY = 0;
+    // Act II -> Act III departure: clicking a stop used to navigate the
+    // instant the <a> fired, a hard cut with no acknowledgment that the
+    // nerve itself heard the choice. Now the click is caught, the world
+    // pans so the chosen stop settles at screen center -- "the nerve
+    // looking for its new position" -- and only once that eased glide
+    // finishes does the real navigation happen. DEPART_MS is a fixed,
+    // known duration (not a chase that only asymptotically arrives) for
+    // exactly that reason: something has to trigger the actual
+    // navigation at a definite moment. departEl (not the whole node) is
+    // enough to let the stops loop recognise which stop is departing.
+    const DEPART_MS = 620;
+    let departing = false;
+    let departStartT = 0;
+    let departFromX = 0;
+    let departToX = 0;
+    let departHref = '';
+    let departEl: HTMLAnchorElement | null = null;
     // Real elapsed time, not frame count -- frame() below used to run
     // dt as a hardcoded 1/60 regardless of how often the browser
     // actually called it, so on a 120Hz display (most current-gen
@@ -1972,11 +1989,33 @@ import { STOPS } from '../data/stops';
       el.appendChild(sub);
       world!.appendChild(el);
       el.style.zIndex = '200'; // navigation always reads above specimens/fragments
-      el.addEventListener('click', () => {
+      const xn = (i + 0.5) / STOPS.length;
+      el.addEventListener('click', (e) => {
         el.dataset.justClicked = '1';
         setTimeout(() => delete el.dataset.justClicked, 400);
+        // Reduced motion, or a departure already underway: let the
+        // plain <a> navigate immediately, same as JS-off -- this pan is
+        // a bonus the real link never depended on, not a replacement
+        // for it.
+        if (reduced || departing) return;
+        e.preventDefault();
+        departing = true;
+        departEl = el;
+        departHref = el.href;
+        departFromX = worldX;
+        // Same formula the stops loop below uses to place this stop
+        // (X = wrap(xn*WORLD_W - worldX, WORLD_W) - OFFSET), solved
+        // backwards for the worldX that puts X at screen center, then
+        // taken to whichever representative (mod WORLD_W) is nearest
+        // the current worldX -- a short glide in whatever direction is
+        // already closest, never a full lap of the wrapped world.
+        const OFFSET = Math.min(520, W * 0.4);
+        const rawTarget = xn * WORLD_W - (W / 2 + OFFSET);
+        const delta = wrap(rawTarget - worldX + WORLD_W / 2, WORLD_W) - WORLD_W / 2;
+        departToX = worldX + delta;
+        departStartT = performance.now();
       });
-      return { el, name: s.label, xn: (i + 0.5) / STOPS.length, near: 0, nearAmt: 0, smoothY: NaN, sw: 90, sh: 22, lastMeasure: -Infinity };
+      return { el, name: s.label, xn, near: 0, nearAmt: 0, smoothY: NaN, sw: 90, sh: 22, lastMeasure: -Infinity };
     });
 
     // Per-fragment decay timing (decayAfter) and touch-vs-pointer base
@@ -2045,10 +2084,29 @@ import { STOPS } from '../data/stops';
       // the last real pointer/drag/wheel input, reaching full speed by
       // 20s idle; modest and gradual on purpose, not a jump, since a
       // sudden speed change would read as a glitch, not a mood.
-      const idleFor = t - lastActiveT;
-      const idleMul = 1 + Math.min(0.7, (Math.max(0, idleFor - 8) / 12) * 0.7);
-      if (!drag) targetX += reduced ? 0 : DRIFT_PER_SEC * idleMul * dt;
-      worldX += (targetX - worldX) * approachFactor(0.06, dt);
+      if (departing) {
+        // A fixed-duration cosine ease, the same shape the nerve's own
+        // entrance uses (see entranceSettled above) and for the same
+        // reason: an exponential chase only ever asymptotically arrives,
+        // and something here has to reach an exact, known moment to
+        // actually trigger the navigation. targetX is kept in lockstep
+        // so idle drift doesn't reappear mid-glide or fight the very
+        // next frame if this ever somehow didn't reach p>=1.
+        const p = Math.min(1, (performance.now() - departStartT) / DEPART_MS);
+        const eased = 0.5 - 0.5 * Math.cos(p * Math.PI);
+        worldX = departFromX + (departToX - departFromX) * eased;
+        targetX = worldX;
+        if (p >= 1 && departHref) {
+          const href = departHref;
+          departHref = '';
+          location.href = href;
+        }
+      } else {
+        const idleFor = t - lastActiveT;
+        const idleMul = 1 + Math.min(0.7, (Math.max(0, idleFor - 8) / 12) * 0.7);
+        if (!drag) targetX += reduced ? 0 : DRIFT_PER_SEC * idleMul * dt;
+        worldX += (targetX - worldX) * approachFactor(0.06, dt);
+      }
       worldYoff = dragY + (reduced ? 0 : Math.sin(t * 0.0817) * H * 0.16);
 
       // Every ~20 frames (~3/sec), not every frame -- getBoundingClientRect
@@ -3079,6 +3137,14 @@ import { STOPS } from '../data/stops';
           const d = Math.hypot(px - X, py - y);
           near = d < 140 ? 1 : 0;
         }
+        // The departing stop is gliding away from wherever the pointer
+        // actually is (that's the whole point -- it's headed to screen
+        // center, not wherever it was clicked from), which would
+        // otherwise read as proximity fading exactly while the one
+        // thing the visitor just chose is what should stay brightest.
+        // Pinned near regardless of real distance for the duration of
+        // the glide.
+        if (departing && s.el === departEl) near = 1;
         s.el.dataset.near = String(near);
         // The wake: a one-time flicker fired on the exact frame `near`
         // flips 0 to 1, not a constant idle state (see .stop.is-waking's
@@ -3166,6 +3232,29 @@ import { STOPS } from '../data/stops';
     resize();
     addEventListener('resize', resize);
     frame();
+    // The "one settled frame, then stop" plan above only actually
+    // settles correctly if docked is already whatever it's going to be
+    // at that single call -- but dock()/undock() (Landing.astro, not
+    // this file) run later, off a click nobody has made yet at load
+    // time, and they only ever flip document.body's data-landing
+    // attribute; they don't know this loop exists to ask it to redraw.
+    // Confirmed directly: under reduced motion, clicking the Continue
+    // cue correctly set data-landing to 'field', but every stop stayed
+    // at the visibility:hidden its one already-spent frame had left it
+    // in forever -- the seven stops, this site's only navigation, were
+    // permanently unreachable for a reduced-motion visitor the moment
+    // they actually reached the field. Re-running frame() once more
+    // whenever that attribute changes (dock, undock, either direction)
+    // gives reduced motion the same settled-and-correct single frame
+    // the rest of this file already assumes it gets, just re-triggered
+    // at the actual moment something worth redrawing happened instead
+    // of only once, before it could have.
+    if (reduced) {
+      new MutationObserver(() => frame()).observe(document.body, {
+        attributes: true,
+        attributeFilter: ['data-landing'],
+      });
+    }
   }
 
   initField();
