@@ -1,0 +1,78 @@
+---
+// A local, textual echo of the field's own nerve -- not the canvas
+// system itself (that would be a strange, heavy thing to import into a
+// plain reading room), just its typographic vocabulary (mono, tracked,
+// gold-for-awake) applied to a real filter: six threads plus "Archive"
+// (everything, unfiltered), each a real <a>, so this works with
+// JavaScript off exactly the same as with it on -- there's no client
+// state here, "active" is just whichever real page you're already on.
+// Shared by /writing (active=null, meaning Archive) and each
+// /thread/[name] page (active=that thread), so the same seven links,
+// in the same order, render identically everywhere they appear.
+import { THREADS } from '../data/threads';
+
+interface Props {
+  active?: string | null;
+}
+const { active = null } = Astro.props;
+---
+
+<nav class="thread-nerve" aria-label="Filter writing by thread">
+  <ol>
+    <li>
+      <a href="/writing" aria-current={active === null ? 'page' : undefined}>Archive</a>
+    </li>
+    {THREADS.map((t) => (
+      <li>
+        <a href={`/thread/${t.toLowerCase()}`} aria-current={active === t ? 'page' : undefined}>{t}</a>
+      </li>
+    ))}
+  </ol>
+</nav>
+
+<style>
+  .thread-nerve {
+    margin: 2rem 0 0;
+    padding-bottom: 0.9rem;
+    /* The line itself -- thin, resting well under the gold nerve's own
+       strength, since this is one filter inside one room, not the
+       site's real navigation (CLAUDE.md non-negotiable 2). */
+    border-bottom: 1px solid rgba(243, 235, 224, 0.14);
+  }
+
+  .thread-nerve ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.3rem;
+  }
+
+  .thread-nerve a {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: rgba(227, 175, 149, 0.55);
+  }
+
+  .thread-nerve a:hover,
+  .thread-nerve a:focus-visible {
+    color: var(--gold);
+  }
+
+  /* The one thread actually being read right now -- gold, same as
+     whatever else on this site is "awake" (non-negotiable 6), not a
+     second resting colour invented for this one nav. */
+  .thread-nerve a[aria-current='page'] {
+    color: var(--gold);
+  }
+
+  .thread-nerve a:focus-visible {
+    outline: 1.5px solid var(--gold);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+</style>
