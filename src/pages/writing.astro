@@ -14,19 +14,23 @@ import ArticleList from '../components/ArticleList.astro';
 const entries = await getCollection('articles');
 const bySource = entries.map(toArticleRow).sort((a, b) => (a.date < b.date ? 1 : -1));
 
-// The room's one awake plate: void, one real object, one line cropped
-// from the rest of the sentence -- per direct critique, substitution
-// and scale-shift (an image where a cover would sit, the fragment at
-// book size, the official headline cut down to a caption) instead of
-// a contents page. Picks the first article that actually carries a
-// real image (family !== 'void' AND a real image path) -- today that's
-// none of the 25 (every one still ships family: void, see
-// content.config.ts's own comment), so there's nothing to invent here:
-// which article wakes and what its image is is Eduardo's call, the
-// same "not done, needs Eduardo" boundary the rest of this site
-// already respects. awake stays null until he assigns one; the empty
-// state below is a visible TODO, not a silently missing feature.
-const awake = bySource.find((a) => a.family !== 'void' && a.image) ?? null;
+// The section's own masthead -- a correction on the earlier awake-
+// plate build, which bound this image to one specific article's front
+// matter. Direct correction: "the tomato belongs here... not to any
+// one article." This is the whole cabinet of writing's own cover, not
+// a per-article treatment, so it isn't sourced from the content
+// collection at all -- just this one local constant. null renders
+// today exactly as it did before this existed (title, filter row,
+// list, nothing missing or broken-looking); set it to bring the
+// masthead up, no other code change needed. One subject (not a Dada
+// collage of several) is the considered choice for now, consistent
+// with the single-collision method the field's own specimens already
+// use elsewhere on this site -- a multi-element collage would be a
+// real, different choice, not a default to drift into.
+const masthead: { image: string; alt: string } | null = {
+  image: '/writing/tomato.png',
+  alt: '',
+};
 ---
 
 <!doctype html>
@@ -38,28 +42,34 @@ const awake = bySource.find((a) => a.family !== 'void' && a.image) ?? null;
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
   <body>
+    <!-- The destination the departing nerve arrives at: Field.astro's
+         click handler straightens and lifts the nerve toward the
+         wordmark's own docked corner over the same window it already
+         eases the horizontal pan in, then navigates -- a hard document
+         cut, since this project uses no cross-document view
+         transitions. This static line is the illusion half of that:
+         present in the same corner from the instant this page loads,
+         so nothing the eye was tracking changes shape across the cut,
+         even though it's a different element on a different document.
+         Gold here is the nerve itself, relocated and simplified, not a
+         fourth gold thing invented for this page (CLAUDE.md
+         non-negotiable 6). Breathes on its own via CSS -- no canvas,
+         no JS timing loop, just a slow opacity/glow oscillation, so
+         the "still pulsating" feeling the request asked for carries
+         into a page that has no per-frame loop of its own. -->
+    <div class="nerve-rest" aria-hidden="true"></div>
     <main>
       <p class="back"><a href="/">Back to the field</a></p>
       <h1>Writing</h1>
 
-      {awake ? (
-        <a class="awake-plate" href={`/writing/${awake.id}`}>
-          <div class="awake-image"><img src={awake.image} alt="" /></div>
-          <p class="awake-line">{awake.lead ?? awake.dek}</p>
-          <p class="awake-title">{awake.title}</p>
-        </a>
-      ) : (
-        <div class="awake-plate awake-plate--empty">
-          <p class="awake-todo">
-            TODO (Eduardo): pick one article and assign it a real image (family:
-            'specimen' or 'apparatus', plus an image path, in its front matter) to
-            feature here as the room's one awake plate -- void, one object, the
-            article's own line, its official title cropped to a caption.
-          </p>
+      <ThreadNerve />
+
+      {masthead && (
+        <div class="masthead">
+          <img src={masthead.image} alt={masthead.alt} />
         </div>
       )}
 
-      <ThreadNerve />
       <ArticleList entries={bySource} />
     </main>
   </body>
@@ -124,79 +134,85 @@ const awake = bySource.find((a) => a.family !== 'void' && a.image) ?? null;
     font-size: 1.6rem;
   }
 
-  /* The awake plate: substitution and scale-shift, per direct
-     critique, not a cover photo and a headline like everything else
-     in the list below it. void background either way (--void, not a
-     near-black -- same true-black the field's own specimens composite
-     against, see DESIGN-SYSTEM.md), so an image sits on the same
-     ground a specimen does elsewhere on this site, not a website
-     hero banner. */
-  .awake-plate {
-    display: block;
-    margin: 2rem 0 0;
-    padding: 1.75rem;
+  /* The nerve's own resting line, arrived at -- see the markup
+     comment above for why this exists as static CSS rather than a
+     shared, animated element. Full width (the departing nerve itself
+     stays edge to edge even once flattened, only its vertical channel
+     collapses -- see Field.astro's straightenAmt), faded at both ends
+     rather than hard-cut, so it reads as a line running past the
+     frame, not a bar sized to it. top/height approximate where
+     Field.astro's own departure actually measures body.is-docked
+     .mark h1's real rect and eases toward -- necessarily
+     approximate, since this is a static illusion on a different
+     document, not the same element, but close enough that nothing
+     visibly jumps across the cut. */
+  .nerve-rest {
+    position: fixed;
+    top: calc(38px + env(safe-area-inset-top));
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(247, 197, 106, 0.55) 12%,
+      rgba(247, 197, 106, 0.55) 88%,
+      transparent
+    );
+    filter: drop-shadow(0 0 5px rgba(247, 197, 106, 0.4));
+    opacity: 0.75;
+    pointer-events: none;
+    z-index: 5;
+    animation: nerve-rest-breathe 6.5s ease-in-out infinite;
+  }
+
+  /* breath, on Field.astro's own canvas, is a continuous sine read
+     fresh every frame -- there's no equivalent loop here, so a plain
+     CSS keyframe animation is the cheapest way to keep the same slow
+     swell-and-ease feeling without inventing a JS timer for one static
+     line. */
+  @keyframes nerve-rest-breathe {
+    0%, 100% {
+      opacity: 0.55;
+      filter: drop-shadow(0 0 3px rgba(247, 197, 106, 0.3));
+    }
+    50% {
+      opacity: 0.9;
+      filter: drop-shadow(0 0 8px rgba(247, 197, 106, 0.55));
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nerve-rest {
+      animation: none;
+      opacity: 0.75;
+    }
+  }
+
+  /* The section's masthead -- substitution and scale-shift, per direct
+     critique: one real image standing in for a cover, held generously,
+     bigger than any single article's own plate is ever allowed to be.
+     void background (--void, true black, not a near-black -- same
+     ground the field's own specimens composite against, see
+     DESIGN-SYSTEM.md) so the image sits on the same ground a specimen
+     does elsewhere on this site, not a website hero banner. Full
+     image, not cropped -- object-fit: contain, letterboxed on void
+     rather than object-fit: cover cutting into it, since this is the
+     one place on the site allowed to show the whole thing. */
+  .masthead {
+    display: flex;
+    justify-content: center;
+    margin: 2.5rem 0 0;
+    padding: 1.5rem;
     background: var(--void);
     border: 1px solid rgba(243, 235, 224, 0.12);
-    text-decoration: none;
-    color: inherit;
   }
 
-  .awake-plate:focus-visible {
-    outline: 1.5px solid var(--gold);
-    outline-offset: 2px;
-  }
-
-  .awake-image {
-    max-width: 22rem;
-    max-height: 44vh;
-    overflow: hidden;
-    margin: 0 0 1.25rem;
-  }
-
-  .awake-image img {
+  .masthead img {
     display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  /* The line: full, unshortened, book-size -- the thought this plate
-     is actually for. Same colour every other quote on the site uses
-     (Field.astro's .frag-quote, /writing's own row .lead below). */
-  .awake-line {
-    margin: 0;
-    max-width: 32rem;
-    font-family: var(--font-display);
-    font-size: clamp(1.3rem, 3.6vw, 1.9rem);
-    line-height: 1.3;
-    color: var(--oxide-lit);
-  }
-
-  /* The official headline, cropped to a caption -- "keep the thought,
-     cut the cover." One line, ellipsis past it, not the full title
-     wrapping across two or three lines the way every other row's own
-     .title is allowed to. */
-  .awake-title {
-    margin: 0.75rem 0 0;
-    max-width: 26rem;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    letter-spacing: 0.06em;
-    color: rgba(243, 235, 224, 0.45);
-  }
-
-  .awake-plate--empty {
-    border-style: dashed;
-  }
-
-  .awake-todo {
-    margin: 0;
-    max-width: 34rem;
-    font-size: 0.75rem;
-    line-height: 1.6;
-    color: rgba(243, 235, 224, 0.4);
+    max-width: 100%;
+    max-height: 70vh;
+    width: auto;
+    height: auto;
   }
 </style>

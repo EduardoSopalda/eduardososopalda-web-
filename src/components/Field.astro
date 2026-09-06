@@ -898,6 +898,25 @@ import { STOPS } from '../data/stops';
     let departToX = 0;
     let departHref = '';
     let departEl: HTMLAnchorElement | null = null;
+    // The nerve straightening on the way out, in the same window --
+    // not a second animation system next to the pan above, the same
+    // eased progress drives both. straightenAmt is nerveBaseY's own
+    // amplitude/spring multiplier: 1 at the click (full wave, nothing
+    // changes yet), eased to 0 by the time DEPART_MS is up (dead flat).
+    // departNerveFrom/To are captured once, at the click, the same way
+    // departFromX/departToX are -- not recomputed every frame, so a
+    // resize or a stray layout thrash mid-glide can't retarget where
+    // the line is headed. The target itself is wherever the wordmark's
+    // OWN docked position already is (body.is-docked .mark, measured
+    // directly, not a second hand-tuned guess at the same spot) -- the
+    // flattened nerve settles into the same corner the wordmark
+    // already claimed on the way into the field, not a new resting
+    // place invented for this.
+    let straightenAmt = 1;
+    let departNerveFromMin = 0;
+    let departNerveFromMax = 0;
+    let departNerveToMin = 0;
+    let departNerveToMax = 0;
     // Real elapsed time, not frame count -- frame() below used to run
     // dt as a hardcoded 1/60 regardless of how often the browser
     // actually called it, so on a 120Hz display (most current-gen
@@ -1162,18 +1181,40 @@ import { STOPS } from '../data/stops';
     // height, not of H directly -- that's what makes the wave big and
     // confident on a tall phone channel and safely smaller on a short
     // desktop one, from the same formula.
+    // breath's own formula, lifted out of nerveBaseY so the stroke
+    // rendering (see the departure pulse in frame()) can read the same
+    // value instead of a second copy of this one line drifting from it.
+    function currentBreath(): number {
+      return 0.55 + 0.45 * Math.sin(t * 0.22);
+    }
+
     function nerveBaseY(x: number): number {
       const u = x / Math.max(W, 1);
       const channel = nerveMax - nerveMin;
-      const breath = 0.55 + 0.45 * Math.sin(t * 0.22);
+      const breath = currentBreath();
       const mid = nerveMin + channel * 0.5 + Math.sin(t * 0.14) * channel * 0.05 + worldYoff * 0.06;
       const warp = u + 0.08 * Math.sin(u * Math.PI * 2 + t * 0.2);
-      const amp = channel * (0.14 + 0.12 * breath);
+      // straightenAmt: 1 normally (every term below at its ordinary
+      // strength), eased to 0 on the way out of a departing stop (see
+      // the click handler and frame()'s departing branch) so the curve
+      // itself goes dead flat by the moment the real navigation fires,
+      // not just docked into a narrower channel that still visibly
+      // wiggles. All three sine terms shape the curve's deviation from
+      // mid -- only the first two are literally scaled by the named
+      // `amp` variable, but the third (channel * 0.035) does the same
+      // job at a smaller weight, so it gets the same treatment; leaving
+      // it un-flattened would mean "straightened" still had a faint
+      // wobble in it. mid itself is untouched here on purpose -- its
+      // own drift shrinks naturally as the departure migrates the
+      // channel itself toward the wordmark's tight corner band (see
+      // frame()'s departure branch), not because this function knows
+      // anything about departing.
+      const amp = channel * (0.14 + 0.12 * breath) * straightenAmt;
       return (
         mid +
         Math.sin(warp * Math.PI * 1.05 + t * 0.48) * amp +
         Math.sin(warp * Math.PI * 2.1 + t * 0.27) * amp * 0.28 +
-        Math.sin(u * Math.PI * 0.4 + t * 0.11) * channel * 0.035
+        Math.sin(u * Math.PI * 0.4 + t * 0.11) * channel * 0.035 * straightenAmt
       );
     }
 
@@ -1233,7 +1274,13 @@ import { STOPS } from '../data/stops';
     }
 
     function chainYAt(x: number): number {
-      const y = nerveBaseY(x) + springAt(x);
+      // springAt's own contribution is scaled by the same straightenAmt
+      // -- an unbent spring on top of an already-flattened base curve
+      // is still flat, but a live spring (whatever bend the cursor left
+      // behind at the moment of the click) on top of a flattened base
+      // curve would still visibly kink. Relaxed along with everything
+      // else, not left to persist into an otherwise straight line.
+      const y = nerveBaseY(x) + springAt(x) * straightenAmt;
       // The corner mark, top bar, tagline, purpose line, and meta live
       // in Landing.astro's own stacking context, which paints above
       // this whole canvas regardless of the nerve's z-index -- that
@@ -2013,6 +2060,30 @@ import { STOPS } from '../data/stops';
         const rawTarget = xn * WORLD_W - (W / 2 + OFFSET);
         const delta = wrap(rawTarget - worldX + WORLD_W / 2, WORLD_W) - WORLD_W / 2;
         departToX = worldX + delta;
+        // Where the flattened line settles: the wordmark's own docked
+        // position (body.is-docked .mark, position:fixed, top-right
+        // corner), measured directly rather than reconstructed from
+        // its CSS by hand -- if that element isn't there or hasn't
+        // laid out for some reason, fall back to the same near-top
+        // fraction the nerve's own entrance pose already uses
+        // (resize()'s nerveMin = nerveMax = H * 0.1) rather than
+        // inventing a second guess at the same spot. .mark itself is
+        // height:0/overflow:visible once docked (a deliberate layout
+        // trick so it doesn't reserve grid space -- see
+        // sopalda-landing.css's own comment on body.is-docked .mark),
+        // so its own rect always reports zero height; .mark h1 is the
+        // element that actually paints the visible text and reports
+        // the real, non-zero box.
+        const markRect = document.querySelector('.mark h1')?.getBoundingClientRect();
+        departNerveFromMin = nerveMin;
+        departNerveFromMax = nerveMax;
+        if (markRect && markRect.height > 0) {
+          departNerveToMin = markRect.top;
+          departNerveToMax = markRect.bottom;
+        } else {
+          departNerveToMin = H * 0.08;
+          departNerveToMax = H * 0.12;
+        }
         departStartT = performance.now();
       });
       return { el, name: s.label, xn, near: 0, nearAmt: 0, smoothY: NaN, sw: 90, sh: 22, lastMeasure: -Infinity };
@@ -2096,6 +2167,14 @@ import { STOPS } from '../data/stops';
         const eased = 0.5 - 0.5 * Math.cos(p * Math.PI);
         worldX = departFromX + (departToX - departFromX) * eased;
         targetX = worldX;
+        // The straighten and the rise, same progress, same window --
+        // see nerveBaseY's own comment for what straightenAmt actually
+        // does to the curve. This replaces the ordinary channel-chase
+        // below entirely for the duration (that block is now gated on
+        // !departing) rather than fighting it every frame.
+        straightenAmt = 1 - eased;
+        nerveMin = departNerveFromMin + (departNerveToMin - departNerveFromMin) * eased;
+        nerveMax = departNerveFromMax + (departNerveToMax - departNerveFromMax) * eased;
         if (p >= 1 && departHref) {
           const href = departHref;
           departHref = '';
@@ -2106,6 +2185,7 @@ import { STOPS } from '../data/stops';
         const idleMul = 1 + Math.min(0.7, (Math.max(0, idleFor - 8) / 12) * 0.7);
         if (!drag) targetX += reduced ? 0 : DRIFT_PER_SEC * idleMul * dt;
         worldX += (targetX - worldX) * approachFactor(0.06, dt);
+        straightenAmt = 1;
       }
       worldYoff = dragY + (reduced ? 0 : Math.sin(t * 0.0817) * H * 0.16);
 
@@ -2124,7 +2204,13 @@ import { STOPS } from '../data/stops';
       // into place. Landing.astro waits for the 'nerve-settled' event
       // this dispatches once, so the name and quote don't start fading
       // in until the nerve has actually finished arriving.
-      if (haveRealChannel) {
+      //
+      // Gated on !departing -- the departure branch above already owns
+      // nerveMin/nerveMax completely for the length of the glide (its
+      // own eased tween toward the wordmark's corner), and this
+      // ordinary chase-toward-realNerveMin/Max would otherwise fight it
+      // every single frame for the same two variables.
+      if (haveRealChannel && !departing) {
         if (!entranceSettled) {
           if (reduced) {
             nerveMin = realNerveMin;
@@ -2178,17 +2264,28 @@ import { STOPS } from '../data/stops';
         ctx!.lineTo(last.x, last.y);
       }
 
+      // flatness: 0 the entire time this isn't departing (straightenAmt
+      // stays 1, every term below reduces to its original constant --
+      // byte-for-byte the same rendering as before this existed), rising
+      // to 1 as the curve itself goes flat. breath is the same slow
+      // oscillation nerveBaseY's own amplitude already breathes with --
+      // reused, not a second pulse invented for the flattened state, per
+      // the departure spec's own reasoning: a flattened amplitude that
+      // still has breath folded into its stroke weight/glow is what
+      // reads as dormant rather than dead.
+      const flatness = 1 - straightenAmt;
+      const breath = currentBreath();
       ctx!.shadowColor = 'rgba(247, 197, 106, 0.5)';
       ctx!.shadowBlur = 10;
       strokePath();
-      ctx!.strokeStyle = 'rgba(198, 145, 68, 0.4)';
-      ctx!.lineWidth = 3;
+      ctx!.strokeStyle = `rgba(198, 145, 68, ${0.4 + flatness * breath * 0.3})`;
+      ctx!.lineWidth = 3 + flatness * breath * 2;
       ctx!.stroke();
 
       ctx!.shadowBlur = 4;
       strokePath();
-      ctx!.strokeStyle = 'rgba(247, 197, 106, 0.9)';
-      ctx!.lineWidth = 1;
+      ctx!.strokeStyle = `rgba(247, 197, 106, ${0.9 + flatness * breath * 0.1})`;
+      ctx!.lineWidth = 1 + flatness * breath * 0.8;
       ctx!.stroke();
 
       // Electricity, not just moving dots: each pulse is a short comet
