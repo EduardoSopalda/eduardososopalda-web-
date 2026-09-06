@@ -88,3 +88,22 @@ export function leadFragmentFor(title: string): string | null {
   if (!matches.length) return null;
   return (matches.find((f) => f.weight === 'short') ?? matches[0]).text;
 }
+
+// The one row-shape both /writing and every /thread/[name] page build
+// their list from -- catalogue number and lead fragment are both
+// derived the same way in both places, so this used to be the same
+// three lines typed twice and drifting the moment one of them changed
+// how a fragment gets picked. entry.data is spread first so family/
+// image/dek/people/question all ride along too, for callers (today
+// just /writing's own awake-plate search) that need more than the
+// list row itself does.
+import type { CollectionEntry } from 'astro:content';
+
+export function toArticleRow(entry: CollectionEntry<'articles'>) {
+  return {
+    ...entry.data,
+    id: entry.id,
+    no: catalogNoForTitle(entry.data.title),
+    lead: leadFragmentFor(entry.data.title),
+  };
+}

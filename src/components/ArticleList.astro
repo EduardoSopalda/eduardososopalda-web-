@@ -1,0 +1,116 @@
+---
+// The real row list -- shared by /writing (all 25) and each
+// /thread/[name] page (whichever subset carries that thread), so the
+// same markup, the same CSS, the same hierarchy fix (title first, the
+// fragment quote second, date/kind/thread last) renders identically
+// wherever a list of articles appears, instead of two copies of this
+// slowly drifting apart the way three copies of STOPS/subtitle text
+// already had to be unified once (see src/data/stops.ts's own
+// comment).
+//
+// Per direct critique: threads used to print as a full comma-joined,
+// all-caps list under every row ("MEMORY, MEANING, GOVERNANCE...") --
+// "a spreadsheet wearing Fraunces." Only the article's own primary
+// thread (threads[0] -- the order Eduardo's front matter already lists
+// them in, not re-sorted here) prints now; the rest exist on the
+// article's own page (the reader's .threads pills already show the
+// full set there), not repeated as metadata soup on every row of the
+// archive.
+export interface ArticleRow {
+  id: string;
+  title: string;
+  date: Date;
+  kind: string;
+  threads: string[];
+  no: number | null;
+  lead: string | null;
+}
+
+interface Props {
+  entries: ArticleRow[];
+}
+const { entries } = Astro.props;
+---
+
+<ol class="list">
+  {entries.map((a) => (
+    <li>
+      <a class="row" href={`/writing/${a.id}`}>
+        <span class="no">{a.no ? `No.${String(a.no).padStart(2, '0')}` : ''}</span>
+        <span class="title">{a.title}</span>
+        {a.lead && <span class="lead">{a.lead}</span>}
+        <span class="meta">
+          {a.date.getFullYear()} · {a.kind}{a.threads[0] ? ` · ${a.threads[0]}` : ''}
+        </span>
+      </a>
+    </li>
+  ))}
+</ol>
+
+<style>
+  .list {
+    list-style: none;
+    margin: 1.5rem 0 0;
+    padding: 0;
+  }
+
+  .list li {
+    border-top: 1px solid rgba(243, 235, 224, 0.12);
+  }
+
+  .list li:last-child {
+    border-bottom: 1px solid rgba(243, 235, 224, 0.12);
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 3.5rem 1fr;
+    gap: 0.25rem 1rem;
+    padding: 1.1rem 0;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .row:focus-visible {
+    outline: 1.5px solid var(--gold);
+    outline-offset: 2px;
+  }
+
+  .no {
+    font-size: 0.7rem;
+    color: rgba(227, 175, 149, 0.6);
+    align-self: start;
+  }
+
+  .title {
+    grid-column: 2;
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    line-height: 1.35;
+  }
+
+  /* The row's supporting quote, when a fragment exists for this
+     article -- a smaller, italic line under the real title, not
+     competing with it. Same colour Field.astro's own .frag-quote
+     uses, so a quote reads as the same kind of thing wherever it
+     appears on the site. Only 17 of 25 articles have one (see
+     leadFragmentFor's own comment); the other 8 rows have no second
+     line at all. */
+  .lead {
+    grid-column: 2;
+    margin-top: 0.2rem;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--oxide-lit);
+  }
+
+  .meta {
+    grid-column: 2;
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: rgba(243, 235, 224, 0.4);
+  }
+</style>

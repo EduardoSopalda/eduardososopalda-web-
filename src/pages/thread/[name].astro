@@ -1,0 +1,108 @@
+---
+// One thread, held; the rest simply not here rather than dimmed
+// metadata under every row -- per direct critique's own phrase,
+// "sorting under mess (hold MEMORY, the rest dim)." Six of these,
+// statically generated (not a client-side filter over /writing's own
+// DOM), so each is a real, linkable, JS-off room exactly like every
+// other page on this site -- CLAUDE.md's "reader pages must work with
+// JavaScript off" doesn't carve out an exception for a filtered list.
+// Was already named in CLAUDE.md's own "Repo layout to produce"
+// (thread/[name], listed alongside writing/[slug] from the start) but
+// never actually built until now.
+import '../../styles/global.css';
+import { getCollection } from 'astro:content';
+import { toArticleRow } from '../../data/articleIndex';
+import { THREADS, threadForSlug } from '../../data/threads';
+import ThreadNerve from '../../components/ThreadNerve.astro';
+import ArticleList from '../../components/ArticleList.astro';
+
+export async function getStaticPaths() {
+  return THREADS.map((t) => ({ params: { name: t.toLowerCase() } }));
+}
+
+const thread = threadForSlug(Astro.params.name!)!;
+const entries = await getCollection('articles');
+const bySource = entries
+  .map(toArticleRow)
+  .filter((a) => a.threads.includes(thread))
+  .sort((a, b) => (a.date < b.date ? 1 : -1));
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{thread} · Writing · EDUARDO sopalda</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <main>
+      <p class="back"><a href="/writing">All writing</a></p>
+      <h1>{thread}</h1>
+      <ThreadNerve active={thread} />
+      {bySource.length > 0 ? (
+        <ArticleList entries={bySource} />
+      ) : (
+        <p class="none">Nothing under {thread} yet.</p>
+      )}
+    </main>
+  </body>
+</html>
+
+<style>
+  /* Same fix as /writing and the reader -- see either one's own
+     comment for how this was confirmed (html, not just body, is what
+     actually governs real page scroll). */
+  html {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  body {
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 100svh;
+  }
+
+  main {
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+    font-family: var(--font-mono);
+    color: var(--bone);
+  }
+
+  .back a {
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    color: var(--bone);
+    text-decoration: none;
+  }
+
+  .back a:hover,
+  .back a:focus-visible {
+    color: var(--gold);
+  }
+
+  .back a:focus-visible {
+    outline: 1.5px solid var(--gold);
+    outline-offset: 4px;
+    border-radius: 2px;
+  }
+
+  h1 {
+    margin: 3rem 0 0;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 1.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .none {
+    margin: 2rem 0 0;
+    font-size: 0.8rem;
+    color: rgba(243, 235, 224, 0.4);
+  }
+</style>
