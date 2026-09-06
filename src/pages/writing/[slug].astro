@@ -73,14 +73,8 @@ const lead = leadFragmentFor(title);
       <p class="kicker">
         {catalogNo ? `No.${String(catalogNo).padStart(2, '0')} · ` : ''}{year} · {kind}
       </p>
-      {lead ? (
-        <>
-          <p class="lead">{lead}</p>
-          <h1 class="has-lead">{title}</h1>
-        </>
-      ) : (
-        <h1>{title}</h1>
-      )}
+      <h1>{title}</h1>
+      {lead && <p class="lead">{lead}</p>}
       {dek && <p class="dek">{dek}</p>}
       <p class="threads">
         {threads.map((t) => <span class="thread">{t}</span>)}
@@ -307,33 +301,21 @@ const lead = leadFragmentFor(title);
       }
 
       /* The real pull-quote, when one exists (leadFragmentFor -- 17 of
-         25 articles). Same size and position h1 alone used to hold,
-         and the same colour Field.astro's .frag-quote and the /writing
-         list's own .lead use, so a quote reads as one consistent thing
-         everywhere it appears on the site, not a new treatment invented
-         for this page. h1 stays the real, correct page heading either
-         way -- this only changes which line is visually dominant. */
+         25 articles) -- a supporting line under the title, not a
+         second headline competing with it. Same colour Field.astro's
+         .frag-quote and the /writing list's own .lead use, so a quote
+         reads as one consistent thing everywhere it appears on the
+         site. h1 above stays the real, dominant page heading either
+         way. */
       .plate .lead {
         margin: 0;
-        max-width: 44rem;
+        max-width: 38rem;
         font-family: var(--font-display);
         font-weight: 400;
-        font-size: clamp(1.8rem, 5vw, 3rem);
-        line-height: 1.15;
+        font-style: italic;
+        font-size: 1.2rem;
+        line-height: 1.45;
         color: var(--oxide-lit);
-      }
-
-      /* Demoted to a caption once the quote above is doing the
-         headline's job -- names the piece without competing with it,
-         same demotion the /writing list gives its own .title.has-lead. */
-      .plate h1.has-lead {
-        max-width: 34rem;
-        font-family: var(--font-mono);
-        font-weight: 400;
-        font-size: 0.85rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: rgba(243, 235, 224, 0.55);
       }
 
       .dek {
